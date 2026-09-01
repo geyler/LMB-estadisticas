@@ -1,6 +1,6 @@
 /**
  * Main Single-Page Application (SPA) Engine for Liga Metropolitana de Béisbol (LMB)
- * Controls navigation, views, API requests, dynamic statistics renderers & modals
+ * Controls navigation, views, API requests, dynamic statistics renderers, standings & administration tabs
  */
 
 const App = {
@@ -10,6 +10,7 @@ const App = {
   activeSeason: null,
   categories: [],
   settings: { site_name: 'LMB BÉISBOL', site_logo: 'assets/images/lmb_logo.png' },
+  adminTab: 'categories',
 
   async init() {
     await this.loadSettings();
@@ -154,43 +155,49 @@ const App = {
     }
   },
 
-  // 1. HOME LANDING VIEW
+  // 1. RICH HOME LANDING VIEW (STANDINGS, SIMULTANEOUS GAMES, LEADERS, SEDES)
   async renderHomeView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Liga Metropolitana...</div></div>`;
 
     try {
-      const [resGames, resLeaders] = await Promise.all([
+      const [resGames, resLeaders, resStandings, resStadia] = await Promise.all([
         fetch(`api/games.php?action=list&category_id=${this.currentCategory}`),
-        fetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=5`)
+        fetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=5`),
+        fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`),
+        fetch(`api/leagues.php?action=stadiums`)
       ]);
       const dataGames = await resGames.json();
       const dataLeaders = await resLeaders.json();
+      const dataStandings = await resStandings.json();
+      const dataStadia = await resStadia.json();
 
       const games = dataGames.games || [];
       const leaders = dataLeaders.leaders || [];
+      const standings = dataStandings.standings || [];
+      const stadia = dataStadia.stadiums || [];
 
       this.renderScorebugCarousel(games);
 
       let html = `
         <div class="view-content">
-          <!-- Banner LMB -->
+          <!-- Hero Header -->
           <div class="md-card" style="background: linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%); text-align:center; position:relative; overflow:hidden;">
             <div style="font-size:0.75rem; font-weight:700; color:#FFC107; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
             <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;">${this.settings.site_name || 'Buenos Aires'} - ${this.activeSeason ? this.activeSeason.name : '2026'}</h2>
-            <p style="font-size:0.8rem; color:#94A3B8;">Estadísticas oficiales en vivo, sedes deportivas y seguimiento de partidos.</p>
+            <p style="font-size:0.8rem; color:#94A3B8;">Tablas de posiciones, seguimiento simultáneo en Ezeiza y sedes, y estadísticas oficiales en vivo.</p>
           </div>
 
-          <!-- Section: Live / Recent Matches -->
+          <!-- Section: Live / Simultaneous Matches -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#D32F2F;">sports_baseball</span> Partidos Destacados</h3>
-              <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('calendar')">Ver Todos</button>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#D32F2F;">sports_baseball</span> Partidos en Desarrollo / Recientes</h3>
+              <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('calendar')">Ver Calendario</button>
             </div>
 
             ${games.length ? games.slice(0, 3).map(g => `
               <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-                  <span>${g.category_name} • 📍 ${g.stadium_name || g.field_location}</span>
+                  <span>${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
                   <span class="md-chip ${g.status === 'live' ? 'active' : ''}" style="padding:2px 8px; font-size:0.65rem;">
                     ${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}
                   </span>
@@ -215,11 +222,53 @@ const App = {
             `).join('') : '<div class="md-card">No hay partidos registrados.</div>'}
           </div>
 
-          <!-- Section: Top Leaders Preview -->
+          <!-- Section: Standings Table (Tabla de Posiciones) -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#FFC107;">emoji_events</span> Líderes en Bateo (AVG)</h3>
-              <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('leaders')">Ver Departamentos</button>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#FFC107;">format_list_numbered</span> Tabla de Posiciones</h3>
+            </div>
+
+            <div class="md-table-wrapper">
+              <table class="md-table" style="text-align:center;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left;">Equipo</th>
+                    <th>PJ</th>
+                    <th>PG</th>
+                    <th>PP</th>
+                    <th>PCT</th>
+                    <th>DIF</th>
+                    <th class="highlight-val">CF</th>
+                    <th>CC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${standings.length ? standings.map((s, idx) => `
+                    <tr onclick="App.showView('team_detail', ${s.team_id})" style="cursor:pointer;">
+                      <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:6px;">
+                        <span style="color:#94A3B8; font-size:0.75rem;">${idx + 1}</span>
+                        <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%;">
+                        <span>${s.short_name}</span>
+                      </td>
+                      <td>${s.gp}</td>
+                      <td style="color:#10B981; font-weight:700;">${s.wins}</td>
+                      <td style="color:#EF4444; font-weight:700;">${s.losses}</td>
+                      <td class="highlight-val">${s.pct}</td>
+                      <td style="font-size:0.75rem; color:#94A3B8;">${s.gb}</td>
+                      <td>${s.cf}</td>
+                      <td>${s.cc}</td>
+                    </tr>
+                  `).join('') : '<tr><td colspan="8">Sin datos de tabla disponibles.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section: Top Batting Leaders -->
+          <div class="view-section">
+            <div class="section-header">
+              <h3 class="section-title"><span class="material-icons-round" style="color:#FFC107;">emoji_events</span> Líderes de Bateo (AVG)</h3>
+              <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('leaders')">Ver Todos</button>
             </div>
 
             <div class="md-table-wrapper">
@@ -251,6 +300,23 @@ const App = {
               </table>
             </div>
           </div>
+
+          <!-- Section: Sedes & Stadium Venues Overview -->
+          <div class="view-section">
+            <div class="section-header">
+              <h3 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">stadium</span> Sedes Deportivas Activas</h3>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+              ${stadia.length ? stadia.map(st => `
+                <div class="md-card" style="padding:12px; font-size:0.8rem;">
+                  <div style="font-weight:800; color:#FFFFFF;">📍 ${st.name}</div>
+                  <div style="color:#FFC107; font-weight:700; font-size:0.75rem; margin-top:2px;">${st.field_name || 'Campo Principal'}</div>
+                  <div style="color:#94A3B8; font-size:0.7rem; margin-top:4px;">${st.city} • ${st.address}</div>
+                </div>
+              `).join('') : '<div>Sin sedes registradas.</div>'}
+            </div>
+          </div>
         </div>
       `;
       container.innerHTML = html;
@@ -271,7 +337,7 @@ const App = {
     scorebug.innerHTML = games.map(g => `
       <div class="scorebug-card ${g.status === 'live' ? 'live' : ''}" onclick="App.showView('game_detail', ${g.id})">
         <div class="scorebug-status">
-          <span>${g.category_code}</span>
+          <span>${g.category_code} • ${g.stadium_field || 'Cancha 1'}</span>
           ${g.status === 'live' ? '<span class="live-tag">● EN VIVO</span>' : (g.status === 'finished' ? 'FINAL' : 'PROX')}
         </div>
         <div class="scorebug-team-row">
@@ -311,7 +377,7 @@ const App = {
         ${games.length ? games.map(g => `
           <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
             <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94A3B8;">
-              <span>${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')}</span>
+              <span>${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')} ${new Date(g.game_date).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})} hs</span>
               <span class="md-chip ${g.status === 'live' ? 'active' : ''}">${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}</span>
             </div>
 
@@ -329,7 +395,7 @@ const App = {
               </div>
             </div>
 
-            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;">📍 Sede: ${g.stadium_name || g.field_location}</div>
+            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;">📍 Sede: ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
           </div>
         `).join('') : '<div class="md-card">No hay partidos programados en esta categoría.</div>'}
       </div>
@@ -362,7 +428,7 @@ const App = {
       <div class="view-content">
         <!-- Match Header Box -->
         <div class="md-card" style="background: linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%); text-align:center;">
-          <div style="font-size:0.75rem; color:#FFC107; font-weight:700;">${g.category_name} • 📍 ${g.stadium_name || g.field_location}</div>
+          <div style="font-size:0.75rem; color:#FFC107; font-weight:700;">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
             <div style="text-align:center;" onclick="App.showView('team_detail', ${g.away_team_id})">
@@ -520,6 +586,7 @@ const App = {
               <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:60px; height:60px; border-radius:50%; border:2px solid ${t.color_primary};">
               <div style="font-weight:800; font-size:0.95rem; margin-top:4px;">${t.name}</div>
               <span class="md-chip" style="padding:2px 8px; font-size:0.65rem;">${t.category_name}</span>
+              <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;">📍 Sede: ${t.home_stadium_name || 'Neutral'}</div>
             </div>
           `).join('') : '<div style="grid-column:span 2;">No hay equipos creados en esta división.</div>'}
         </div>
@@ -554,7 +621,7 @@ const App = {
         <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #0A192F 100%); text-align:center; align-items:center;">
           <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:70px; height:70px; border-radius:50%; border:3px solid #FFC107;">
           <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;">${t.name}</h2>
-          <span class="md-chip active">${t.category_name} • Est. ${t.foundation_year}</span>
+          <span class="md-chip active">${t.category_name} • Sede: ${t.home_stadium_name || 'Sin Sede Fija'}</span>
 
           ${isAuthorizedForTeam ? `
             <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem; margin-top:8px;" onclick="App.uploadTeamLogo(${t.id})">📷 Cambiar Logo de Equipo</button>
@@ -618,7 +685,6 @@ const App = {
 
     const p = data.player;
     const b = p.batting_stats || {};
-    const pit = p.pitching_stats || {};
 
     let html = `
       <div class="view-content">
@@ -715,55 +781,148 @@ const App = {
     container.innerHTML = html;
   },
 
-  // 8. ADMIN & USER ROLES CONTROL VIEW
+  // 8. FULL AUTONOMOUS ADMIN SUITE WITH TABBED MANAGEMENT
   async renderAdminView(container) {
     if (!this.currentUser || !['super_admin', 'admin'].includes(this.currentUser.role)) {
       container.innerHTML = `<div class="view-content"><div class="md-card">Acceso denegado. Se requieren permisos de Administrador.</div></div>`;
       return;
     }
 
-    const isSuperAdmin = (this.currentUser.role === 'super_admin');
-
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#EF4444;">admin_panel_settings</span> Panel de Administración</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#EF4444;">admin_panel_settings</span> Panel de Control Autónomo</h2>
         </div>
 
-        <!-- Super Admin User Management Button -->
-        ${isSuperAdmin ? `
-          <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #0A192F 100%);">
-            <h3 style="font-size:1rem; font-weight:800; color:#FFC107;">👥 Gestión de Usuarios y Permisos</h3>
-            <p style="font-size:0.8rem; color:#94A3B8;">Busca usuarios por correo para asignar roles y vincularlos a equipos (Lanús, Berazategui, DAOM, etc.).</p>
-            <button class="md-btn md-btn-gold" onclick="App.showView('users')">Gestionar Usuarios</button>
-          </div>
-
-          <div class="md-card">
-            <h3 style="font-size:1rem; font-weight:800;">🎨 Branding y Personalización Web</h3>
-            <div class="form-group">
-              <label>Nombre de la Aplicación / Liga</label>
-              <input type="text" id="setting-site-name" class="form-control" value="${this.settings.site_name || 'Liga Metropolitana de Béisbol'}">
-            </div>
-            <button class="md-btn md-btn-primary" onclick="App.updateSettings()">Guardar Ajustes Web</button>
-          </div>
-        ` : ''}
-
-        <!-- Stadium Sedes Management -->
-        <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800;">📍 Sedes Deportivas (Campos de Juego)</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Registra sedes para enlazar los partidos y que nadie se pierda.</p>
-          <button class="md-btn md-btn-primary" onclick="App.showCreateStadiumModal()">➕ Nueva Sede</button>
+        <!-- Admin Navigation Tabs -->
+        <div class="md-chip-group">
+          <button class="md-chip ${this.adminTab === 'categories' ? 'active' : ''}" onclick="App.switchAdminTab('categories')">🏆 Ligas y Categorías</button>
+          <button class="md-chip ${this.adminTab === 'stadiums' ? 'active' : ''}" onclick="App.switchAdminTab('stadiums')">📍 Sedes y Campos</button>
+          <button class="md-chip ${this.adminTab === 'teams' ? 'active' : ''}" onclick="App.switchAdminTab('teams')">🛡️ Equipos</button>
+          <button class="md-chip ${this.adminTab === 'users' ? 'active' : ''}" onclick="App.switchAdminTab('users')">👥 Usuarios y Roles</button>
+          <button class="md-chip ${this.adminTab === 'branding' ? 'active' : ''}" onclick="App.switchAdminTab('branding')">🎨 Branding Web</button>
         </div>
 
-        <!-- Ascenso y Descenso -->
-        <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800;">🔄 Sistema de Ascenso y Descenso</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Mueve equipos entre divisiones en cada temporada.</p>
-          <button class="md-btn md-btn-gold" onclick="App.showMoveTeamModal()">Confirmar Cambio de División</button>
+        <div id="admin-tab-content">
+          <!-- Dynamic Tab Content Rendered Below -->
         </div>
       </div>
     `;
     container.innerHTML = html;
+    this.renderAdminTabContent(document.getElementById('admin-tab-content'));
+  },
+
+  switchAdminTab(tabName) {
+    this.adminTab = tabName;
+    this.renderAdminView(document.getElementById('view-container'));
+  },
+
+  async renderAdminTabContent(tabContainer) {
+    if (!tabContainer) return;
+
+    if (this.adminTab === 'categories') {
+      tabContainer.innerHTML = `
+        <div class="md-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
+            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
+        </div>
+
+        <div class="md-table-wrapper" style="margin-top:12px;">
+          <table class="md-table">
+            <thead>
+              <tr><th>Categoría</th><th>Código</th><th>Nivel</th></tr>
+            </thead>
+            <tbody>
+              ${this.categories.map(c => `
+                <tr>
+                  <td style="font-weight:700;">${c.name}</td>
+                  <td><span class="md-chip" style="padding:2px 6px;">${c.code}</span></td>
+                  <td>Nivel ${c.level}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (this.adminTab === 'stadiums') {
+      const res = await fetch('api/leagues.php?action=stadiums');
+      const data = await res.json();
+      const stadia = data.stadiums || [];
+
+      tabContainer.innerHTML = `
+        <div class="md-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:1rem; font-weight:800;">Gestor de Sedes y Campos</h3>
+            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStadiumModal()">➕ Nueva Sede / Cancha</button>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8;">Configura predios principales (ej. Ezeiza Canchas 1, 2, 3, 4) o campos propios de clubes.</p>
+        </div>
+
+        <div class="md-table-wrapper" style="margin-top:12px;">
+          <table class="md-table">
+            <thead>
+              <tr><th>Sede</th><th>Campo / Cancha</th><th>Ubicación</th></tr>
+            </thead>
+            <tbody>
+              ${stadia.map(s => `
+                <tr>
+                  <td style="font-weight:800;">📍 ${s.name}</td>
+                  <td style="color:#FFC107; font-weight:700;">${s.field_name || 'Principal'}</td>
+                  <td style="font-size:0.8rem; color:#94A3B8;">${s.city} • ${s.address}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (this.adminTab === 'teams') {
+      const res = await fetch('api/teams.php?action=list');
+      const data = await res.json();
+      const teams = data.teams || [];
+
+      tabContainer.innerHTML = `
+        <div class="md-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:1rem; font-weight:800;">Equipos de la Liga</h3>
+            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateTeamModal()">➕ Registrar Equipo</button>
+          </div>
+          <button class="md-btn md-btn-gold" style="width:100%; margin-top:8px;" onclick="App.showMoveTeamModal()">🔄 Mover Equipo (Ascenso / Descenso)</button>
+        </div>
+
+        <div class="md-table-wrapper" style="margin-top:12px;">
+          <table class="md-table">
+            <thead>
+              <tr><th>Equipo</th><th>Categoría</th><th>Sede Fija</th></tr>
+            </thead>
+            <tbody>
+              ${teams.map(t => `
+                <tr onclick="App.showView('team_detail', ${t.id})" style="cursor:pointer;">
+                  <td style="font-weight:800;">${t.name} (${t.short_name})</td>
+                  <td><span class="md-chip">${t.category_name}</span></td>
+                  <td style="font-size:0.8rem; color:#94A3B8;">${t.home_stadium_name || 'Neutral'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (this.adminTab === 'users') {
+      this.renderUsersManagementView(tabContainer);
+    } else if (this.adminTab === 'branding') {
+      tabContainer.innerHTML = `
+        <div class="md-card">
+          <h3 style="font-size:1rem; font-weight:800;">🎨 Personalización de Marca y Nombre</h3>
+          <div class="form-group" style="margin-top:8px;">
+            <label>Nombre de la Liga / Sitio Web</label>
+            <input type="text" id="setting-site-name" class="form-control" value="${this.settings.site_name || 'Liga Metropolitana de Béisbol'}">
+          </div>
+          <button class="md-btn md-btn-primary" style="margin-top:8px;" onclick="App.updateSettings()">Guardar Ajustes Web</button>
+        </div>
+      `;
+    }
   },
 
   // 9. SUPER ADMIN USERS LIST & SEARCH VIEW
@@ -773,60 +932,47 @@ const App = {
       return;
     }
 
-    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando usuarios...</div></div>`;
-
     const q = document.getElementById('user-search-input')?.value || '';
     const res = await fetch(`api/auth.php?action=users_list&q=${encodeURIComponent(q)}`);
     const data = await res.json();
     const users = data.users || [];
 
-    const resTeams = await fetch('api/teams.php?action=list');
-    const dataTeams = await resTeams.json();
-    const teams = dataTeams.teams || [];
-
     let html = `
-      <div class="view-content">
-        <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#FFC107;">manage_accounts</span> Usuarios de la Plataforma</h2>
-          <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('admin')">⬅️ Volver</button>
-        </div>
+      <div class="md-card">
+        <h3 style="font-size:1rem; font-weight:800; color:#FFC107;">👥 Gestión de Usuarios y Roles</h3>
+        <p style="font-size:0.8rem; color:#94A3B8;">Filtra por correo electrónico para asignar permisos de administración por club (Lanús, Berazategui, DAOM, etc.).</p>
 
-        <!-- Search Bar -->
-        <div class="md-card">
-          <div class="form-group">
-            <label>Buscar por correo electrónico o nombre</label>
-            <input type="text" id="user-search-input" class="form-control" placeholder="Ej: correo@dominio.com..." value="${q}" oninput="App.renderUsersManagementView(document.getElementById('view-container'))">
-          </div>
+        <div class="form-group" style="margin-top:8px;">
+          <input type="text" id="user-search-input" class="form-control" placeholder="Buscar correo electrónico..." value="${q}" oninput="App.renderUsersManagementView(document.getElementById('admin-tab-content'))">
         </div>
+      </div>
 
-        <!-- Users Table -->
-        <div class="md-table-wrapper">
-          <table class="md-table">
-            <thead>
+      <div class="md-table-wrapper" style="margin-top:12px;">
+        <table class="md-table">
+          <thead>
+            <tr>
+              <th>Usuario / Correo</th>
+              <th>Rol</th>
+              <th>Equipo Asignado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${users.length ? users.map(u => `
               <tr>
-                <th>Usuario</th>
-                <th>Rol Actual</th>
-                <th>Equipo Asignado</th>
-                <th>Acción</th>
+                <td>
+                  <div style="font-weight:800;">${u.name}</div>
+                  <div style="font-size:0.75rem; color:#94A3B8;">${u.email}</div>
+                </td>
+                <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
+                <td style="font-size:0.8rem; color:#FFC107;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
+                <td>
+                  <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.7rem;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})">✏️ Permisos</button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              ${users.length ? users.map(u => `
-                <tr>
-                  <td>
-                    <div style="font-weight:800;">${u.name}</div>
-                    <div style="font-size:0.75rem; color:#94A3B8;">${u.email}</div>
-                  </td>
-                  <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
-                  <td style="font-size:0.8rem; color:#FFC107;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
-                  <td>
-                    <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.7rem;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})">✏️ Editar Permisos</button>
-                  </td>
-                </tr>
-              `).join('') : '<tr><td colspan="4">No se encontraron usuarios.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
+            `).join('') : '<tr><td colspan="4">No se encontraron usuarios.</td></tr>'}
+          </tbody>
+        </table>
       </div>
     `;
     container.innerHTML = html;
@@ -915,23 +1061,88 @@ const App = {
         body: JSON.stringify({ user_id: userId, role: newRole, assigned_team_id: assignedTeamId })
       }).then(res => res.json()).then(resData => {
         alert(resData.message);
-        this.renderUsersManagementView(document.getElementById('view-container'));
+        this.refreshCurrentView();
       });
     });
   },
 
   showCreateStadiumModal() {
-    const name = prompt("Nombre de la Sede Deportiva / Campo:");
+    const name = prompt("Nombre de la Sede / Predio (ej. Estadio Ezeiza, Predio DAOM):");
     if (!name) return;
-    const address = prompt("Dirección de la Sede:");
-    const city = prompt("Ciudad:", "Buenos Aires");
+    const fieldName = prompt("Nombre de la Cancha / Campo (ej. Cancha 1, Cancha 2, Campo Central):", "Cancha 1");
+    const address = prompt("Dirección:");
+    const city = prompt("Ciudad:", "Ezeiza");
 
     fetch('api/leagues.php?action=create_stadium', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, address, city })
+      body: JSON.stringify({ name, field_name: fieldName, address, city })
     }).then(res => res.json()).then(data => {
       alert(data.message);
+      this.refreshCurrentView();
+    });
+  },
+
+  showCreateSeasonModal() {
+    const name = prompt("Nombre de la Nueva Temporada (ej. Temporada Oficial 2026):");
+    if (!name) return;
+    const year = prompt("Año:", new Date().getFullYear());
+
+    fetch('api/leagues.php?action=create_season', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, year })
+    }).then(res => res.json()).then(data => {
+      alert(data.message);
+      this.loadLeagues();
+      this.refreshCurrentView();
+    });
+  },
+
+  showCreateTeamModal() {
+    const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
+    const name = prompt("Nombre completo del Equipo:");
+    if (!name) return;
+    const shortName = prompt("Nombre abreviado (4 letras):", name.substring(0, 4).toUpperCase());
+
+    fetch('api/leagues.php?action=stadiums').then(res => res.json()).then(data => {
+      const stadia = data.stadiums || [];
+      let stPrompt = `Seleccionar Sede Fija (0 = Sin sede fija / Neutral):\n0: Neutral\n`;
+      stadia.forEach(s => { stPrompt += `${s.id}: ${s.name} (${s.field_name})\n`; });
+
+      const stadiumId = prompt(stPrompt, 0);
+
+      fetch('api/teams.php?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category_id: catId, name, short_name: shortName, home_stadium_id: stadiumId })
+      }).then(res => res.json()).then(resData => {
+        alert(resData.message);
+        this.refreshCurrentView();
+      });
+    });
+  },
+
+  showMoveTeamModal() {
+    fetch('api/teams.php?action=list').then(res => res.json()).then(data => {
+      const teams = data.teams || [];
+      let teamPrompt = `Seleccionar Equipo a mover:\n` + teams.map(t => `${t.id}: ${t.name} (${t.category_name})`).join('\n');
+      const teamId = prompt(teamPrompt);
+      if (!teamId) return;
+
+      let catPrompt = `Seleccionar Nueva Categoría:\n` + this.categories.map(c => `${c.id}: ${c.name}`).join('\n');
+      const newCatId = prompt(catPrompt);
+      if (!newCatId) return;
+
+      fetch('api/leagues.php?action=move_team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: teamId, category_id: newCatId, notes: 'Ascenso/Descenso' })
+      }).then(res => res.json()).then(resData => {
+        alert(resData.message);
+        this.loadLeagues();
+        this.refreshCurrentView();
+      });
     });
   },
 
@@ -951,7 +1162,7 @@ const App = {
 
     const awayId = prompt(`Seleccione ID Equipo Visitante:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[0].id);
     const homeId = prompt(`Seleccione ID Equipo Local:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[1] ? teams[1].id : teams[0].id);
-    const stadiumId = prompt(`Seleccione ID Sede Deportiva:\n` + stadia.map(s => `${s.id}: ${s.name}`).join('\n'), stadia[0] ? stadia[0].id : 1);
+    const stadiumId = prompt(`Seleccione ID Sede Deportiva / Cancha:\n` + stadia.map(s => `${s.id}: ${s.name} (${s.field_name || 'Principal'})`).join('\n'), stadia[0] ? stadia[0].id : 1);
 
     if (homeId && awayId) {
       fetch('api/games.php?action=create', {
@@ -969,6 +1180,30 @@ const App = {
         this.showView('calendar');
       });
     }
+  },
+
+  showCreatePlayerModal(teamId) {
+    const firstName = prompt("Nombre del Jugador:");
+    if (!firstName) return;
+    const lastName = prompt("Apellido:");
+    if (!lastName) return;
+    const jersey = prompt("Número de camiseta:", "10");
+    const pos = prompt("Posición principal (P, C, 1B, 2B, 3B, SS, LF, CF, RF, DH):", "OF");
+
+    fetch('api/players.php?action=create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team_id: teamId,
+        first_name: firstName,
+        last_name: lastName,
+        jersey_number: jersey,
+        position_primary: pos
+      })
+    }).then(res => res.json()).then(data => {
+      alert(data.message);
+      this.showView('team_detail', teamId);
+    });
   },
 
   updateSettings() {

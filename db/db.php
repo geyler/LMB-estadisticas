@@ -97,6 +97,7 @@ function initDatabaseSchemaAndSeed($pdo) {
         "CREATE TABLE IF NOT EXISTS stadiums (
             id {$autoInc},
             name VARCHAR(100) NOT NULL,
+            field_name VARCHAR(100) DEFAULT '',
             address VARCHAR(255) DEFAULT '',
             city VARCHAR(100) DEFAULT 'Buenos Aires',
             maps_url VARCHAR(255) DEFAULT '',
@@ -110,6 +111,7 @@ function initDatabaseSchemaAndSeed($pdo) {
             name VARCHAR(100) NOT NULL,
             short_name VARCHAR(20) NOT NULL,
             logo_url VARCHAR(255) DEFAULT '',
+            home_stadium_id INT DEFAULT NULL,
             city VARCHAR(100) DEFAULT 'Buenos Aires',
             foundation_year INT DEFAULT 1950,
             color_primary VARCHAR(20) DEFAULT '#0A192F',
@@ -150,7 +152,7 @@ function initDatabaseSchemaAndSeed($pdo) {
             away_team_id INT NOT NULL,
             stadium_id INT DEFAULT NULL,
             game_date DATETIME NOT NULL,
-            field_location VARCHAR(100) DEFAULT 'Estadio LMB Ezeiza',
+            field_location VARCHAR(100) DEFAULT 'Estadio Ezeiza Cancha 1',
             status VARCHAR(20) DEFAULT 'scheduled',
             current_inning INT DEFAULT 1,
             half_inning VARCHAR(10) DEFAULT 'top',
@@ -287,41 +289,44 @@ function seedInitialLMBData($pdo) {
         $catIds[$cat['code']] = $pdo->lastInsertId();
     }
 
-    // 5. Stadiums / Sedes
+    // 5. Stadiums & Fields / Sedes (Ezeiza 1, 2, 3, 4 + Club Fields)
     $stadiums = [
-        ['name' => 'Estadio Nacional Ezeiza', 'address' => 'Autopista Riccheri Km 24, Ezeiza', 'city' => 'Ezeiza'],
-        ['name' => 'Predio DAOM Béisbol', 'address' => 'Av. Castañares y Lafuente, Bajo Flores', 'city' => 'Buenos Aires'],
-        ['name' => 'Campo Berazategui Béisbol', 'address' => 'Calle 14 y Av. Mitre', 'city' => 'Berazategui'],
-        ['name' => 'Polideportivo Lanús', 'address' => 'Av. 9 de Julio 1680', 'city' => 'Lanús'],
-        ['name' => 'Estadio Ferro Béisbol', 'address' => 'Av. Avellaneda 1240, Caballito', 'city' => 'Buenos Aires'],
+        ['name' => 'Estadio Ezeiza', 'field' => 'Cancha 1 (Principal)', 'address' => 'Autopista Riccheri Km 24', 'city' => 'Ezeiza'],
+        ['name' => 'Estadio Ezeiza', 'field' => 'Cancha 2', 'address' => 'Autopista Riccheri Km 24', 'city' => 'Ezeiza'],
+        ['name' => 'Estadio Ezeiza', 'field' => 'Cancha 3', 'address' => 'Autopista Riccheri Km 24', 'city' => 'Ezeiza'],
+        ['name' => 'Estadio Ezeiza', 'field' => 'Cancha 4', 'address' => 'Autopista Riccheri Km 24', 'city' => 'Ezeiza'],
+        ['name' => 'Predio DAOM Béisbol', 'field' => 'Campo Central DAOM', 'address' => 'Av. Castañares y Lafuente', 'city' => 'Buenos Aires'],
+        ['name' => 'Campo Berazategui', 'field' => 'Cancha Principal Berazategui', 'address' => 'Calle 14 y Av. Mitre', 'city' => 'Berazategui'],
+        ['name' => 'Polideportivo Lanús', 'field' => 'Campo Lanús Béisbol', 'address' => 'Av. 9 de Julio 1680', 'city' => 'Lanús'],
+        ['name' => 'Estadio Ferro Béisbol', 'field' => 'Campo Ferro Caballito', 'address' => 'Av. Avellaneda 1240', 'city' => 'Buenos Aires'],
     ];
 
     $stadiumIds = [];
-    $stmtSt = $pdo->prepare("INSERT INTO stadiums (name, address, city) VALUES (?, ?, ?)");
+    $stmtSt = $pdo->prepare("INSERT INTO stadiums (name, field_name, address, city) VALUES (?, ?, ?, ?)");
     foreach ($stadiums as $st) {
-        $stmtSt->execute([$st['name'], $st['address'], $st['city']]);
+        $stmtSt->execute([$st['name'], $st['field'], $st['address'], $st['city']]);
         $stadiumIds[] = $pdo->lastInsertId();
     }
 
     // 6. Teams (Including Lanús and Berazategui)
     $teamsData = [
-        ['cat' => 'A1', 'name' => 'DAOM Béisbol', 'short' => 'DAOM', 'logo' => 'assets/images/team_daom.png', 'color1' => '#0A192F', 'color2' => '#D32F2F'],
-        ['cat' => 'A1', 'name' => 'Ferrocarril Oeste', 'short' => 'FERRO', 'logo' => 'assets/images/team_ferro.png', 'color1' => '#0F5132', 'color2' => '#FFFFFF'],
-        ['cat' => 'A1', 'name' => 'Berazategui B.C.', 'short' => 'BERAZ', 'logo' => 'assets/images/lmb_logo.png', 'color1' => '#1D4ED8', 'color2' => '#F59E0B'],
-        ['cat' => 'A1', 'name' => 'Lanús Béisbol', 'short' => 'LANUS', 'logo' => 'assets/images/lmb_logo.png', 'color1' => '#7F1D1D', 'color2' => '#FFFFFF'],
-        ['cat' => 'A2', 'name' => 'Júpiter Béisbol', 'short' => 'JUP', 'logo' => 'assets/images/lmb_logo.png', 'color1' => '#4C1D95', 'color2' => '#FBBF24'],
-        ['cat' => 'A2', 'name' => 'C.A. Vélez Sarsfield', 'short' => 'VEL', 'logo' => 'assets/images/lmb_logo.png', 'color1' => '#1E3A8A', 'color2' => '#FFFFFF'],
-        ['cat' => 'A3', 'name' => 'Comunicaciones B.C.', 'short' => 'COM', 'logo' => 'assets/images/lmb_logo.png', 'color1' => '#047857', 'color2' => '#F3F4F6'],
-        ['cat' => 'INF', 'name' => 'Patriotas Infantiles', 'short' => 'PAT-I', 'logo' => 'assets/images/lmb_logo.png', 'color1' => '#DC2626', 'color2' => '#1D4ED8'],
+        ['cat' => 'A1', 'name' => 'DAOM Béisbol', 'short' => 'DAOM', 'logo' => 'assets/images/team_daom.png', 'home_st' => $stadiumIds[4], 'color1' => '#0A192F', 'color2' => '#D32F2F'],
+        ['cat' => 'A1', 'name' => 'Ferrocarril Oeste', 'short' => 'FERRO', 'logo' => 'assets/images/team_ferro.png', 'home_st' => $stadiumIds[7], 'color1' => '#0F5132', 'color2' => '#FFFFFF'],
+        ['cat' => 'A1', 'name' => 'Berazategui B.C.', 'short' => 'BERAZ', 'logo' => 'assets/images/lmb_logo.png', 'home_st' => $stadiumIds[5], 'color1' => '#1D4ED8', 'color2' => '#F59E0B'],
+        ['cat' => 'A1', 'name' => 'Lanús Béisbol', 'short' => 'LANUS', 'logo' => 'assets/images/lmb_logo.png', 'home_st' => $stadiumIds[6], 'color1' => '#7F1D1D', 'color2' => '#FFFFFF'],
+        ['cat' => 'A2', 'name' => 'Júpiter Béisbol', 'short' => 'JUP', 'logo' => 'assets/images/lmb_logo.png', 'home_st' => null, 'color1' => '#4C1D95', 'color2' => '#FBBF24'],
+        ['cat' => 'A2', 'name' => 'C.A. Vélez Sarsfield', 'short' => 'VEL', 'logo' => 'assets/images/lmb_logo.png', 'home_st' => null, 'color1' => '#1E3A8A', 'color2' => '#FFFFFF'],
+        ['cat' => 'A3', 'name' => 'Comunicaciones B.C.', 'short' => 'COM', 'logo' => 'assets/images/lmb_logo.png', 'home_st' => null, 'color1' => '#047857', 'color2' => '#F3F4F6'],
+        ['cat' => 'INF', 'name' => 'Patriotas Infantiles', 'short' => 'PAT-I', 'logo' => 'assets/images/lmb_logo.png', 'home_st' => null, 'color1' => '#DC2626', 'color2' => '#1D4ED8'],
     ];
 
-    $stmtTeam = $pdo->prepare("INSERT INTO teams (category_id, name, short_name, logo_url, city, foundation_year, color_primary, color_secondary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmtTeam = $pdo->prepare("INSERT INTO teams (category_id, name, short_name, logo_url, home_stadium_id, city, foundation_year, color_primary, color_secondary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmtHist = $pdo->prepare("INSERT INTO team_history (team_id, season_id, category_id, notes) VALUES (?, ?, ?, ?)");
 
     $teamIds = [];
     foreach ($teamsData as $td) {
         $cId = $catIds[$td['cat']];
-        $stmtTeam->execute([$cId, $td['name'], $td['short'], $td['logo'], 'Buenos Aires', 1965, $td['color1'], $td['color2']]);
+        $stmtTeam->execute([$cId, $td['name'], $td['short'], $td['logo'], $td['home_st'], 'Buenos Aires', 1965, $td['color1'], $td['color2']]);
         $tId = $pdo->lastInsertId();
         $teamIds[] = $tId;
         $stmtHist->execute([$tId, $seasonId, $cId, "Participación en categoría {$td['cat']}"]);
@@ -357,16 +362,24 @@ function seedInitialLMBData($pdo) {
         $ferroPlayerIds[] = $pdo->lastInsertId();
     }
 
-    // 8. Sample Game linked to Stadium Sede
+    // 8. Sample Games linked to Stadium Sedes (Simultaneous Weekend Matches in Ezeiza fields 1 & 2)
     $stmtGame = $pdo->prepare("INSERT INTO games (season_id, category_id, home_team_id, away_team_id, stadium_id, game_date, field_location, status, current_inning, half_inning, home_score, away_score, home_hits, away_hits, home_errors, away_errors, winning_pitcher_id, losing_pitcher_id, recap_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
+    // Finished game DAOM vs FERRO
     $stmtGame->execute([
-        $seasonId, $catIds['A1'], 1, 2, $stadiumIds[1], date('Y-m-d H:i:s', strtotime('-1 day')),
+        $seasonId, $catIds['A1'], 1, 2, $stadiumIds[4], date('Y-m-d H:i:s', strtotime('-1 day')),
         'Predio DAOM Béisbol', 'finished', 9, 'end', 6, 4, 10, 7, 1, 2,
         $daomPlayerIds[4], $ferroPlayerIds[3],
         'Gran victoria de DAOM en el clásico con cuadrangular decisivo de 2 carreras de Carlos Martínez.'
     ]);
     $gameId1 = $pdo->lastInsertId();
+
+    // Simultaneous Live Game in Ezeiza Cancha 1: Berazategui vs Lanús
+    $stmtGame->execute([
+        $seasonId, $catIds['A1'], 3, 4, $stadiumIds[0], date('Y-m-d H:i:s'),
+        'Ezeiza - Cancha 1', 'live', 5, 'bottom', 3, 2, 6, 4, 0, 1,
+        NULL, NULL, 'Partido en desarrollo en simultáneo en Ezeiza Cancha 1.'
+    ]);
 
     $stmtLine = $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, ?)");
     foreach ([0, 1, 0, 2, 0, 0, 2, 1, 0] as $inn => $r) { $stmtLine->execute([$gameId1, 1, $inn + 1, $r]); }

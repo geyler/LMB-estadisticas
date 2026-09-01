@@ -15,7 +15,7 @@ if ($action === 'list') {
                    ht.name as home_team_name, ht.short_name as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
                    at.name as away_team_name, at.short_name as away_short, at.logo_url as away_logo, at.color_primary as away_color,
                    c.name as category_name, c.code as category_code,
-                   s.name as stadium_name, s.address as stadium_address
+                   s.name as stadium_name, s.field_name as stadium_field, s.address as stadium_address
             FROM games g
             JOIN teams ht ON g.home_team_id = ht.id
             JOIN teams at ON g.away_team_id = at.id
@@ -50,7 +50,7 @@ if ($action === 'detail') {
                ht.name as home_team_name, ht.short_name as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
                at.name as away_team_name, at.short_name as away_short, at.logo_url as away_logo, at.color_primary as away_color,
                c.name as category_name,
-               s.name as stadium_name, s.address as stadium_address, s.maps_url as stadium_maps,
+               s.name as stadium_name, s.field_name as stadium_field, s.address as stadium_address, s.maps_url as stadium_maps,
                u.name as lock_user_name
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
@@ -158,6 +158,7 @@ if ($action === 'detail') {
     exit;
 }
 
+// Create Game
 if ($action === 'create' && $method === 'POST') {
     if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'scorekeeper', 'team_admin'])) {
         echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
@@ -170,7 +171,6 @@ if ($action === 'create' && $method === 'POST') {
     $awayTeamId = intval($input['away_team_id'] ?? 0);
     $stadiumId = !empty($input['stadium_id']) ? intval($input['stadium_id']) : null;
     $gameDate = trim($input['game_date'] ?? date('Y-m-d H:i:s'));
-    $fieldLocation = trim($input['field_location'] ?? 'Sede Principal LMB');
 
     if (!$categoryId || !$homeTeamId || !$awayTeamId) {
         echo json_encode(['success' => false, 'message' => 'Categoría, equipo local y visitante requeridos.']);
@@ -182,10 +182,71 @@ if ($action === 'create' && $method === 'POST') {
     $cat = $stmtCat->fetch();
     $seasonId = $cat['season_id'] ?? 1;
 
+    $stmtSt = $pdo->prepare("SELECT name, field_name FROM stadiums WHERE id = ?");
+    $stmtSt->execute([$stadiumId]);
+    $stInfo = $stmtSt->fetch();
+    $fieldLocation = $stInfo ? "{$stInfo['name']} ({$stInfo['field_name']})" : 'Sede Principal LMB';
+
     $stmt = $pdo->prepare("INSERT INTO games (season_id, category_id, home_team_id, away_team_id, stadium_id, game_date, field_location, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')");
     $stmt->execute([$seasonId, $categoryId, $homeTeamId, $awayTeamId, $stadiumId, $gameDate, $fieldLocation]);
     $gameId = $pdo->lastInsertId();
 
-    echo json_encode(['success' => true, 'game_id' => $gameId, 'message' => 'Partido programado exitosamente.']);
+    echo json_encode(['success' => true, 'game_id' => $gameId, 'message' => 'Partido programado en el calendario.']);
+    exit;
+}
+
+// Update Game (Reschedule / Edit Date / Change Venue / Edit Status)
+if ($action === 'update' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'scorekeeper'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $gameId = intval($input['id'] ?? 0);
+    $stadiumId = !empty($input['stadium_id']) ? intval($input['stadium_id']) : null;
+    $gameDate = trim($input['game_date'] ?? '');
+    $status = trim($input['status'] ?? 'scheduled');
+
+    if (!$gameId) {
+        echo json_encode(['success' => false, 'message' => 'ID de partido requerido.']);
+        exit;
+    }
+
+    $stmtSt = $pdo->prepare("SELECT name, field_name FROM stadiums WHERE id = ?");
+    $stmtSt->execute([$stadiumId]);
+    $stInfo = $stmtSt->fetch();
+    $fieldLocation = $stInfo ? "{$stInfo['name']} ({$stInfo['field_name']})" : 'Sede LMB';
+
+    $stmt = $pdo->prepare("UPDATE games SET stadium_id = ?, game_date = ?, field_location = ?, status = ? WHERE id = ?");
+    $stmt->execute([$stadiumId, $gameDate, $fieldLocation, $status, $gameId]);
+
+    echo json_encode(['success' => true, 'message' => 'Datos del partido actualizados exitosamente.']);
+    exit;
+}
+
+// Delete Game
+if ($action === 'delete' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $gameId = intval($input['id'] ?? 0);
+
+    if (!$gameId) {
+        echo json_encode(['success' => false, 'message' => 'ID de partido requerido.']);
+        exit;
+    }
+
+    $pdo->prepare("DELETE FROM game_photos WHERE game_id = ?")->execute([$gameId]);
+    $pdo->prepare("DELETE FROM game_play_by_play WHERE game_id = ?")->execute([$gameId]);
+    $pdo->prepare("DELETE FROM game_batting_stats WHERE game_id = ?")->execute([$gameId]);
+    $pdo->prepare("DELETE FROM game_pitching_stats WHERE game_id = ?")->execute([$gameId]);
+    $pdo->prepare("DELETE FROM game_line_scores WHERE game_id = ?")->execute([$gameId]);
+    $pdo->prepare("DELETE FROM games WHERE id = ?")->execute([$gameId]);
+
+    echo json_encode(['success' => true, 'message' => 'Partido eliminado del calendario.']);
     exit;
 }
