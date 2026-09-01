@@ -1,237 +1,275 @@
 /**
- * Interactive Baseball Live Scorer for Liga Metropolitana de Béisbol (LMB)
- * Handles play-by-play scoring, runner diamond, pitch counts & substitutions
+ * Live Match Scorekeeper Engine ("En Partido" / "Piloto Automático")
+ * Liga Metropolitana de Béisbol (LMB)
+ * Automated Lineup Rotation & Fast One-Tap Play-by-Play Recording
  */
 
 const LiveScorer = {
-  gameData: null,
-  currentOuts: 0,
-  runner1B: null,
-  runner2B: null,
-  runner3B: null,
+  game: null,
+  homeBatters: [],
+  awayBatters: [],
+  homePitchers: [],
+  awayPitchers: [],
+  
+  // Automated Lineup Index Pointers
+  awayLineupIndex: 0,
+  homeLineupIndex: 0,
+  
+  activeBatterId: null,
+  activePitcherId: null,
+  outsCount: 0,
+  
+  init(gameDetailData) {
+    this.game = gameDetailData.game;
+    this.homeBatters = gameDetailData.home_batters || [];
+    this.awayBatters = gameDetailData.away_batters || [];
+    this.homePitchers = gameDetailData.home_pitchers || [];
+    this.awayPitchers = gameDetailData.away_pitchers || [];
+    
+    this.outsCount = 0;
+    this.awayLineupIndex = 0;
+    this.homeLineupIndex = 0;
 
-  init(gameDetail) {
-    this.gameData = gameDetail;
-    this.currentOuts = 0;
-    this.runner1B = null;
-    this.runner2B = null;
-    this.runner3B = null;
-    this.renderScorerUI();
+    this.autoSelectActivePlayers();
+    this.renderScorerInterface();
   },
 
-  renderScorerUI() {
+  autoSelectActivePlayers() {
+    const isTop = this.game.half_inning === 'top';
+    const battingList = isTop ? this.awayBatters : this.homeBatters;
+    const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
+
+    const activeIndex = isTop ? this.awayLineupIndex : this.homeLineupIndex;
+    
+    if (battingList.length > 0) {
+      this.activeBatterId = battingList[activeIndex % battingList.length].player_id;
+    } else {
+      this.activeBatterId = null;
+    }
+
+    if (pitchingList.length > 0) {
+      this.activePitcherId = pitchingList[0].player_id;
+    } else {
+      this.activePitcherId = null;
+    }
+  },
+
+  advanceBatterLineup() {
+    if (this.game.half_inning === 'top') {
+      if (this.awayBatters.length > 0) {
+        this.awayLineupIndex = (this.awayLineupIndex + 1) % this.awayBatters.length;
+      }
+    } else {
+      if (this.homeBatters.length > 0) {
+        this.homeLineupIndex = (this.homeLineupIndex + 1) % this.homeBatters.length;
+      }
+    }
+    this.autoSelectActivePlayers();
+  },
+
+  renderScorerInterface() {
     const container = document.getElementById('view-container');
-    if (!container || !this.gameData) return;
+    if (!container || !this.game) return;
 
-    const game = this.gameData.game;
-    const isHome = (game.half_inning === 'bottom');
-    const battingTeamName = isHome ? game.home_team_name : game.away_team_name;
-    const pitchingTeamName = isHome ? game.away_team_name : game.home_team_name;
-    const batters = isHome ? this.gameData.home_batters : this.gameData.away_batters;
-    const pitchers = isHome ? this.gameData.away_pitchers : this.gameData.home_pitchers;
+    const isTop = this.game.half_inning === 'top';
+    const battingList = isTop ? this.awayBatters : this.homeBatters;
+    const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
 
-    container.innerHTML = `
+    const currentBatter = battingList.find(b => b.player_id == this.activeBatterId);
+    const currentPitcher = pitchingList.find(p => p.player_id == this.activePitcherId);
+
+    const batterName = currentBatter ? `#${currentBatter.jersey_number} ${currentBatter.first_name} ${currentBatter.last_name}` : 'Sin Bateador Seleccionado';
+    const pitcherName = currentPitcher ? `#${currentPitcher.jersey_number} ${currentPitcher.first_name} ${currentPitcher.last_name}` : 'Sin Lanzador Seleccionado';
+
+    let html = `
       <div class="view-content">
-        <!-- Live Header Bar -->
-        <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #0A192F 100%);">
+        <!-- Live Header Box -->
+        <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="md-chip active" style="background:#D32F2F;">🔴 EN VIVO - ${game.half_inning === 'top' ? '▲' : '▼'} Inning ${game.current_inning}</span>
-            <span style="font-size:0.8rem; font-weight:700; color:#FFC107;">Outs: ${'⚫'.repeat(this.currentOuts)}${'⚪'.repeat(3 - this.currentOuts)}</span>
+            <span class="md-chip active">🔴 ANOTADOR EN VIVO (PILOTO AUTOMÁTICO)</span>
+            <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
           </div>
 
-          <div style="display:flex; justify-content:space-around; align-items:center; margin-top:8px;">
+          <div style="display:flex; justify-content:space-around; align-items:center; margin:14px 0;">
             <div style="text-align:center;">
-              <img src="${game.away_logo || 'assets/images/lmb_logo.png'}" style="width:36px; height:36px; border-radius:50%;">
-              <div style="font-weight:800; font-size:0.9rem;">${game.away_short}</div>
-              <div style="font-size:1.8rem; font-weight:800; color:#FFFFFF;">${game.away_score}</div>
+              <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;">${this.game.away_short}</div>
+              <div style="font-size:2.4rem; font-weight:800; color:#F59E0B;" id="live-away-score">${this.game.away_score}</div>
             </div>
-            <div style="font-size:1.2rem; font-weight:800; color:#64748B;">VS</div>
+
             <div style="text-align:center;">
-              <img src="${game.home_logo || 'assets/images/lmb_logo.png'}" style="width:36px; height:36px; border-radius:50%;">
-              <div style="font-weight:800; font-size:0.9rem;">${game.home_short}</div>
-              <div style="font-size:1.8rem; font-weight:800; color:#FFFFFF;">${game.home_score}</div>
+              <div style="font-size:1.1rem; font-weight:800; color:#FFFFFF;">${isTop ? '▲ Top' : '▼ Bot'} ${this.game.current_inning}°</div>
+              <div style="font-size:0.85rem; font-weight:700; color:#EF4444; margin-top:4px;">Outs: ${'●'.repeat(this.outsCount)}${'○'.repeat(3 - this.outsCount)}</div>
+            </div>
+
+            <div style="text-align:center;">
+              <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;">${this.game.home_short}</div>
+              <div style="font-size:2.4rem; font-weight:800; color:#F59E0B;" id="live-home-score">${this.game.home_score}</div>
             </div>
           </div>
+
+          <div style="font-size:0.78rem; color:#94A3B8; margin-top:4px;">📍 ${this.game.stadium_name ? this.game.stadium_name + ' (' + (this.game.stadium_field || 'Cancha Principal') + ')' : this.game.field_location}</div>
         </div>
 
-        <!-- Baseball Diamond Graphic -->
-        <div class="baseball-diamond-wrapper">
-          <div class="diamond-base base-home"></div>
-          <div class="diamond-base base-1b ${this.runner1B ? 'active' : ''}"></div>
-          <div class="diamond-base base-2b ${this.runner2B ? 'active' : ''}"></div>
-          <div class="diamond-base base-3b ${this.runner3B ? 'active' : ''}"></div>
-        </div>
-
-        <!-- Active Batter & Pitcher Selectors -->
-        <div class="md-card">
-          <div style="font-size:0.85rem; font-weight:800; color:#FFC107;">BATEANDO: ${battingTeamName}</div>
-          <div class="form-group">
-            <label>Bateador Actual</label>
-            <select id="select-batter" class="form-control">
-              ${batters.length ? batters.map(b => `<option value="${b.player_id}">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position || 'DH'})</option>`).join('') : '<option value="0">Seleccionar Jugador...</option>'}
-            </select>
+        <!-- Active Batter & Pitcher Cards (Automated) -->
+        <div class="md-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+            <div>
+              <div style="font-size:0.72rem; font-weight:700; color:#F59E0B; text-transform:uppercase;">⚡ Bateador Actual (Turno ${(isTop ? this.awayLineupIndex : this.homeLineupIndex) + 1}/9)</div>
+              <div style="font-size:1rem; font-weight:800; color:#FFFFFF;" class="text-truncate">${batterName}</div>
+            </div>
+            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('batter')">🔄 Sustituir</button>
           </div>
 
-          <div style="font-size:0.85rem; font-weight:800; color:#3B82F6; margin-top:8px;">LANZANDO: ${pitchingTeamName}</div>
-          <div class="form-group">
-            <label>Lanzador Actual</label>
-            <select id="select-pitcher" class="form-control">
-              ${pitchers.length ? pitchers.map(p => `<option value="${p.player_id}">#${p.jersey_number} ${p.first_name} ${p.last_name} (Lanzador)</option>`).join('') : '<option value="0">Seleccionar Lanzador...</option>'}
-            </select>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px;">
+            <div>
+              <div style="font-size:0.72rem; font-weight:700; color:#3B82F6; text-transform:uppercase;">⚾ Lanzador Actual</div>
+              <div style="font-size:1rem; font-weight:800; color:#FFFFFF;" class="text-truncate">${pitcherName}</div>
+            </div>
+            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('pitcher')">🔄 Cambiar Pitcher</button>
           </div>
         </div>
 
-        <!-- Scoring Action Buttons Grid -->
-        <div class="md-card">
-          <div style="font-size:0.9rem; font-weight:800; color:#FFFFFF;">REGISTRAR ACCIÓN DE BATEO</div>
-          
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('1B', 'Sencillo (1B)', 0, 0, false)">Sencillo (1B)</button>
-            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('2B', 'Doblete (2B)', 0, 0, false)">Doblete (2B)</button>
-            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('3B', 'Triplete (3B)', 0, 0, false)">Triplete (3B)</button>
-            
-            <button class="md-btn md-btn-gold" onclick="LiveScorer.recordPlay('HR', '¡JONRÓN (HR)!', 1, 1, false)">Jonrón (HR)</button>
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('BB', 'Base por Bolas (BB)', 0, 0, false)">Bases (BB)</button>
-            <button class="md-btn md-btn-danger" onclick="LiveScorer.recordPlay('SO', 'Ponche (SO/K)', 0, 0, true)">Ponche (SO)</button>
-            
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('FO', 'Out de Fly (FO)', 0, 0, true)">Fly Out</button>
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('GO', 'Out de Rola (GO)', 0, 0, true)">Rola Out</button>
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('E', 'Llegó por Error (E)', 0, 0, false)">Error (E)</button>
+        <!-- One-Tap Action Buttons -->
+        <div class="view-section">
+          <div class="section-header">
+            <h3 class="section-title">⚡ Registrar Jugada (Avanza Bateador Automáticamente)</h3>
           </div>
 
-          <div style="display:flex; gap:8px; margin-top:8px;">
-            <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.promptRunnersAndRBI()">➕ Anotar Carrera / RBI</button>
-            <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.changeInningHalf()">🔄 Cambiar Inning</button>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('1B', 'Sencillo (1B)')">1B Sencillo</button>
+            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('2B', 'Doble (2B)')">2B Doble</button>
+            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('3B', 'Triple (3B)')">3B Triple</button>
+
+            <button class="md-btn md-btn-gold" style="grid-column: span 3;" onclick="LiveScorer.recordPlay('HR', '¡JONRÓN! Quadrangular (HR)')">💥 JONRÓN (HR)</button>
+
+            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('BB', 'Base por Bolas (BB)')">BB (Base)</button>
+            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('K', 'Ponche (SO)')">SO (Ponche)</button>
+            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('OUT', 'Out en elevación/rodado')">Out (F/G)</button>
+
+            <button class="md-btn md-btn-danger" style="grid-column: span 3;" onclick="LiveScorer.recordRunScored()">⚽ +1 Carrera Anotada</button>
           </div>
         </div>
 
-        <!-- Controls: Finalize Game -->
-        <div style="display:flex; justify-content:space-between; margin-top:8px;">
-          <button class="md-btn md-btn-outlined" onclick="App.showView('game_detail', ${game.id})">⬅️ Volver a Resumen</button>
-          <button class="md-btn md-btn-danger" onclick="LiveScorer.finalizeGame()">🏁 Finalizar Partido</button>
+        <!-- Change Inning Button -->
+        <div style="display:flex; gap:10px;">
+          <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.toggleHalfInning()">🔁 Cambiar de Entrada / Inning</button>
+          <button class="md-btn md-btn-primary" style="flex:1;" onclick="LiveScorer.finishGame()">🏁 Finalizar Partido</button>
         </div>
       </div>
     `;
+
+    container.innerHTML = html;
   },
 
-  recordPlay(code, desc, defaultRuns = 0, defaultRbi = 0, isOut = false) {
-    const batterId = document.getElementById('select-batter')?.value;
-    const pitcherId = document.getElementById('select-pitcher')?.value;
-
-    if (!batterId || !pitcherId) {
-      alert("Por favor seleccione el bateador y lanzador actual.");
+  recordPlay(code, label) {
+    if (!this.activeBatterId || !this.activePitcherId) {
+      alert("Por favor asegúrate de tener seleccionados bateador y lanzador.");
       return;
     }
 
-    let runs = defaultRuns;
-    let rbi = defaultRbi;
-
-    if (code === 'HR' && (this.runner1B || this.runner2B || this.runner3B)) {
-      let countOnBase = (this.runner1B ? 1 : 0) + (this.runner2B ? 1 : 0) + (this.runner3B ? 1 : 0);
-      runs += countOnBase;
-      rbi += countOnBase;
-      this.runner1B = null; this.runner2B = null; this.runner3B = null;
-    } else if (code === '1B') {
-      this.runner1B = true;
-    } else if (code === '2B') {
-      this.runner2B = true;
-    } else if (code === '3B') {
-      this.runner3B = true;
-    }
-
-    if (isOut) {
-      this.currentOuts++;
-      if (this.currentOuts >= 3) {
-        alert("¡3 Outs! Cambio de media entrada.");
-        this.currentOuts = 0;
-        this.runner1B = null; this.runner2B = null; this.runner3B = null;
-        this.changeInningHalf();
+    const runs = (code === 'HR') ? 1 : 0;
+    if (code === 'OUT' || code === 'K') {
+      this.outsCount++;
+      if (this.outsCount >= 3) {
+        alert("¡3 Outs completados! Se cambia la media entrada automáticamente.");
+        this.outsCount = 0;
+        this.toggleHalfInning();
         return;
       }
     }
 
     const payload = {
-      game_id: this.gameData.game.id,
-      action: 'record_play',
-      batter_id: batterId,
-      pitcher_id: pitcherId,
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning,
+      batter_id: this.activeBatterId,
+      pitcher_id: this.activePitcherId,
+      outs_before: this.outsCount,
       result_code: code,
-      description: desc,
-      runs_scored: runs,
-      rbi_count: rbi,
-      is_out: isOut,
-      outs_before: this.currentOuts
+      description: label,
+      runs_scored: runs
     };
 
-    if (navigator.onLine) {
-      fetch('api/live_score.php', {
+    fetch('api/live_score.php?action=record_play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(res => res.json()).then(data => {
+      if (data.success) {
+        App.showSnackbar(`Jugada: ${label}`);
+        // PILOTO AUTOMÁTICO: Avanza al siguiente bateador del lineup automáticamente
+        this.advanceBatterLineup();
+        this.renderScorerInterface();
+      } else {
+        alert(data.message || 'Error al registrar jugada.');
+      }
+    });
+  },
+
+  recordRunScored() {
+    const isTop = this.game.half_inning === 'top';
+    if (isTop) {
+      this.game.away_score++;
+    } else {
+      this.game.home_score++;
+    }
+    App.showSnackbar("+1 Carrera sumada al marcador");
+    this.renderScorerInterface();
+  },
+
+  toggleHalfInning() {
+    if (this.game.half_inning === 'top') {
+      this.game.half_inning = 'bottom';
+    } else {
+      this.game.half_inning = 'top';
+      this.game.current_inning++;
+    }
+    this.outsCount = 0;
+    this.autoSelectActivePlayers();
+    this.renderScorerInterface();
+  },
+
+  showSubstitutionModal(type) {
+    const isTop = this.game.half_inning === 'top';
+    const playerList = (type === 'batter') ? (isTop ? this.awayBatters : this.homeBatters) : (isTop ? this.homePitchers : this.awayPitchers);
+
+    if (!playerList.length) {
+      alert("No hay más jugadores registrados en el plantel para realizar cambios.");
+      return;
+    }
+
+    let promptText = `Seleccionar ${type === 'batter' ? 'Nuevo Bateador' : 'Nuevo Lanzador'}:\n`;
+    playerList.forEach(p => {
+      promptText += `${p.player_id}: #${p.jersey_number} ${p.first_name} ${p.last_name}\n`;
+    });
+
+    const selectedId = prompt(promptText);
+    if (selectedId) {
+      if (type === 'batter') {
+        this.activeBatterId = selectedId;
+      } else {
+        this.activePitcherId = selectedId;
+      }
+      App.showSnackbar("Cambio realizado exitosamente.");
+      this.renderScorerInterface();
+    }
+  },
+
+  finishGame() {
+    if (confirm("¿Confirmar que el partido ha finalizado?")) {
+      fetch('api/games.php?action=update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          id: this.game.id,
+          status: 'finished',
+          stadium_id: this.game.stadium_id,
+          game_date: this.game.game_date
+        })
       }).then(res => res.json()).then(data => {
-        if (data.success) {
-          App.showSnackbar('✅ Jugada registrada.');
-          this.refreshScorerState();
-        }
+        alert("Partido finalizado guardado exitosamente.");
+        App.showView('game_detail', this.game.id);
       });
-    } else {
-      OfflineSync.enqueue('api/live_score.php', payload);
-      App.showSnackbar('💾 Guardado offline localmente.');
-      this.renderScorerUI();
     }
-  },
-
-  promptRunnersAndRBI() {
-    const runs = prompt("¿Cuántas carreras se anotaron en esta jugada?", "1");
-    if (runs !== null) {
-      const rbi = prompt("¿Cuántas carreras impulsadas (RBI)?", runs);
-      this.recordPlay('RUN', `Carrera anotada (${runs} R, ${rbi} RBI)`, parseInt(runs) || 0, parseInt(rbi) || 0, false);
-    }
-  },
-
-  changeInningHalf() {
-    const game = this.gameData.game;
-    const nextHalf = (game.half_inning === 'top') ? 'bottom' : 'top';
-    const nextInning = (game.half_inning === 'bottom') ? parseInt(game.current_inning) + 1 : game.current_inning;
-
-    fetch('api/live_score.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        game_id: game.id,
-        action: 'change_inning',
-        current_inning: nextInning,
-        half_inning: nextHalf
-      })
-    }).then(res => res.json()).then(() => {
-      this.refreshScorerState();
-    });
-  },
-
-  finalizeGame() {
-    if (!confirm("¿Desea finalizar oficialmente este partido?")) return;
-
-    fetch('api/live_score.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        game_id: this.gameData.game.id,
-        action: 'finalize'
-      })
-    }).then(res => res.json()).then(data => {
-      alert("Partido finalizado exitosamente.");
-      App.showView('game_detail', this.gameData.game.id);
-    });
-  },
-
-  refreshScorerState() {
-    fetch(`api/games.php?action=detail&id=${this.gameData.game.id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          this.gameData = data;
-          this.renderScorerUI();
-        }
-      });
   }
 };
