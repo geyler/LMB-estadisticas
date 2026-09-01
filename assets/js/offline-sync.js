@@ -61,7 +61,7 @@ const OfflineSync = {
           window.App.refreshCurrentView();
         }
         if (window.App && typeof window.App.showSnackbar === 'function') {
-          window.App.showSnackbar('⚡ Datos sincronizados con el servidor.');
+          window.App.showSnackbar('⚡ Datos locales sincronizados con el servidor.');
         }
       }
     } catch (e) {
@@ -70,19 +70,11 @@ const OfflineSync = {
   },
 
   updateUIBadge() {
-    const badge = document.getElementById('network-badge');
     const queueCount = this.getQueue().length;
-    if (!badge) return;
-
-    if (!navigator.onLine) {
-      badge.className = 'online-status-badge offline';
-      badge.innerHTML = `<span class="status-dot"></span> SIN CONEXIÓN (${queueCount})`;
-    } else if (queueCount > 0) {
-      badge.className = 'online-status-badge';
-      badge.innerHTML = `<span class="status-dot"></span> SINCRONIZANDO (${queueCount})`;
-    } else {
-      badge.className = 'online-status-badge';
-      badge.innerHTML = `<span class="status-dot"></span> EN VIVO`;
+    if (window.App && typeof window.App.showSnackbar === 'function') {
+      if (!navigator.onLine) {
+        window.App.showSnackbar(`📴 Modo sin conexión activo (${queueCount} pendientes)`);
+      }
     }
   },
 
@@ -97,12 +89,13 @@ const OfflineSync = {
     });
 
     this.updateUIBadge();
-    // Periodically retry sync every 30 seconds if queue not empty
+
+    // Auto retry sync every 20 seconds when online
     setInterval(() => {
       if (navigator.onLine && this.getQueue().length > 0) {
         this.syncNow();
       }
-    }, 30000);
+    }, 20000);
   }
 };
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lmb-stats-v1';
+const CACHE_NAME = 'lmb-stats-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.php',
@@ -6,11 +6,7 @@ const ASSETS_TO_CACHE = [
   './assets/js/app.js',
   './assets/js/offline-sync.js',
   './assets/js/live-scorer.js',
-  './assets/images/lmb_logo.png',
-  './assets/images/team_daom.png',
-  './assets/images/team_ferro.png',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap',
-  'https://fonts.googleapis.com/icon?family=Material+Icons+Round'
+  './assets/images/lmb_logo.png'
 ];
 
 self.addEventListener('install', (e) => {
@@ -36,14 +32,39 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network first for API endpoints, Cache first for assets
-  if (e.request.url.includes('/api/')) {
+  const req = e.request;
+  const url = new URL(req.url);
+
+  // Network-First for API requests with dynamic cache fallback
+  if (url.pathname.includes('/api/')) {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(req).then((networkRes) => {
+        if (req.method === 'GET' && networkRes.status === 200) {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+        }
+        return networkRes;
+      }).catch(() => {
+        return caches.match(req).then((cachedRes) => {
+          if (cachedRes) return cachedRes;
+          return new Response(JSON.stringify({ success: false, message: "Sin conexión. Mostrando datos locales en caché." }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        });
+      })
     );
   } else {
+    // Network-First with Cache Fallback for static assets to ensure latest updates
     e.respondWith(
-      caches.match(e.request).then((res) => res || fetch(e.request))
+      fetch(req).then((networkRes) => {
+        if (networkRes.status === 200) {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+        }
+        return networkRes;
+      }).catch(() => {
+        return caches.match(req);
+      })
     );
   }
 });
