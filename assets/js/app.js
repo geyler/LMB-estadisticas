@@ -256,19 +256,22 @@ const App = {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Liga Metropolitana...</div></div>`;
 
     try {
-      const [resGames, resLeaders, resStandings, resStadia] = await Promise.all([
+      const [resGames, resBatLeaders, resPitchLeaders, resStandings, resStadia] = await Promise.all([
         fetch(`api/games.php?action=list&category_id=${this.currentCategory}`),
-        fetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=5`),
+        fetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=3`),
+        fetch(`api/leaderboards.php?type=pitching&stat=era&category_id=${this.currentCategory}&limit=3`),
         fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`),
         fetch(`api/leagues.php?action=stadiums`)
       ]);
       const dataGames = await resGames.json();
-      const dataLeaders = await resLeaders.json();
+      const dataBatLeaders = await resBatLeaders.json();
+      const dataPitchLeaders = await resPitchLeaders.json();
       const dataStandings = await resStandings.json();
       const dataStadia = await resStadia.json();
 
       const games = dataGames.games || [];
-      const leaders = dataLeaders.leaders || [];
+      const batLeaders = dataBatLeaders.leaders || [];
+      const pitchLeaders = dataPitchLeaders.leaders || [];
       const standings = dataStandings.standings || [];
       const stadia = dataStadia.stadiums || [];
 
@@ -279,7 +282,7 @@ const App = {
           <!-- Hero Header -->
           <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
             <div style="font-size:0.75rem; font-weight:700; color:#F59E0B; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
-            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;">${this.settings.site_name || 'Buenos Aires'}</h2>
+            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;" class="text-truncate">${this.settings.site_name || 'Buenos Aires'}</h2>
             <p style="font-size:0.8rem; color:#94A3B8;">Estadísticas oficiales, calendario de partidos, tablas de posiciones y anotación en vivo.</p>
 
             ${!this.currentUser ? `
@@ -299,24 +302,24 @@ const App = {
             ${games.length ? games.slice(0, 3).map(g => `
               <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-                  <span>${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
+                  <span class="text-truncate">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
                   <span class="md-chip ${g.status === 'live' ? 'active' : ''}" style="padding:2px 8px; font-size:0.65rem;">
                     ${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}
                   </span>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                  <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;" class="text-truncate">
                     <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
-                    <div style="font-weight:700; font-size:0.95rem;">${g.away_team_name}</div>
+                    <div style="font-weight:700; font-size:0.95rem;" class="text-truncate">${g.away_team_name}</div>
                   </div>
                   <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;" class="text-truncate">
                     <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
-                    <div style="font-weight:700; font-size:0.95rem;">${g.home_team_name}</div>
+                    <div style="font-weight:700; font-size:0.95rem;" class="text-truncate">${g.home_team_name}</div>
                   </div>
                   <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
                 </div>
@@ -353,10 +356,10 @@ const App = {
                 <tbody>
                   ${standings.length ? standings.map((s, idx) => `
                     <tr onclick="App.showView('team_detail', ${s.team_id})" style="cursor:pointer;">
-                      <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:6px;">
+                      <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:6px;" class="text-truncate">
                         <span style="color:#94A3B8; font-size:0.75rem;">${idx + 1}</span>
                         <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%;">
-                        <span>${s.short_name}</span>
+                        <span class="text-truncate">${s.short_name}</span>
                       </td>
                       <td>${s.gp}</td>
                       <td style="color:#10B981; font-weight:700;">${s.wins}</td>
@@ -372,40 +375,49 @@ const App = {
             </div>
           </div>
 
-          <!-- Section: Top Batting Leaders -->
+          <!-- Section: Leaders Showcase (Bateo y Pitcheo) -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">emoji_events</span> Líderes de Bateo (AVG)</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">military_tech</span> Líderes de la Liga</h3>
               <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('leaders')">Ver Todos</button>
             </div>
 
-            <div class="md-table-wrapper">
-              <table class="md-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Jugador</th>
-                    <th>Equipo</th>
-                    <th>AB</th>
-                    <th>H</th>
-                    <th>HR</th>
-                    <th>AVG</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${leaders.length ? leaders.map((p, idx) => `
-                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
-                      <td style="font-weight:700; color:#94A3B8;">${idx + 1}</td>
-                      <td style="font-weight:700;">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
-                      <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.team_short}</span></td>
-                      <td>${p.ab}</td>
-                      <td>${p.h}</td>
-                      <td>${p.hr}</td>
-                      <td class="highlight-val">${p.avg}</td>
-                    </tr>
-                  `).join('') : '<tr><td colspan="7" style="text-align:center; padding:16px;">Sin datos estadísticos registrados aún.</td></tr>'}
-                </tbody>
-              </table>
+            <!-- Bateo Top 3 -->
+            <div class="md-card">
+              <div style="font-weight:800; font-size:0.85rem; color:#F59E0B; text-transform:uppercase;">🥇 Top Bateadores (AVG)</div>
+              <div class="md-table-wrapper" style="border:none;">
+                <table class="md-table">
+                  <tbody>
+                    ${batLeaders.length ? batLeaders.map((p, idx) => `
+                      <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                        <td style="font-weight:800; color:#F59E0B;">#${idx + 1}</td>
+                        <td style="font-weight:700;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
+                        <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.team_short}</span></td>
+                        <td class="highlight-val">${p.avg}</td>
+                      </tr>
+                    `).join('') : '<tr><td colspan="4" style="text-align:center; padding:8px;">Sin estadísticas registradas.</td></tr>'}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Pitcheo Top 3 -->
+            <div class="md-card">
+              <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; text-transform:uppercase;">⚾ Top Lanzadores / Pitchers (ERA)</div>
+              <div class="md-table-wrapper" style="border:none;">
+                <table class="md-table">
+                  <tbody>
+                    ${pitchLeaders.length ? pitchLeaders.map((p, idx) => `
+                      <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                        <td style="font-weight:800; color:#3B82F6;">#${idx + 1}</td>
+                        <td style="font-weight:700;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
+                        <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.team_short}</span></td>
+                        <td class="highlight-val">${p.era} ERA</td>
+                      </tr>
+                    `).join('') : '<tr><td colspan="4" style="text-align:center; padding:8px;">Sin estadísticas de pitcheo registradas.</td></tr>'}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -418,9 +430,9 @@ const App = {
             <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
               ${stadia.length ? stadia.map(st => `
                 <div class="md-card" style="padding:12px; font-size:0.8rem;">
-                  <div style="font-weight:800; color:#FFFFFF;">📍 ${st.name}</div>
-                  <div style="color:#F59E0B; font-weight:700; font-size:0.75rem; margin-top:2px;">${st.field_name || 'Campo Principal'}</div>
-                  <div style="color:#94A3B8; font-size:0.7rem; margin-top:4px;">${st.city} • ${st.address}</div>
+                  <div style="font-weight:800; color:#FFFFFF;" class="text-truncate">📍 ${st.name}</div>
+                  <div style="color:#F59E0B; font-weight:700; font-size:0.75rem; margin-top:2px;" class="text-truncate">${st.field_name || 'Campo Principal'}</div>
+                  <div style="color:#94A3B8; font-size:0.7rem; margin-top:4px;" class="text-truncate">${st.city} • ${st.address}</div>
                 </div>
               `).join('') : '<div style="grid-column:span 2; font-size:0.85rem; color:#94A3B8; padding:12px; text-align:center;">Sin sedes registradas. El administrador puede agregarlas en el panel.</div>'}
             </div>
@@ -445,20 +457,20 @@ const App = {
     scorebug.innerHTML = games.map(g => `
       <div class="scorebug-card ${g.status === 'live' ? 'live' : ''}" onclick="App.showView('game_detail', ${g.id})">
         <div class="scorebug-status">
-          <span>${g.category_code} • ${g.stadium_field || 'Cancha 1'}</span>
+          <span class="text-truncate">${g.category_code} • ${g.stadium_field || 'Cancha 1'}</span>
           ${g.status === 'live' ? '<span class="live-tag">● EN VIVO</span>' : (g.status === 'finished' ? 'FINAL' : 'PROX')}
         </div>
         <div class="scorebug-team-row">
-          <div class="scorebug-team-name">
+          <div class="scorebug-team-name text-truncate">
             <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
-            <span>${g.away_short}</span>
+            <span class="text-truncate">${g.away_short}</span>
           </div>
           <div class="scorebug-score">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
         </div>
         <div class="scorebug-team-row">
-          <div class="scorebug-team-name">
+          <div class="scorebug-team-name text-truncate">
             <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
-            <span>${g.home_short}</span>
+            <span class="text-truncate">${g.home_short}</span>
           </div>
           <div class="scorebug-score">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
         </div>
@@ -485,25 +497,25 @@ const App = {
         ${games.length ? games.map(g => `
           <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
             <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94A3B8;">
-              <span>${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')} ${new Date(g.game_date).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})} hs</span>
+              <span class="text-truncate">${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')} ${new Date(g.game_date).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})} hs</span>
               <span class="md-chip ${g.status === 'live' ? 'active' : ''}">${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}</span>
             </div>
 
             <div style="display:flex; justify-content:space-around; align-items:center; margin:12px 0;">
-              <div style="text-align:center;">
+              <div style="text-align:center;" class="text-truncate">
                 <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
-                <div style="font-weight:800; font-size:1rem; margin-top:4px;">${g.away_team_name}</div>
+                <div style="font-weight:800; font-size:1rem; margin-top:4px;" class="text-truncate">${g.away_team_name}</div>
                 <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
               </div>
               <div style="font-size:1.1rem; font-weight:800; color:#64748B;">VS</div>
-              <div style="text-align:center;">
+              <div style="text-align:center;" class="text-truncate">
                 <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
-                <div style="font-weight:800; font-size:1rem; margin-top:4px;">${g.home_team_name}</div>
+                <div style="font-weight:800; font-size:1rem; margin-top:4px;" class="text-truncate">${g.home_team_name}</div>
                 <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
               </div>
             </div>
 
-            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;">📍 Sede: ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;" class="text-truncate">📍 Sede: ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
           </div>
         `).join('') : `
           <div class="md-card" style="text-align:center; padding:24px;">
@@ -540,7 +552,7 @@ const App = {
       <div class="view-content">
         <!-- Match Header Box -->
         <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
-          <div style="font-size:0.75rem; color:#F59E0B; font-weight:700;">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+          <div style="font-size:0.75rem; color:#F59E0B; font-weight:700;" class="text-truncate">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
             <div style="text-align:center;" onclick="App.showView('team_detail', ${g.away_team_id})">
@@ -602,7 +614,7 @@ const App = {
         <!-- Batting Box Score -->
         <div class="view-section">
           <h3 class="section-title">Estadísticas de Bateo</h3>
-          <div style="font-weight:700; color:#F59E0B; margin-bottom:4px;">Visitante: ${g.away_team_name}</div>
+          <div style="font-weight:700; color:#F59E0B; margin-bottom:4px;" class="text-truncate">Visitante: ${g.away_team_name}</div>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -611,7 +623,7 @@ const App = {
               <tbody>
                 ${aBat.length ? aBat.map(b => `
                   <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer;">
-                    <td style="font-weight:700;">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position})</td>
+                    <td style="font-weight:700;" class="text-truncate">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position})</td>
                     <td>${b.ab}</td><td>${b.r}</td><td class="highlight-val">${b.h}</td>
                     <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
                   </tr>
@@ -620,7 +632,7 @@ const App = {
             </table>
           </div>
 
-          <div style="font-weight:700; color:#F59E0B; margin-top:12px; margin-bottom:4px;">Local: ${g.home_team_name}</div>
+          <div style="font-weight:700; color:#F59E0B; margin-top:12px; margin-bottom:4px;" class="text-truncate">Local: ${g.home_team_name}</div>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -629,7 +641,7 @@ const App = {
               <tbody>
                 ${hBat.length ? hBat.map(b => `
                   <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer;">
-                    <td style="font-weight:700;">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position})</td>
+                    <td style="font-weight:700;" class="text-truncate">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position})</td>
                     <td>${b.ab}</td><td>${b.r}</td><td class="highlight-val">${b.h}</td>
                     <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
                   </tr>
@@ -696,9 +708,9 @@ const App = {
           ${teams.length ? teams.map(t => `
             <div class="md-card md-card-interactive" onclick="App.showView('team_detail', ${t.id})" style="text-align:center; align-items:center;">
               <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:60px; height:60px; border-radius:50%; border:2px solid ${t.color_primary};">
-              <div style="font-weight:800; font-size:0.95rem; margin-top:4px;">${t.name}</div>
+              <div style="font-weight:800; font-size:0.95rem; margin-top:4px;" class="text-truncate">${t.name}</div>
               <span class="md-chip" style="padding:2px 8px; font-size:0.65rem;">${t.category_name}</span>
-              <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;">📍 Sede: ${t.home_stadium_name || 'Neutral'}</div>
+              <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;" class="text-truncate">📍 Sede: ${t.home_stadium_name || 'Neutral'}</div>
             </div>
           `).join('') : '<div style="grid-column:span 2; text-align:center; padding:24px; color:#94A3B8;">No hay equipos registrados en esta categoría.</div>'}
         </div>
@@ -732,7 +744,7 @@ const App = {
       <div class="view-content">
         <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #070D1B 100%); text-align:center; align-items:center;">
           <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:70px; height:70px; border-radius:50%; border:3px solid #F59E0B;">
-          <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;">${t.name}</h2>
+          <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;" class="text-truncate">${t.name}</h2>
           <span class="md-chip active">${t.category_name} • Sede: ${t.home_stadium_name || 'Sin Sede Fija'}</span>
 
           ${isAuthorizedForTeam ? `
@@ -769,7 +781,7 @@ const App = {
                 ${players.length ? players.map(p => `
                   <tr onclick="App.showView('player_detail', ${p.id})" style="cursor:pointer;">
                     <td style="font-weight:800; color:#F59E0B;">#${p.jersey_number}</td>
-                    <td style="font-weight:700;">${p.first_name} ${p.last_name}</td>
+                    <td style="font-weight:700;" class="text-truncate">${p.first_name} ${p.last_name}</td>
                     <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position_primary}</span></td>
                     <td style="font-size:0.8rem; color:#94A3B8;">B: ${p.bats} / L: ${p.throws}</td>
                   </tr>
@@ -783,7 +795,7 @@ const App = {
     container.innerHTML = html;
   },
 
-  // 6. PLAYER DETAIL VIEW
+  // 6. PLAYER DETAIL VIEW (Batting & Pitching Stats)
   async renderPlayerDetailView(container, playerId) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tarjeta del jugador...</div></div>`;
 
@@ -802,8 +814,8 @@ const App = {
       <div class="view-content">
         <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #070D1B 100%); text-align:center; align-items:center;">
           <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:80px; height:80px; border-radius:50%; border:3px solid #F59E0B; object-fit:cover;">
-          <div style="font-size:1.6rem; font-weight:800; color:#FFFFFF; margin-top:4px;">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
-          <div style="font-size:0.9rem; font-weight:700; color:#F59E0B;">${p.team_name} • ${p.category_name}</div>
+          <div style="font-size:1.6rem; font-weight:800; color:#FFFFFF; margin-top:4px;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
+          <div style="font-size:0.9rem; font-weight:700; color:#F59E0B;" class="text-truncate">${p.team_name} • ${p.category_name}</div>
 
           <div style="display:flex; gap:8px; margin-top:8px;">
             <span class="md-chip active">Pos: ${p.position_primary}</span>
@@ -812,14 +824,28 @@ const App = {
           </div>
         </div>
 
+        <!-- Batting Stats Card -->
         <div class="view-section">
-          <h3 class="section-title">Estadísticas de Bateo</h3>
+          <h3 class="section-title">📊 Estadísticas de Bateo</h3>
           <div class="md-card">
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
               <div><div style="font-size:0.7rem; color:#94A3B8;">AVG</div><div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${b.avg || '.000'}</div></div>
               <div><div style="font-size:0.7rem; color:#94A3B8;">HR</div><div style="font-size:1.3rem; font-weight:800;">${b.hr || 0}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">CI</div><div style="font-size:1.3rem; font-weight:800;">${b.rbi || 0}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">OPS</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.ops || '.000'}</div></div>
+              <div><div style="font-size:0.7rem; color:#94A3B8;">CI (RBI)</div><div style="font-size:1.3rem; font-weight:800;">${b.rbi || 0}</div></div>
+              <div><div style="font-size:0.7rem; color:#94A3B8;">H (Hits)</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.h || 0}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pitching Stats Card -->
+        <div class="view-section">
+          <h3 class="section-title">⚾ Estadísticas de Pitcheo (Lanzador)</h3>
+          <div class="md-card">
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
+              <div><div style="font-size:0.7rem; color:#94A3B8;">ERA</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.era || '0.00'}</div></div>
+              <div><div style="font-size:0.7rem; color:#94A3B8;">SO (Ponches)</div><div style="font-size:1.3rem; font-weight:800;">${b.so || 0}</div></div>
+              <div><div style="font-size:0.7rem; color:#94A3B8;">W (Victorias)</div><div style="font-size:1.3rem; font-weight:800; color:#10B981;">${b.wins || 0}</div></div>
+              <div><div style="font-size:0.7rem; color:#94A3B8;">SV (Salvados)</div><div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${b.saves || 0}</div></div>
             </div>
           </div>
         </div>
@@ -828,7 +854,7 @@ const App = {
     container.innerHTML = html;
   },
 
-  // 7. LEADERS VIEW
+  // 7. LEADERS VIEW (Batting & Pitching Departmental Lists)
   async renderLeadersView(container, type = 'batting', stat = 'avg') {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando líderes de estadísticas...</div></div>`;
 
@@ -843,26 +869,30 @@ const App = {
         </div>
 
         <div class="md-card">
+          <!-- Type Toggle Buttons (Bateo vs Pitcheo) -->
           <div style="display:flex; gap:8px;">
-            <button class="md-btn ${type === 'batting' ? 'md-btn-primary' : 'md-btn-outlined'}" style="flex:1;" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'avg')">Bateo</button>
-            <button class="md-btn ${type === 'pitching' ? 'md-btn-primary' : 'md-btn-outlined'}" style="flex:1;" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'era')">Pitcheo</button>
+            <button class="md-btn ${type === 'batting' ? 'md-btn-primary' : 'md-btn-outlined'}" style="flex:1;" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'avg')">🥇 Bateo</button>
+            <button class="md-btn ${type === 'pitching' ? 'md-btn-primary' : 'md-btn-outlined'}" style="flex:1;" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'era')">⚾ Pitcheo</button>
           </div>
 
-          <div class="form-group" style="margin-top:8px;">
-            <label>Departamento</label>
-            <select class="form-control" onchange="App.renderLeadersView(document.getElementById('view-container'), '${type}', this.value)">
+          <!-- Department Selector Chips -->
+          <div class="form-group" style="margin-top:10px;">
+            <label style="font-weight:800; color:#F59E0B;">Seleccionar Departamento:</label>
+            <div class="md-chip-group" style="padding:4px 0;">
               ${type === 'batting' ? `
-                <option value="avg" ${stat==='avg'?'selected':''}>Average de Bateo (AVG)</option>
-                <option value="hr" ${stat==='hr'?'selected':''}>Jonrones (HR)</option>
-                <option value="rbi" ${stat==='rbi'?'selected':''}>Carreras Impulsadas (RBI)</option>
-                <option value="h" ${stat==='h'?'selected':''}>Hits Conectados (H)</option>
-                <option value="ops" ${stat==='ops'?'selected':''}>OPS</option>
+                <button class="md-chip ${stat==='avg'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'avg')">Average (AVG)</button>
+                <button class="md-chip ${stat==='hr'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'hr')">Jonrones (HR)</button>
+                <button class="md-chip ${stat==='rbi'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'rbi')">Impulsadas (RBI)</button>
+                <button class="md-chip ${stat==='h'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'h')">Hits (H)</button>
+                <button class="md-chip ${stat==='ops'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'ops')">OPS</button>
               ` : `
-                <option value="era" ${stat==='era'?'selected':''}>Efectividad (ERA)</option>
-                <option value="so" ${stat==='so'?'selected':''}>Ponches (SO)</option>
-                <option value="wins" ${stat==='wins'?'selected':''}>Victorias (W)</option>
+                <button class="md-chip ${stat==='era'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'era')">Efectividad (ERA)</button>
+                <button class="md-chip ${stat==='so'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'so')">Ponches (SO)</button>
+                <button class="md-chip ${stat==='wins'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'wins')">Victorias (W)</button>
+                <button class="md-chip ${stat==='saves'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'saves')">Salvados (SV)</button>
+                <button class="md-chip ${stat==='whip'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'pitching', 'whip')">WHIP</button>
               `}
-            </select>
+            </div>
           </div>
         </div>
 
@@ -880,9 +910,11 @@ const App = {
               ${leaders.length ? leaders.map((l, idx) => `
                 <tr onclick="App.showView('player_detail', ${l.player_id})" style="cursor:pointer;">
                   <td style="font-weight:800; color:${idx === 0 ? '#F59E0B' : '#94A3B8'};">#${idx + 1}</td>
-                  <td style="font-weight:700;">#${l.jersey_number} ${l.first_name} ${l.last_name}</td>
+                  <td style="font-weight:700;" class="text-truncate">#${l.jersey_number} ${l.first_name} ${l.last_name}</td>
                   <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${l.team_short}</span></td>
-                  <td class="highlight-val" style="font-size:1rem;">${l[stat] || l.avg || l.era}</td>
+                  <td class="highlight-val" style="font-size:1rem;">
+                    ${type === 'batting' ? (l[stat] || l.avg) : (stat === 'era' ? l.era : (stat === 'so' ? l.so : (stat === 'wins' ? l.wins : (stat === 'saves' ? l.saves : l.whip))))}
+                  </td>
                 </tr>
               `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin líderes registrados en este departamento.</td></tr>'}
             </tbody>
