@@ -9,12 +9,38 @@ const App = {
   currentUser: null,
   activeSeason: null,
   categories: [],
+  settings: { site_name: 'LMB BÉISBOL', site_logo: 'assets/images/lmb_logo.png' },
 
   async init() {
+    await this.loadSettings();
     await this.checkAuth();
     await this.loadLeagues();
     this.setupEventListeners();
     this.showView('home');
+  },
+
+  async loadSettings() {
+    try {
+      const res = await fetch('api/auth.php?action=settings');
+      const data = await res.json();
+      if (data.success && data.settings) {
+        this.settings = data.settings;
+        this.applyBranding();
+      }
+    } catch (e) {
+      console.error("Error al cargar ajustes", e);
+    }
+  },
+
+  applyBranding() {
+    const titleEl = document.getElementById('brand-site-title');
+    const logoEl = document.getElementById('brand-site-logo');
+    if (titleEl && this.settings.site_name) {
+      titleEl.innerText = this.settings.site_name;
+    }
+    if (logoEl && this.settings.site_logo) {
+      logoEl.src = this.settings.site_logo;
+    }
   },
 
   async checkAuth() {
@@ -38,7 +64,7 @@ const App = {
       const data = await res.json();
       if (data.success) {
         this.activeSeason = data.active_season;
-        this.categories = data.categories;
+        this.categories = data.categories || [];
         this.renderCategoryChips();
       }
     } catch (e) {
@@ -50,17 +76,23 @@ const App = {
     const userBtn = document.getElementById('user-action-btn');
     if (!userBtn) return;
     if (this.currentUser) {
-      userBtn.innerHTML = `<span class="material-icons-round">account_circle</span> ${this.currentUser.name} (${this.currentUser.role.toUpperCase()})`;
+      const roleTag = this.currentUser.role === 'super_admin' ? 'SUPER ADMIN' : this.currentUser.role.toUpperCase();
+      userBtn.innerHTML = `<span class="material-icons-round">account_circle</span> ${this.currentUser.name} (${roleTag})`;
       userBtn.onclick = () => this.showUserModal();
     } else {
       userBtn.innerHTML = `<span class="material-icons-round">login</span> Acceder`;
-      userBtn.onclick = () => this.showLoginModal();
+      userBtn.onclick = () => this.showAuthChoiceModal();
     }
   },
 
   renderCategoryChips() {
     const chipContainer = document.getElementById('global-category-chips');
     if (!chipContainer) return;
+
+    if (!this.categories.length) {
+      chipContainer.innerHTML = `<span style="font-size:0.75rem; color:#94A3B8;">Sin divisiones registradas</span>`;
+      return;
+    }
 
     let html = `<button class="md-chip ${this.currentCategory === 0 ? 'active' : ''}" onclick="App.setCategory(0)">Todas las Ligas</button>`;
     this.categories.forEach(c => {
@@ -82,7 +114,6 @@ const App = {
   showView(viewName, param = null) {
     this.currentView = viewName;
 
-    // Highlight bottom navigation bar active item
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const activeNav = document.getElementById(`nav-${viewName}`);
     if (activeNav) activeNav.classList.add('active');
@@ -109,21 +140,21 @@ const App = {
       case 'game_detail':
         this.renderGameDetailView(container, param);
         break;
-      case 'live_score':
-        this.renderLiveScoreView(container, param);
-        break;
       case 'leaders':
         this.renderLeadersView(container);
         break;
       case 'admin':
         this.renderAdminView(container);
         break;
+      case 'users':
+        this.renderUsersManagementView(container);
+        break;
       default:
         this.renderHomeView(container);
     }
   },
 
-  // 1. HOME LANDING VIEW (MLB STYLE)
+  // 1. HOME LANDING VIEW
   async renderHomeView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Liga Metropolitana...</div></div>`;
 
@@ -138,7 +169,6 @@ const App = {
       const games = dataGames.games || [];
       const leaders = dataLeaders.leaders || [];
 
-      // Build Scorebug Carousel
       this.renderScorebugCarousel(games);
 
       let html = `
@@ -146,8 +176,8 @@ const App = {
           <!-- Banner LMB -->
           <div class="md-card" style="background: linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%); text-align:center; position:relative; overflow:hidden;">
             <div style="font-size:0.75rem; font-weight:700; color:#FFC107; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
-            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;">Buenos Aires - ${this.activeSeason ? this.activeSeason.name : '2026'}</h2>
-            <p style="font-size:0.8rem; color:#94A3B8;">Estadísticas oficiales en vivo de todas las divisiones (A1, A2, A3, Infantiles y Little League).</p>
+            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;">${this.settings.site_name || 'Buenos Aires'} - ${this.activeSeason ? this.activeSeason.name : '2026'}</h2>
+            <p style="font-size:0.8rem; color:#94A3B8;">Estadísticas oficiales en vivo, sedes deportivas y seguimiento de partidos.</p>
           </div>
 
           <!-- Section: Live / Recent Matches -->
@@ -160,7 +190,7 @@ const App = {
             ${games.length ? games.slice(0, 3).map(g => `
               <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-                  <span>${g.category_name} • ${g.field_location}</span>
+                  <span>${g.category_name} • 📍 ${g.stadium_name || g.field_location}</span>
                   <span class="md-chip ${g.status === 'live' ? 'active' : ''}" style="padding:2px 8px; font-size:0.65rem;">
                     ${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}
                   </span>
@@ -234,7 +264,7 @@ const App = {
     if (!scorebug) return;
 
     if (!games || !games.length) {
-      scorebug.innerHTML = `<div style="padding:4px 12px; font-size:0.75rem; color:#94A3B8;">Liga Metropolitana de Béisbol - Sin partidos en vivo</div>`;
+      scorebug.innerHTML = `<div style="padding:4px 12px; font-size:0.75rem; color:#94A3B8;">Liga Metropolitana de Béisbol - Sin partidos activos</div>`;
       return;
     }
 
@@ -262,7 +292,7 @@ const App = {
     `).join('');
   },
 
-  // 2. CALENDAR & SCHEDULE VIEW
+  // 2. CALENDAR & SCHEDULE VIEW WITH SEDES
   async renderCalendarView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando calendario...</div></div>`;
 
@@ -273,9 +303,9 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#2563EB;">calendar_month</span> Calendario y Resultados</h2>
-          ${(this.currentUser && ['admin', 'scorekeeper'].includes(this.currentUser.role)) ? 
-            `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Crear Partido</button>` : ''}
+          <h2 class="section-title"><span class="material-icons-round" style="color:#2563EB;">calendar_month</span> Calendario y Sedes</h2>
+          ${(this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role)) ? 
+            `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
         </div>
 
         ${games.length ? games.map(g => `
@@ -299,15 +329,15 @@ const App = {
               </div>
             </div>
 
-            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;">📍 ${g.field_location}</div>
+            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;">📍 Sede: ${g.stadium_name || g.field_location}</div>
           </div>
-        `).join('') : '<div class="md-card">No hay partidos en esta categoría.</div>'}
+        `).join('') : '<div class="md-card">No hay partidos programados en esta categoría.</div>'}
       </div>
     `;
     container.innerHTML = html;
   },
 
-  // 3. GAME BOXSCORE & DETAIL VIEW
+  // 3. GAME DETAIL VIEW
   async renderGameDetailView(container, gameId) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando resumen del partido...</div></div>`;
 
@@ -323,16 +353,16 @@ const App = {
     const lines = data.line_scores;
     const hBat = data.home_batters || [];
     const aBat = data.away_batters || [];
-    const hPitch = data.home_pitchers || [];
-    const aPitch = data.away_pitchers || [];
     const pbp = data.play_by_play || [];
     const photos = data.photos || [];
+
+    const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
 
     let html = `
       <div class="view-content">
         <!-- Match Header Box -->
         <div class="md-card" style="background: linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%); text-align:center;">
-          <div style="font-size:0.75rem; color:#FFC107; font-weight:700;">${g.category_name} • ${new Date(g.game_date).toLocaleString('es-AR')}</div>
+          <div style="font-size:0.75rem; color:#FFC107; font-weight:700;">${g.category_name} • 📍 ${g.stadium_name || g.field_location}</div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
             <div style="text-align:center;" onclick="App.showView('team_detail', ${g.away_team_id})">
@@ -352,9 +382,9 @@ const App = {
             </div>
           </div>
 
-          ${(this.currentUser && ['admin', 'scorekeeper'].includes(this.currentUser.role)) ? `
+          ${canEdit ? `
             <button class="md-btn md-btn-gold" style="width:100%; margin-top:8px;" onclick="LiveScorer.init(${JSON.stringify(data).replace(/"/g, '&quot;')})">
-              ⚾ Ir al Anotador en Vivo (En Partido)
+              ⚾ Ir al Anotador en Vivo (Momento a Momento)
             </button>
           ` : ''}
         </div>
@@ -452,7 +482,7 @@ const App = {
         <div class="view-section">
           <div class="section-header">
             <h3 class="section-title">📸 Postales del Partido (${photos.length}/10)</h3>
-            ${(this.currentUser && ['admin', 'scorekeeper'].includes(this.currentUser.role) && photos.length < 10) ? 
+            ${(canEdit && photos.length < 10) ? 
               `<button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showUploadPhotoModal(${g.id})">📷 Subir Foto</button>` : ''}
           </div>
 
@@ -475,12 +505,13 @@ const App = {
     const data = await res.json();
     const teams = data.teams || [];
 
+    const canCreate = (this.currentUser && ['super_admin', 'admin'].includes(this.currentUser.role));
+
     let html = `
       <div class="view-content">
         <div class="section-header">
           <h2 class="section-title"><span class="material-icons-round" style="color:#FFC107;">groups</span> Equipos de la Liga</h2>
-          ${(this.currentUser && this.currentUser.role === 'admin') ? 
-            `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateTeamModal()">➕ Crear Equipo</button>` : ''}
+          ${canCreate ? `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateTeamModal()">➕ Crear Equipo</button>` : ''}
         </div>
 
         <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
@@ -490,14 +521,14 @@ const App = {
               <div style="font-weight:800; font-size:0.95rem; margin-top:4px;">${t.name}</div>
               <span class="md-chip" style="padding:2px 8px; font-size:0.65rem;">${t.category_name}</span>
             </div>
-          `).join('') : '<div style="grid-column:span 2;">No hay equipos en esta división.</div>'}
+          `).join('') : '<div style="grid-column:span 2;">No hay equipos creados en esta división.</div>'}
         </div>
       </div>
     `;
     container.innerHTML = html;
   },
 
-  // 5. TEAM DETAIL VIEW (ROSTER & STATS)
+  // 5. TEAM DETAIL VIEW (ROSTER & PERMISSION ENFORCED)
   async renderTeamDetailView(container, teamId) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando plantel del equipo...</div></div>`;
 
@@ -513,12 +544,21 @@ const App = {
     const players = data.players || [];
     const stats = t.stats || {};
 
+    const isAuthorizedForTeam = (this.currentUser && (
+      ['super_admin', 'admin'].includes(this.currentUser.role) ||
+      (this.currentUser.role === 'team_admin' && this.currentUser.assigned_team_id == t.id)
+    ));
+
     let html = `
       <div class="view-content">
         <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #0A192F 100%); text-align:center; align-items:center;">
           <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:70px; height:70px; border-radius:50%; border:3px solid #FFC107;">
           <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;">${t.name}</h2>
           <span class="md-chip active">${t.category_name} • Est. ${t.foundation_year}</span>
+
+          ${isAuthorizedForTeam ? `
+            <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem; margin-top:8px;" onclick="App.uploadTeamLogo(${t.id})">📷 Cambiar Logo de Equipo</button>
+          ` : ''}
 
           <div style="display:flex; justify-content:space-around; width:100%; margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
             <div><div style="font-size:0.75rem; color:#94A3B8;">PJ</div><div style="font-size:1.2rem; font-weight:800;">${stats.games_played}</div></div>
@@ -531,8 +571,9 @@ const App = {
         <div class="view-section">
           <div class="section-header">
             <h3 class="section-title">Plantel de Jugadores (Roster)</h3>
-            ${(this.currentUser && (this.currentUser.role === 'admin' || (this.currentUser.role === 'team_admin' && this.currentUser.team_id == t.id))) ? 
-              `<button class="md-btn md-btn-primary" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showCreatePlayerModal(${t.id})">➕ Registrar Jugador</button>` : ''}
+            ${isAuthorizedForTeam ? `
+              <button class="md-btn md-btn-primary" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showCreatePlayerModal(${t.id})">➕ Registrar Jugador</button>
+            ` : ''}
           </div>
 
           <div class="md-table-wrapper">
@@ -563,9 +604,9 @@ const App = {
     container.innerHTML = html;
   },
 
-  // 6. PLAYER PROFILE & CARD VIEW
+  // 6. PLAYER DETAIL VIEW
   async renderPlayerDetailView(container, playerId) {
-    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando perfil del jugador...</div></div>`;
+    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tarjeta del jugador...</div></div>`;
 
     const res = await fetch(`api/players.php?action=detail&id=${playerId}`);
     const data = await res.json();
@@ -581,7 +622,6 @@ const App = {
 
     let html = `
       <div class="view-content">
-        <!-- Baseball Trading Card Header -->
         <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #0A192F 100%); text-align:center; align-items:center;">
           <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:80px; height:80px; border-radius:50%; border:3px solid #FFC107; object-fit:cover;">
           <div style="font-size:1.6rem; font-weight:800; color:#FFFFFF; margin-top:4px;">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
@@ -594,9 +634,8 @@ const App = {
           </div>
         </div>
 
-        <!-- Batting Stats Aggregates -->
         <div class="view-section">
-          <h3 class="section-title">Estadísticas de Bateo (Temporada)</h3>
+          <h3 class="section-title">Estadísticas de Bateo</h3>
           <div class="md-card">
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
               <div><div style="font-size:0.7rem; color:#94A3B8;">AVG</div><div style="font-size:1.3rem; font-weight:800; color:#FFC107;">${b.avg || '.000'}</div></div>
@@ -604,37 +643,14 @@ const App = {
               <div><div style="font-size:0.7rem; color:#94A3B8;">CI</div><div style="font-size:1.3rem; font-weight:800;">${b.rbi || 0}</div></div>
               <div><div style="font-size:0.7rem; color:#94A3B8;">OPS</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.ops || '.000'}</div></div>
             </div>
-
-            <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; text-align:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-              <div><div style="font-size:0.65rem; color:#94A3B8;">AB</div><div style="font-weight:700;">${b.ab || 0}</div></div>
-              <div><div style="font-size:0.65rem; color:#94A3B8;">H</div><div style="font-weight:700;">${b.h || 0}</div></div>
-              <div><div style="font-size:0.65rem; color:#94A3B8;">2B</div><div style="font-weight:700;">${b.doubles || 0}</div></div>
-              <div><div style="font-size:0.65rem; color:#94A3B8;">OBP</div><div style="font-weight:700;">${b.obp || '.000'}</div></div>
-              <div><div style="font-size:0.65rem; color:#94A3B8;">SLG</div><div style="font-weight:700;">${b.slg || '.000'}</div></div>
-            </div>
           </div>
         </div>
-
-        <!-- Pitching Stats Aggregates -->
-        ${pit.gp > 0 ? `
-          <div class="view-section">
-            <h3 class="section-title">Estadísticas de Pitcheo (Temporada)</h3>
-            <div class="md-card">
-              <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
-                <div><div style="font-size:0.7rem; color:#94A3B8;">ERA</div><div style="font-size:1.3rem; font-weight:800; color:#FFC107;">${pit.era}</div></div>
-                <div><div style="font-size:0.7rem; color:#94A3B8;">W-L</div><div style="font-size:1.3rem; font-weight:800;">${pit.wins}-${pit.losses}</div></div>
-                <div><div style="font-size:0.7rem; color:#94A3B8;">IP</div><div style="font-size:1.3rem; font-weight:800;">${pit.ip}</div></div>
-                <div><div style="font-size:0.7rem; color:#94A3B8;">SO</div><div style="font-size:1.3rem; font-weight:800; color:#EF4444;">${pit.so}</div></div>
-              </div>
-            </div>
-          </div>
-        ` : ''}
       </div>
     `;
     container.innerHTML = html;
   },
 
-  // 7. DEPARTMENT LEADERS VIEW
+  // 7. LEADERS VIEW
   async renderLeadersView(container, type = 'batting', stat = 'avg') {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando líderes de estadísticas...</div></div>`;
 
@@ -648,7 +664,6 @@ const App = {
           <h2 class="section-title"><span class="material-icons-round" style="color:#FFC107;">military_tech</span> Líderes Departamentales</h2>
         </div>
 
-        <!-- Filter Controls -->
         <div class="md-card">
           <div style="display:flex; gap:8px;">
             <button class="md-btn ${type === 'batting' ? 'md-btn-primary' : 'md-btn-outlined'}" style="flex:1;" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'avg')">Bateo</button>
@@ -656,27 +671,23 @@ const App = {
           </div>
 
           <div class="form-group" style="margin-top:8px;">
-            <label>Ordenar por Departamento</label>
+            <label>Departamento</label>
             <select class="form-control" onchange="App.renderLeadersView(document.getElementById('view-container'), '${type}', this.value)">
               ${type === 'batting' ? `
                 <option value="avg" ${stat==='avg'?'selected':''}>Average de Bateo (AVG)</option>
                 <option value="hr" ${stat==='hr'?'selected':''}>Jonrones (HR)</option>
                 <option value="rbi" ${stat==='rbi'?'selected':''}>Carreras Impulsadas (RBI)</option>
                 <option value="h" ${stat==='h'?'selected':''}>Hits Conectados (H)</option>
-                <option value="ops" ${stat==='ops'?'selected':''}>OPS (OBP + SLG)</option>
-                <option value="sb" ${stat==='sb'?'selected':''}>Bases Robadas (SB)</option>
+                <option value="ops" ${stat==='ops'?'selected':''}>OPS</option>
               ` : `
                 <option value="era" ${stat==='era'?'selected':''}>Efectividad (ERA)</option>
                 <option value="so" ${stat==='so'?'selected':''}>Ponches (SO)</option>
                 <option value="wins" ${stat==='wins'?'selected':''}>Victorias (W)</option>
-                <option value="saves" ${stat==='saves'?'selected':''}>Juegos Salvados (SV)</option>
-                <option value="whip" ${stat==='whip'?'selected':''}>WHIP</option>
               `}
             </select>
           </div>
         </div>
 
-        <!-- Leaderboard Table -->
         <div class="md-table-wrapper">
           <table class="md-table">
             <thead>
@@ -693,11 +704,9 @@ const App = {
                   <td style="font-weight:800; color:${idx === 0 ? '#FFC107' : '#94A3B8'};">#${idx + 1}</td>
                   <td style="font-weight:700;">#${l.jersey_number} ${l.first_name} ${l.last_name}</td>
                   <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${l.team_short}</span></td>
-                  <td class="highlight-val" style="font-size:1rem;">
-                    ${type === 'batting' ? (l[stat] || l.avg) : (l[stat] || l.era)}
-                  </td>
+                  <td class="highlight-val" style="font-size:1rem;">${l[stat] || l.avg || l.era}</td>
                 </tr>
-              `).join('') : '<tr><td colspan="4">Sin líderes registrados.</td></tr>'}
+              `).join('') : '<tr><td colspan="4">Sin líderes en este departamento.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -706,116 +715,159 @@ const App = {
     container.innerHTML = html;
   },
 
-  // 8. ADMIN & LEAGUE CREATION VIEW
+  // 8. ADMIN & USER ROLES CONTROL VIEW
   async renderAdminView(container) {
-    if (!this.currentUser || this.currentUser.role !== 'admin') {
-      container.innerHTML = `<div class="view-content"><div class="md-card">Acceso denegado. Inicie sesión como Administrador.</div></div>`;
+    if (!this.currentUser || !['super_admin', 'admin'].includes(this.currentUser.role)) {
+      container.innerHTML = `<div class="view-content"><div class="md-card">Acceso denegado. Se requieren permisos de Administrador.</div></div>`;
       return;
     }
 
-    const resT = await fetch('api/teams.php?action=list');
-    const dataT = await resT.json();
-    const teams = dataT.teams || [];
+    const isSuperAdmin = (this.currentUser.role === 'super_admin');
 
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#EF4444;">admin_panel_settings</span> Panel de Control Liga</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#EF4444;">admin_panel_settings</span> Panel de Administración</h2>
         </div>
 
-        <!-- Create New Season / League -->
-        <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800;">🏆 Crear Nueva Temporada / Liga</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Inicia un nuevo ciclo deportivo de la Liga Metropolitana.</p>
-          <div class="form-group">
-            <label>Nombre de Temporada</label>
-            <input type="text" id="admin-season-name" class="form-control" placeholder="Ej: Temporada Oficial A1 2026">
+        <!-- Super Admin User Management Button -->
+        ${isSuperAdmin ? `
+          <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #0A192F 100%);">
+            <h3 style="font-size:1rem; font-weight:800; color:#FFC107;">👥 Gestión de Usuarios y Permisos</h3>
+            <p style="font-size:0.8rem; color:#94A3B8;">Busca usuarios por correo para asignar roles y vincularlos a equipos (Lanús, Berazategui, DAOM, etc.).</p>
+            <button class="md-btn md-btn-gold" onclick="App.showView('users')">Gestionar Usuarios</button>
           </div>
-          <button class="md-btn md-btn-primary" onclick="App.createSeason()">Crear Temporada</button>
+
+          <div class="md-card">
+            <h3 style="font-size:1rem; font-weight:800;">🎨 Branding y Personalización Web</h3>
+            <div class="form-group">
+              <label>Nombre de la Aplicación / Liga</label>
+              <input type="text" id="setting-site-name" class="form-control" value="${this.settings.site_name || 'Liga Metropolitana de Béisbol'}">
+            </div>
+            <button class="md-btn md-btn-primary" onclick="App.updateSettings()">Guardar Ajustes Web</button>
+          </div>
+        ` : ''}
+
+        <!-- Stadium Sedes Management -->
+        <div class="md-card">
+          <h3 style="font-size:1rem; font-weight:800;">📍 Sedes Deportivas (Campos de Juego)</h3>
+          <p style="font-size:0.8rem; color:#94A3B8;">Registra sedes para enlazar los partidos y que nadie se pierda.</p>
+          <button class="md-btn md-btn-primary" onclick="App.showCreateStadiumModal()">➕ Nueva Sede</button>
         </div>
 
-        <!-- System of Ascenso y Descenso -->
+        <!-- Ascenso y Descenso -->
         <div class="md-card">
           <h3 style="font-size:1rem; font-weight:800;">🔄 Sistema de Ascenso y Descenso</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Mueve equipos entre categorías (A2 -> A1, A1 -> A2, A3, Infantiles).</p>
-
-          <div class="form-group">
-            <label>Seleccionar Equipo</label>
-            <select id="admin-move-team-id" class="form-control">
-              ${teams.map(t => `<option value="${t.id}">${t.name} (${t.category_name})</option>`).join('')}
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Nueva Categoría / División</label>
-            <select id="admin-move-cat-id" class="form-control">
-              ${this.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-            </select>
-          </div>
-
-          <button class="md-btn md-btn-gold" onclick="App.moveTeamCategory()">Confirmar Ascenso / Descenso</button>
-        </div>
-
-        <!-- Database Reset / Clean State -->
-        <div class="md-card" style="border-color:#EF4444;">
-          <h3 style="font-size:1rem; font-weight:800; color:#EF4444;">⚠️ Reiniciar Base de Datos</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Puedes limpiar la base de datos al 100% para empezar desde cero o recargar los datos de prueba LMB.</p>
-          
-          <div style="display:flex; gap:8px;">
-            <button class="md-btn md-btn-danger" style="flex:1;" onclick="App.resetDatabase('reset_clean')">Limpiar al 100%</button>
-            <button class="md-btn md-btn-outlined" style="flex:1;" onclick="App.resetDatabase('reseed')">Recargar LMB Demo</button>
-          </div>
+          <p style="font-size:0.8rem; color:#94A3B8;">Mueve equipos entre divisiones en cada temporada.</p>
+          <button class="md-btn md-btn-gold" onclick="App.showMoveTeamModal()">Confirmar Cambio de División</button>
         </div>
       </div>
     `;
     container.innerHTML = html;
   },
 
-  // ACTION MODALS & HELPERS
-  async createSeason() {
-    const name = document.getElementById('admin-season-name')?.value;
-    if (!name) return alert("Ingrese el nombre de la temporada.");
+  // 9. SUPER ADMIN USERS LIST & SEARCH VIEW
+  async renderUsersManagementView(container) {
+    if (!this.currentUser || !['super_admin', 'admin'].includes(this.currentUser.role)) {
+      container.innerHTML = `<div class="view-content"><div class="md-card">Acceso restringido.</div></div>`;
+      return;
+    }
 
-    const res = await fetch('api/leagues.php?action=create_season', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, year: 2026 })
-    });
+    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando usuarios...</div></div>`;
+
+    const q = document.getElementById('user-search-input')?.value || '';
+    const res = await fetch(`api/auth.php?action=users_list&q=${encodeURIComponent(q)}`);
     const data = await res.json();
-    alert(data.message);
-    this.loadLeagues();
-    this.showView('admin');
+    const users = data.users || [];
+
+    const resTeams = await fetch('api/teams.php?action=list');
+    const dataTeams = await resTeams.json();
+    const teams = dataTeams.teams || [];
+
+    let html = `
+      <div class="view-content">
+        <div class="section-header">
+          <h2 class="section-title"><span class="material-icons-round" style="color:#FFC107;">manage_accounts</span> Usuarios de la Plataforma</h2>
+          <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('admin')">⬅️ Volver</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="md-card">
+          <div class="form-group">
+            <label>Buscar por correo electrónico o nombre</label>
+            <input type="text" id="user-search-input" class="form-control" placeholder="Ej: correo@dominio.com..." value="${q}" oninput="App.renderUsersManagementView(document.getElementById('view-container'))">
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="md-table-wrapper">
+          <table class="md-table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol Actual</th>
+                <th>Equipo Asignado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.length ? users.map(u => `
+                <tr>
+                  <td>
+                    <div style="font-weight:800;">${u.name}</div>
+                    <div style="font-size:0.75rem; color:#94A3B8;">${u.email}</div>
+                  </td>
+                  <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
+                  <td style="font-size:0.8rem; color:#FFC107;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
+                  <td>
+                    <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.7rem;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})">✏️ Editar Permisos</button>
+                  </td>
+                </tr>
+              `).join('') : '<tr><td colspan="4">No se encontraron usuarios.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
   },
 
-  async moveTeamCategory() {
-    const teamId = document.getElementById('admin-move-team-id')?.value;
-    const categoryId = document.getElementById('admin-move-cat-id')?.value;
-
-    const res = await fetch('api/leagues.php?action=move_team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team_id: teamId, category_id: categoryId })
-    });
-    const data = await res.json();
-    alert(data.message);
-    this.showView('teams');
+  // AUTH MODALS & USER ACTIONS
+  showAuthChoiceModal() {
+    const isLogin = confirm("¿Ya tienes una cuenta? Haz clic en Aceptar para Iniciar Sesión, o Cancelar para Crear Cuenta Nueva.");
+    if (isLogin) {
+      this.showLoginModal();
+    } else {
+      this.showRegisterModal();
+    }
   },
 
-  async resetDatabase(mode) {
-    if (!confirm(mode === 'reset_clean' ? "¿Seguro que desea limpiar la base de datos al 100%?" : "¿Recargar datos de prueba?")) return;
+  showRegisterModal() {
+    const name = prompt("Nombre completo:");
+    if (!name) return;
+    const email = prompt("Correo electrónico:");
+    if (!email) return;
+    const username = prompt("Nombre de usuario:");
+    if (!username) return;
+    const password = prompt("Contraseña:");
+    if (!password) return;
 
-    const res = await fetch('api/seed_reset.php', {
+    fetch('api/auth.php?action=register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode })
+      body: JSON.stringify({ name, email, username, password })
+    }).then(res => res.json()).then(data => {
+      alert(data.message);
+      if (data.success) {
+        this.currentUser = data.user;
+        this.renderUserBadge();
+        this.refreshCurrentView();
+      }
     });
-    const data = await res.json();
-    alert(data.message);
-    window.location.reload();
   },
 
   showLoginModal() {
-    const username = prompt("Usuario (admin / delegado_daom / anotador):", "admin");
+    const username = prompt("Usuario o Correo electrónico:", "admin");
     if (!username) return;
     const password = prompt("Contraseña:", "admin123");
     if (!password) return;
@@ -846,78 +898,92 @@ const App = {
     }
   },
 
-  showCreateGameModal() {
-    const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
-    fetch(`api/teams.php?action=list&category_id=${catId}`).then(res => res.json()).then(data => {
+  showEditUserModal(userId, userName, currentRole, currentTeamId) {
+    const newRole = prompt(`Editar Rol para ${userName}:\n(super_admin, admin, team_admin, scorekeeper, viewer)`, currentRole);
+    if (!newRole) return;
+
+    fetch('api/teams.php?action=list').then(res => res.json()).then(data => {
       const teams = data.teams || [];
-      if (teams.length < 2) return alert("Se requieren al menos 2 equipos en la categoría para programar un partido.");
+      let teamPrompt = `Seleccionar Equipo Asignado (0 = Ninguno/Global):\n0: Ninguno\n`;
+      teams.forEach(t => { teamPrompt += `${t.id}: ${t.name}\n`; });
 
-      const awayId = prompt(`Seleccione ID Equipo Visitante:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[0].id);
-      const homeId = prompt(`Seleccione ID Equipo Local:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[1] ? teams[1].id : teams[0].id);
+      const assignedTeamId = prompt(teamPrompt, currentTeamId);
 
-      if (homeId && awayId) {
-        fetch('api/games.php?action=create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            category_id: catId,
-            home_team_id: homeId,
-            away_team_id: awayId,
-            game_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
-            field_location: 'Estadio LMB Ezeiza'
-          })
-        }).then(res => res.json()).then(resData => {
-          alert(resData.message);
-          this.showView('calendar');
-        });
-      }
+      fetch('api/auth.php?action=user_update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, role: newRole, assigned_team_id: assignedTeamId })
+      }).then(res => res.json()).then(resData => {
+        alert(resData.message);
+        this.renderUsersManagementView(document.getElementById('view-container'));
+      });
     });
   },
 
-  showCreateTeamModal() {
-    const name = prompt("Nombre del nuevo equipo:");
+  showCreateStadiumModal() {
+    const name = prompt("Nombre de la Sede Deportiva / Campo:");
     if (!name) return;
+    const address = prompt("Dirección de la Sede:");
+    const city = prompt("Ciudad:", "Buenos Aires");
+
+    fetch('api/leagues.php?action=create_stadium', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, address, city })
+    }).then(res => res.json()).then(data => {
+      alert(data.message);
+    });
+  },
+
+  async showCreateGameModal() {
     const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
+    const [resTeams, resStadia] = await Promise.all([
+      fetch(`api/teams.php?action=list&category_id=${catId}`),
+      fetch(`api/leagues.php?action=stadiums`)
+    ]);
+    const dataTeams = await resTeams.json();
+    const dataStadia = await resStadia.json();
 
-    fetch('api/teams.php?action=create', {
+    const teams = dataTeams.teams || [];
+    const stadia = dataStadia.stadiums || [];
+
+    if (teams.length < 2) return alert("Se requieren al menos 2 equipos en la categoría.");
+
+    const awayId = prompt(`Seleccione ID Equipo Visitante:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[0].id);
+    const homeId = prompt(`Seleccione ID Equipo Local:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[1] ? teams[1].id : teams[0].id);
+    const stadiumId = prompt(`Seleccione ID Sede Deportiva:\n` + stadia.map(s => `${s.id}: ${s.name}`).join('\n'), stadia[0] ? stadia[0].id : 1);
+
+    if (homeId && awayId) {
+      fetch('api/games.php?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category_id: catId,
+          home_team_id: homeId,
+          away_team_id: awayId,
+          stadium_id: stadiumId,
+          game_date: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        })
+      }).then(res => res.json()).then(resData => {
+        alert(resData.message);
+        this.showView('calendar');
+      });
+    }
+  },
+
+  updateSettings() {
+    const siteName = document.getElementById('setting-site-name')?.value;
+    fetch('api/auth.php?action=settings_update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_id: catId, name })
+      body: JSON.stringify({ site_name: siteName })
     }).then(res => res.json()).then(data => {
       alert(data.message);
-      this.showView('teams');
+      this.loadSettings();
     });
   },
 
-  showCreatePlayerModal(teamId) {
-    const firstName = prompt("Nombre del jugador:");
-    if (!firstName) return;
-    const lastName = prompt("Apellido:");
-    if (!lastName) return;
-    const jerseyNumber = prompt("Número de camiseta:", "10");
-    const position = prompt("Posición principal (P, C, 1B, 2B, 3B, SS, LF, CF, RF, DH):", "SS");
-    const bats = prompt("Batea (R = Derecho, L = Zurdo, S = Ambidextro):", "R");
-    const throwsP = prompt("Lanza (R = Derecho, L = Zurdo):", "R");
-
-    fetch('api/players.php?action=create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        team_id: teamId,
-        first_name: firstName,
-        last_name: lastName,
-        jersey_number: parseInt(jerseyNumber) || 0,
-        position_primary: position,
-        bats: bats,
-        throws: throwsP
-      })
-    }).then(res => res.json()).then(data => {
-      alert(data.message);
-      this.showView('team_detail', teamId);
-    });
-  },
-
-  showUploadPhotoModal(gameId) {
+  uploadTeamLogo(teamId) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -927,16 +993,15 @@ const App = {
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_type', 'game_photo');
-      formData.append('game_id', gameId);
-      formData.append('caption', 'Postal del partido');
+      formData.append('upload_type', 'logo');
+      formData.append('team_id', teamId);
 
       fetch('api/media.php', {
         method: 'POST',
         body: formData
       }).then(res => res.json()).then(data => {
         alert(data.message);
-        this.showView('game_detail', gameId);
+        this.showView('team_detail', teamId);
       });
     };
     input.click();
@@ -950,9 +1015,7 @@ const App = {
     setTimeout(() => { bar.style.display = 'none'; }, 3000);
   },
 
-  setupEventListeners() {
-    // Navigation listeners
-  }
+  setupEventListeners() {}
 };
 
 document.addEventListener('DOMContentLoaded', () => {

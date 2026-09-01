@@ -44,9 +44,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* PC Outer Background Harmony */
 body {
   font-family: 'Outfit', 'Roboto', sans-serif;
-  background-color: #070B19;
+  background: radial-gradient(circle at top center, #111B38 0%, #060A17 100%);
   color: var(--md-sys-color-on-surface);
   min-height: 100vh;
   display: flex;
@@ -55,7 +56,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Max 768px Mobile/Tablet Outer Wrapper */
+/* Max 768px Mobile/Tablet Outer Wrapper with Seamless Borders */
 #app-container {
   width: 100%;
   max-width: var(--max-app-width);
@@ -64,7 +65,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
   padding-bottom: 72px; /* Bottom nav offset */
 }
 

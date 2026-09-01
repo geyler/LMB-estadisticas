@@ -19,15 +19,15 @@ session_start();
 </head>
 <body>
 
-  <!-- Max 768px Mobile/Tablet Wrapper -->
+  <!-- Max 768px Mobile/Tablet Outer Wrapper -->
   <div id="app-container">
     
     <!-- Top Material App Bar -->
     <header class="md-top-app-bar">
       <div class="brand-wrapper" onclick="App.showView('home')" style="cursor:pointer;">
-        <img src="assets/images/lmb_logo.png" class="brand-logo" alt="Logo LMB">
+        <img id="brand-site-logo" src="assets/images/lmb_logo.png" class="brand-logo" alt="Logo LMB">
         <div class="brand-title">
-          <h1>LMB BÉISBOL</h1>
+          <h1 id="brand-site-title">LMB BÉISBOL</h1>
           <span>Buenos Aires</span>
         </div>
       </div>

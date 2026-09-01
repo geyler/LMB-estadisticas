@@ -4,14 +4,20 @@ session_start();
 require_once __DIR__ . '/../db/db.php';
 
 $pdo = getDBConnection();
-$method = $_SERVER['REQUEST_METHOD'];
 
-if ($method !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
     exit;
 }
 
+if (!isset($_SESSION['user'])) {
+    echo json_encode(['success' => false, 'message' => 'Debe iniciar sesión para anotar partidos.']);
+    exit;
+}
+
+$currentUser = $_SESSION['user'];
 $input = json_decode(file_get_contents('php://input'), true);
+
 $gameId = intval($input['game_id'] ?? 0);
 $action = trim($input['action'] ?? 'record_play');
 
@@ -20,16 +26,45 @@ if (!$gameId) {
     exit;
 }
 
-// Fetch active game details
-$stmtG = $pdo->prepare("SELECT * FROM games WHERE id = ?");
-$stmtG->execute([$gameId]);
-$game = $stmtG->fetch();
+// Fetch game info
+$stmt = $pdo->prepare("SELECT * FROM games WHERE id = ?");
+$stmt->execute([$gameId]);
+$game = $stmt->fetch();
 
 if (!$game) {
     echo json_encode(['success' => false, 'message' => 'Partido no encontrado.']);
     exit;
 }
 
+// Check team-level permission if user has assigned_team_id
+if ($currentUser['role'] === 'team_admin' && !empty($currentUser['assigned_team_id'])) {
+    if ($currentUser['assigned_team_id'] != $game['home_team_id'] && $currentUser['assigned_team_id'] != $game['away_team_id']) {
+        echo json_encode(['success' => false, 'message' => 'Solo puedes anotar partidos de tu equipo asignado.']);
+        exit;
+    }
+}
+
+// Check Scorekeeper Single Lock ("una sola persona a la vez llevando el momento a momento del partido")
+$lockTimeThreshold = date('Y-m-d H:i:s', strtotime('-15 minutes'));
+if (!empty($game['lock_user_id']) && $game['lock_user_id'] != $currentUser['id'] && $game['lock_timestamp'] > $lockTimeThreshold) {
+    // Fetch lock user name
+    $stmtLock = $pdo->prepare("SELECT name FROM users WHERE id = ?");
+    $stmtLock->execute([$game['lock_user_id']]);
+    $lockUser = $stmtLock->fetch();
+    $lockName = $lockUser ? $lockUser['name'] : 'otro anotador';
+
+    echo json_encode([
+        'success' => false,
+        'message' => "🔒 Partido bloqueado: {$lockName} está anotando este partido actualmente. Solo 1 persona a la vez puede anotar en vivo."
+    ]);
+    exit;
+}
+
+// Acquire/Renew lock
+$pdo->prepare("UPDATE games SET lock_user_id = ?, lock_timestamp = ? WHERE id = ?")
+    ->execute([$currentUser['id'], date('Y-m-d H:i:s'), $gameId]);
+
+// Action 1: Record Play (At-Bat Action)
 if ($action === 'record_play') {
     $batterId = intval($input['batter_id'] ?? 0);
     $pitcherId = intval($input['pitcher_id'] ?? 0);
@@ -38,144 +73,109 @@ if ($action === 'record_play') {
     $runsScored = intval($input['runs_scored'] ?? 0);
     $rbiCount = intval($input['rbi_count'] ?? 0);
     $isOut = !empty($input['is_out']);
-    $outCount = intval($input['outs_before'] ?? 0);
+    $outsBefore = intval($input['outs_before'] ?? 0);
+
+    if (!$batterId || !$pitcherId) {
+        echo json_encode(['success' => false, 'message' => 'Bateador y lanzador requeridos.']);
+        exit;
+    }
 
     $isHomeBatting = ($game['half_inning'] === 'bottom');
     $battingTeamId = $isHomeBatting ? $game['home_team_id'] : $game['away_team_id'];
     $pitchingTeamId = $isHomeBatting ? $game['away_team_id'] : $game['home_team_id'];
 
-    // 1. Log play-by-play
+    // Update status to live if scheduled
+    if ($game['status'] === 'scheduled') {
+        $pdo->prepare("UPDATE games SET status = 'live' WHERE id = ?")->execute([$gameId]);
+    }
+
+    // Insert Play-by-Play record
     $stmtPbp = $pdo->prepare("INSERT INTO game_play_by_play (game_id, inning, half_inning, batter_id, pitcher_id, outs_before, result_code, description, runs_scored) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmtPbp->execute([$gameId, $game['current_inning'], $game['half_inning'], $batterId, $pitcherId, $outCount, $resultCode, $description, $runsScored]);
+    $stmtPbp->execute([$gameId, $game['current_inning'], $game['half_inning'], $batterId, $pitcherId, $outsBefore, $resultCode, $description, $runsScored]);
 
-    // 2. Update Batting Stats for Player
-    $ab = in_array($resultCode, ['1B', '2B', '3B', 'HR', 'SO', 'GO', 'FO', 'E']) ? 1 : 0;
-    $h = in_array($resultCode, ['1B', '2B', '3B', 'HR']) ? 1 : 0;
-    $singles = ($resultCode === '1B') ? 1 : 0;
-    $doubles = ($resultCode === '2B') ? 1 : 0;
-    $triples = ($resultCode === '3B') ? 1 : 0;
-    $hr = ($resultCode === 'HR') ? 1 : 0;
-    $bb = ($resultCode === 'BB') ? 1 : 0;
-    $so = ($resultCode === 'SO') ? 1 : 0;
-    $sb = ($resultCode === 'SB') ? 1 : 0;
-    $hbp = ($resultCode === 'HBP') ? 1 : 0;
-    $sf = ($resultCode === 'SF') ? 1 : 0;
-    $e = ($resultCode === 'E') ? 1 : 0;
+    // Upsert Batting Stats
+    $stmtBCheck = $pdo->prepare("SELECT * FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+    $stmtBCheck->execute([$gameId, $batterId]);
+    $bStat = $stmtBCheck->fetch();
 
-    // Check if player batting stat row exists
-    $stmtCheckB = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
-    $stmtCheckB->execute([$gameId, $batterId]);
-    $bRow = $stmtCheckB->fetch();
+    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF']);
+    $isH = in_array($resultCode, ['1B', '2B', '3B', 'HR']);
+    $is1B = ($resultCode === '1B') ? 1 : 0;
+    $is2B = ($resultCode === '2B') ? 1 : 0;
+    $is3B = ($resultCode === '3B') ? 1 : 0;
+    $isHR = ($resultCode === 'HR') ? 1 : 0;
+    $isBB = ($resultCode === 'BB') ? 1 : 0;
+    $isSO = ($resultCode === 'SO') ? 1 : 0;
+    $isSB = ($resultCode === 'SB') ? 1 : 0;
+    $isHBP = ($resultCode === 'HBP') ? 1 : 0;
+    $isSF = ($resultCode === 'SF') ? 1 : 0;
 
-    if ($bRow) {
-        $stmtUpB = $pdo->prepare("
-            UPDATE game_batting_stats 
-            SET ab = ab + ?, r = r + ?, h = h + ?, singles = singles + ?, doubles = doubles + ?, 
-                triples = triples + ?, hr = hr + ?, rbi = rbi + ?, bb = bb + ?, so = so + ?, 
-                sb = sb + ?, hbp = hbp + ?, sf = sf + ?, e = e + ?
-            WHERE id = ?
-        ");
-        $stmtUpB->execute([$ab, $runsScored, $h, $singles, $doubles, $triples, $hr, $rbiCount, $bb, $so, $sb, $hbp, $sf, $e, $bRow['id']]);
+    if ($bStat) {
+        $pdo->prepare("UPDATE game_batting_stats SET 
+            ab = ab + ?, r = r + ?, h = h + ?, singles = singles + ?, doubles = doubles + ?, 
+            triples = triples + ?, hr = hr + ?, rbi = rbi + ?, bb = bb + ?, so = so + ?, 
+            sb = sb + ?, hbp = hbp + ?, sf = sf + ? WHERE id = ?")
+        ->execute([$isAB?1:0, $runsScored, $isH?1:0, $is1B, $is2B, $is3B, $isHR, $rbiCount, $isBB, $isSO, $isSB, $isHBP, $isSF, $bStat['id']]);
     } else {
-        $stmtInsB = $pdo->prepare("
-            INSERT INTO game_batting_stats (game_id, team_id, player_id, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, hbp, sf, e)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmtInsB->execute([$gameId, $battingTeamId, $batterId, $ab, $runsScored, $h, $singles, $doubles, $triples, $hr, $rbiCount, $bb, $so, $sb, $hbp, $sf, $e]);
+        $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, hbp, sf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        ->execute([$gameId, $battingTeamId, $batterId, $isAB?1:0, $runsScored, $isH?1:0, $is1B, $is2B, $is3B, $isHR, $rbiCount, $isBB, $isSO, $isSB, $isHBP, $isSF]);
     }
 
-    // 3. Update Pitching Stats for Pitcher
-    $pitchOuts = $isOut ? 1 : 0;
-    $stmtCheckP = $pdo->prepare("SELECT id FROM game_pitching_stats WHERE game_id = ? AND player_id = ?");
-    $stmtCheckP->execute([$gameId, $pitcherId]);
-    $pRow = $stmtCheckP->fetch();
+    // Upsert Pitching Stats
+    $stmtPCheck = $pdo->prepare("SELECT * FROM game_pitching_stats WHERE game_id = ? AND player_id = ?");
+    $stmtPCheck->execute([$gameId, $pitcherId]);
+    $pStat = $stmtPCheck->fetch();
 
-    if ($pRow) {
-        $stmtUpP = $pdo->prepare("
-            UPDATE game_pitching_stats
-            SET ip_outs = ip_outs + ?, h = h + ?, r = r + ?, er = er + ?, bb = bb + ?, so = so + ?, hr = hr + ?, pitches_count = pitches_count + 4
-            WHERE id = ?
-        ");
-        $stmtUpP->execute([$pitchOuts, $h, $runsScored, $runsScored, $bb, $so, $hr, $pRow['id']]);
+    $ipOut = $isOut ? 1 : 0;
+
+    if ($pStat) {
+        $pdo->prepare("UPDATE game_pitching_stats SET 
+            ip_outs = ip_outs + ?, h = h + ?, r = r + ?, er = er + ?, bb = bb + ?, so = so + ?, hr = hr + ?, pitches_count = pitches_count + 1 WHERE id = ?")
+        ->execute([$ipOut, $isH?1:0, $runsScored, $runsScored, $isBB, $isSO, $isHR, $pStat['id']]);
     } else {
-        $stmtInsP = $pdo->prepare("
-            INSERT INTO game_pitching_stats (game_id, team_id, player_id, ip_outs, h, r, er, bb, so, hr, pitches_count, is_starter)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 4, 1)
-        ");
-        $stmtInsP->execute([$gameId, $pitchingTeamId, $pitcherId, $pitchOuts, $h, $runsScored, $runsScored, $bb, $so, $hr]);
+        $pdo->prepare("INSERT INTO game_pitching_stats (game_id, team_id, player_id, ip_outs, h, r, er, bb, so, hr, pitches_count, is_starter) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)")
+        ->execute([$gameId, $pitchingTeamId, $pitcherId, $ipOut, $isH?1:0, $runsScored, $runsScored, $isBB, $isSO, $isHR]);
     }
 
-    // 4. Update Game Summary Scores & Line Scores
-    if ($isHomeBatting) {
-        $newHomeScore = $game['home_score'] + $runsScored;
-        $newHomeHits = $game['home_hits'] + $h;
-        $newAwayErrors = $game['away_errors'] + $e;
+    // Update Game Score & Hits
+    if ($runsScored > 0 || $isH) {
+        $scoreCol = $isHomeBatting ? 'home_score' : 'away_score';
+        $hitsCol = $isHomeBatting ? 'home_hits' : 'away_hits';
+        $pdo->prepare("UPDATE games SET {$scoreCol} = {$scoreCol} + ?, {$hitsCol} = {$hitsCol} + ? WHERE id = ?")
+            ->execute([$runsScored, $isH?1:0, $gameId]);
 
-        $pdo->prepare("UPDATE games SET home_score = ?, home_hits = ?, away_errors = ?, status = 'live' WHERE id = ?")
-            ->execute([$newHomeScore, $newHomeHits, $newAwayErrors, $gameId]);
+        // Update Line Score
+        $stmtL = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");
+        $stmtL->execute([$gameId, $battingTeamId, $game['current_inning']]);
+        $lineRow = $stmtL->fetch();
 
-        // Line score update
-        $stmtL = $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE runs = runs + ?");
-        try {
-            $stmtL->execute([$gameId, $game['home_team_id'], $game['current_inning'], $runsScored, $runsScored]);
-        } catch (Exception $ex) {
-            // SQLite fallback
-            $pdo->prepare("UPDATE game_line_scores SET runs = runs + ? WHERE game_id = ? AND team_id = ? AND inning = ?")
-                ->execute([$runsScored, $gameId, $game['home_team_id'], $game['current_inning']]);
-        }
-    } else {
-        $newAwayScore = $game['away_score'] + $runsScored;
-        $newAwayHits = $game['away_hits'] + $h;
-        $newHomeErrors = $game['home_errors'] + $e;
-
-        $pdo->prepare("UPDATE games SET away_score = ?, away_hits = ?, home_errors = ?, status = 'live' WHERE id = ?")
-            ->execute([$newAwayScore, $newAwayHits, $newHomeErrors, $gameId]);
-
-        $stmtL = $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE runs = runs + ?");
-        try {
-            $stmtL->execute([$gameId, $game['away_team_id'], $game['current_inning'], $runsScored, $runsScored]);
-        } catch (Exception $ex) {
-            $pdo->prepare("UPDATE game_line_scores SET runs = runs + ? WHERE game_id = ? AND team_id = ? AND inning = ?")
-                ->execute([$runsScored, $gameId, $game['away_team_id'], $game['current_inning']]);
+        if ($lineRow) {
+            $pdo->prepare("UPDATE game_line_scores SET runs = runs + ? WHERE id = ?")->execute([$runsScored, $lineRow['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, ?)")
+                ->execute([$gameId, $battingTeamId, $game['current_inning'], $runsScored]);
         }
     }
 
-    echo json_encode(['success' => true, 'message' => 'Jugada registrada correctamente.']);
+    echo json_encode(['success' => true, 'message' => 'Jugada registrada en vivo.']);
     exit;
 }
 
+// Action 2: Inning Half Change
 if ($action === 'change_inning') {
     $nextInning = intval($input['current_inning'] ?? $game['current_inning']);
     $nextHalf = trim($input['half_inning'] ?? ($game['half_inning'] === 'top' ? 'bottom' : 'top'));
-    if ($game['half_inning'] === 'bottom' && $nextHalf === 'top') {
-        $nextInning = $game['current_inning'] + 1;
-    }
 
     $pdo->prepare("UPDATE games SET current_inning = ?, half_inning = ? WHERE id = ?")
         ->execute([$nextInning, $nextHalf, $gameId]);
 
-    echo json_encode(['success' => true, 'current_inning' => $nextInning, 'half_inning' => $nextHalf]);
+    echo json_encode(['success' => true, 'message' => "Cambio a entrada {$nextHalf} inning {$nextInning}."]);
     exit;
 }
 
+// Action 3: Finalize Match
 if ($action === 'finalize') {
-    $winningPitcherId = intval($input['winning_pitcher_id'] ?? 0);
-    $losingPitcherId = intval($input['losing_pitcher_id'] ?? 0);
-    $savingPitcherId = intval($input['saving_pitcher_id'] ?? 0);
-
-    $stmtFinal = $pdo->prepare("UPDATE games SET status = 'finished', winning_pitcher_id = ?, losing_pitcher_id = ?, saving_pitcher_id = ? WHERE id = ?");
-    $stmtFinal->execute([$winningPitcherId ?: null, $losingPitcherId ?: null, $savingPitcherId ?: null, $gameId]);
-
-    if ($winningPitcherId) {
-        $pdo->prepare("UPDATE game_pitching_stats SET decision = 'W' WHERE game_id = ? AND player_id = ?")->execute([$gameId, $winningPitcherId]);
-    }
-    if ($losingPitcherId) {
-        $pdo->prepare("UPDATE game_pitching_stats SET decision = 'L' WHERE game_id = ? AND player_id = ?")->execute([$gameId, $losingPitcherId]);
-    }
-    if ($savingPitcherId) {
-        $pdo->prepare("UPDATE game_pitching_stats SET decision = 'SV' WHERE game_id = ? AND player_id = ?")->execute([$gameId, $savingPitcherId]);
-    }
-
-    echo json_encode(['success' => true, 'message' => 'Partido finalizado correctamente.']);
+    $pdo->prepare("UPDATE games SET status = 'finished', lock_user_id = NULL WHERE id = ?")->execute([$gameId]);
+    echo json_encode(['success' => true, 'message' => 'Partido finalizado oficialmente.']);
     exit;
 }

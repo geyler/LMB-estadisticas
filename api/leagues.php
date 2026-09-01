@@ -8,7 +8,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? 'list';
 
 if ($action === 'list') {
-    // Get active season and all categories
+    // Get active season
     $stmtSeason = $pdo->query("SELECT * FROM seasons ORDER BY year DESC, id DESC");
     $seasons = $stmtSeason->fetchAll();
 
@@ -25,9 +25,26 @@ if ($action === 'list') {
 
     $categories = [];
     if ($activeSeason) {
-        $stmtCat = $pdo->prepare("SELECT * FROM categories WHERE season_id = ? ORDER BY level ASC");
-        $stmtCat->execute([$activeSeason['id']]);
-        $categories = $stmtCat->fetchAll();
+        // Dynamic visibility gating: Only return categories that have teams or games, unless admin!
+        $isAdmin = (isset($_SESSION['user']) && in_array($_SESSION['user']['role'], ['super_admin', 'admin']));
+
+        if ($isAdmin) {
+            $stmtCat = $pdo->prepare("SELECT * FROM categories WHERE season_id = ? ORDER BY level ASC");
+            $stmtCat->execute([$activeSeason['id']]);
+            $categories = $stmtCat->fetchAll();
+        } else {
+            // Public view: only show categories with at least 1 team or game
+            $stmtCat = $pdo->prepare("
+                SELECT DISTINCT c.* 
+                FROM categories c 
+                LEFT JOIN teams t ON c.id = t.category_id 
+                LEFT JOIN games g ON c.id = g.category_id 
+                WHERE c.season_id = ? AND (t.id IS NOT NULL OR g.id IS NOT NULL)
+                ORDER BY c.level ASC
+            ");
+            $stmtCat->execute([$activeSeason['id']]);
+            $categories = $stmtCat->fetchAll();
+        }
     }
 
     echo json_encode([
@@ -39,7 +56,44 @@ if ($action === 'list') {
     exit;
 }
 
+// Stadiums / Sedes API
+if ($action === 'stadiums') {
+    $stmt = $pdo->query("SELECT * FROM stadiums ORDER BY name ASC");
+    $stadiums = $stmt->fetchAll();
+    echo json_encode(['success' => true, 'stadiums' => $stadiums]);
+    exit;
+}
+
+if ($action === 'create_stadium' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $name = trim($input['name'] ?? '');
+    $address = trim($input['address'] ?? '');
+    $city = trim($input['city'] ?? 'Buenos Aires');
+
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Nombre de sede requerido.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO stadiums (name, address, city) VALUES (?, ?, ?)");
+    $stmt->execute([$name, $address, $city]);
+    $stadiumId = $pdo->lastInsertId();
+
+    echo json_encode(['success' => true, 'stadium_id' => $stadiumId, 'message' => 'Sede deportiva registrada exitosamente.']);
+    exit;
+}
+
 if ($action === 'create_season' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
     $input = json_decode(file_get_contents('php://input'), true);
     $name = trim($input['name'] ?? '');
     $year = intval($input['year'] ?? date('Y'));
@@ -49,14 +103,12 @@ if ($action === 'create_season' && $method === 'POST') {
         exit;
     }
 
-    // Set other seasons as inactive
     $pdo->exec("UPDATE seasons SET is_active = 0");
 
     $stmt = $pdo->prepare("INSERT INTO seasons (name, year, is_active) VALUES (?, ?, 1)");
     $stmt->execute([$name, $year]);
     $seasonId = $pdo->lastInsertId();
 
-    // Default categories for new season
     $defaultCategories = [
         ['name' => 'A1 - Primera División', 'code' => 'A1', 'level' => 1],
         ['name' => 'A2 - Segunda División', 'code' => 'A2', 'level' => 2],
@@ -75,7 +127,11 @@ if ($action === 'create_season' && $method === 'POST') {
 }
 
 if ($action === 'move_team' && $method === 'POST') {
-    // System of Ascenso y Descenso
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
     $input = json_decode(file_get_contents('php://input'), true);
     $teamId = intval($input['team_id'] ?? 0);
     $newCategoryId = intval($input['category_id'] ?? 0);
@@ -86,11 +142,9 @@ if ($action === 'move_team' && $method === 'POST') {
         exit;
     }
 
-    // Update team category
     $stmt = $pdo->prepare("UPDATE teams SET category_id = ? WHERE id = ?");
     $stmt->execute([$newCategoryId, $teamId]);
 
-    // Record in team history
     $stmtCat = $pdo->prepare("SELECT season_id, name FROM categories WHERE id = ?");
     $stmtCat->execute([$newCategoryId]);
     $catInfo = $stmtCat->fetch();

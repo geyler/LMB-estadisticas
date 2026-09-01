@@ -14,11 +14,13 @@ if ($action === 'list') {
     $sql = "SELECT g.*, 
                    ht.name as home_team_name, ht.short_name as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
                    at.name as away_team_name, at.short_name as away_short, at.logo_url as away_logo, at.color_primary as away_color,
-                   c.name as category_name, c.code as category_code
+                   c.name as category_name, c.code as category_code,
+                   s.name as stadium_name, s.address as stadium_address
             FROM games g
             JOIN teams ht ON g.home_team_id = ht.id
             JOIN teams at ON g.away_team_id = at.id
-            JOIN categories c ON g.category_id = c.id";
+            JOIN categories c ON g.category_id = c.id
+            LEFT JOIN stadiums s ON g.stadium_id = s.id";
 
     $where = [];
     if ($categoryId > 0) $where[] = "g.category_id = {$categoryId}";
@@ -47,11 +49,15 @@ if ($action === 'detail') {
         SELECT g.*, 
                ht.name as home_team_name, ht.short_name as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
                at.name as away_team_name, at.short_name as away_short, at.logo_url as away_logo, at.color_primary as away_color,
-               c.name as category_name
+               c.name as category_name,
+               s.name as stadium_name, s.address as stadium_address, s.maps_url as stadium_maps,
+               u.name as lock_user_name
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
         JOIN categories c ON g.category_id = c.id
+        LEFT JOIN stadiums s ON g.stadium_id = s.id
+        LEFT JOIN users u ON g.lock_user_id = u.id
         WHERE g.id = ?
     ");
     $stmt->execute([$id]);
@@ -62,7 +68,7 @@ if ($action === 'detail') {
         exit;
     }
 
-    // Get Line Scores (runs per inning)
+    // Line Scores
     $stmtLine = $pdo->prepare("SELECT * FROM game_line_scores WHERE game_id = ? ORDER BY team_id, inning ASC");
     $stmtLine->execute([$id]);
     $lines = $stmtLine->fetchAll();
@@ -77,7 +83,7 @@ if ($action === 'detail') {
         $lineScores[$key][$l['inning']] = intval($l['runs']);
     }
 
-    // Get Batting Box Scores (Home & Away)
+    // Batting Box Scores
     $stmtBatHome = $pdo->prepare("
         SELECT bs.*, p.first_name, p.last_name, p.jersey_number, p.bats
         FROM game_batting_stats bs
@@ -98,7 +104,7 @@ if ($action === 'detail') {
     $stmtBatAway->execute([$id, $game['away_team_id']]);
     $awayBatters = $stmtBatAway->fetchAll();
 
-    // Get Pitching Box Scores (Home & Away)
+    // Pitching Box Scores
     $stmtPitchHome = $pdo->prepare("
         SELECT ps.*, p.first_name, p.last_name, p.jersey_number
         FROM game_pitching_stats ps
@@ -119,7 +125,7 @@ if ($action === 'detail') {
     $stmtPitchAway->execute([$id, $game['away_team_id']]);
     $awayPitchers = $stmtPitchAway->fetchAll();
 
-    // Get Play-by-play logs
+    // Play-by-play logs
     $stmtPbp = $pdo->prepare("
         SELECT pbp.*, 
                b.first_name as batter_first, b.last_name as batter_last, b.jersey_number as batter_num,
@@ -133,7 +139,7 @@ if ($action === 'detail') {
     $stmtPbp->execute([$id]);
     $playByPlay = $stmtPbp->fetchAll();
 
-    // Get Game Postcards / Photos (max 10)
+    // Game Postcards (Max 10)
     $stmtPhotos = $pdo->prepare("SELECT * FROM game_photos WHERE game_id = ? ORDER BY id ASC LIMIT 10");
     $stmtPhotos->execute([$id]);
     $photos = $stmtPhotos->fetchAll();
@@ -153,12 +159,18 @@ if ($action === 'detail') {
 }
 
 if ($action === 'create' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'scorekeeper', 'team_admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
     $input = json_decode(file_get_contents('php://input'), true);
     $categoryId = intval($input['category_id'] ?? 0);
     $homeTeamId = intval($input['home_team_id'] ?? 0);
     $awayTeamId = intval($input['away_team_id'] ?? 0);
+    $stadiumId = !empty($input['stadium_id']) ? intval($input['stadium_id']) : null;
     $gameDate = trim($input['game_date'] ?? date('Y-m-d H:i:s'));
-    $fieldLocation = trim($input['field_location'] ?? 'Estadio LMB Ezeiza');
+    $fieldLocation = trim($input['field_location'] ?? 'Sede Principal LMB');
 
     if (!$categoryId || !$homeTeamId || !$awayTeamId) {
         echo json_encode(['success' => false, 'message' => 'Categoría, equipo local y visitante requeridos.']);
@@ -170,8 +182,8 @@ if ($action === 'create' && $method === 'POST') {
     $cat = $stmtCat->fetch();
     $seasonId = $cat['season_id'] ?? 1;
 
-    $stmt = $pdo->prepare("INSERT INTO games (season_id, category_id, home_team_id, away_team_id, game_date, field_location, status) VALUES (?, ?, ?, ?, ?, ?, 'scheduled')");
-    $stmt->execute([$seasonId, $categoryId, $homeTeamId, $awayTeamId, $gameDate, $fieldLocation]);
+    $stmt = $pdo->prepare("INSERT INTO games (season_id, category_id, home_team_id, away_team_id, stadium_id, game_date, field_location, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')");
+    $stmt->execute([$seasonId, $categoryId, $homeTeamId, $awayTeamId, $stadiumId, $gameDate, $fieldLocation]);
     $gameId = $pdo->lastInsertId();
 
     echo json_encode(['success' => true, 'game_id' => $gameId, 'message' => 'Partido programado exitosamente.']);
