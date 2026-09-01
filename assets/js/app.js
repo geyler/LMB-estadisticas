@@ -11,6 +11,7 @@ const App = {
   categories: [],
   settings: { site_name: 'LMB BÉISBOL', site_logo: 'assets/images/lmb_logo.png' },
   adminTab: 'categories',
+  authTab: 'login',
 
   async init() {
     await this.loadSettings();
@@ -82,7 +83,102 @@ const App = {
       userBtn.onclick = () => this.showUserModal();
     } else {
       userBtn.innerHTML = `<span class="material-icons-round">login</span> Acceder`;
-      userBtn.onclick = () => this.showAuthChoiceModal();
+      userBtn.onclick = () => this.openAuthModal('login');
+    }
+  },
+
+  openAuthModal(defaultTab = 'login') {
+    const modal = document.getElementById('auth-modal');
+    if (!modal) return;
+    modal.classList.add('open');
+    this.switchAuthTab(defaultTab);
+  },
+
+  closeAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  switchAuthTab(tab) {
+    this.authTab = tab;
+    const loginBtn = document.getElementById('auth-tab-login-btn');
+    const regBtn = document.getElementById('auth-tab-register-btn');
+    const loginForm = document.getElementById('login-form');
+    const regForm = document.getElementById('register-form');
+
+    if (tab === 'login') {
+      loginBtn.className = 'md-btn md-btn-primary';
+      regBtn.className = 'md-btn md-btn-outlined';
+      loginForm.style.display = 'flex';
+      regForm.style.display = 'none';
+    } else {
+      loginBtn.className = 'md-btn md-btn-outlined';
+      regBtn.className = 'md-btn md-btn-gold';
+      loginForm.style.display = 'none';
+      regForm.style.display = 'flex';
+
+      fetch('api/auth.php?action=users_list').then(r => r.json()).then(data => {
+        const banner = document.getElementById('first-user-banner');
+        if (banner) {
+          banner.style.display = (!data.users || data.users.length === 0) ? 'block' : 'none';
+        }
+      });
+    }
+  },
+
+  async handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    try {
+      const res = await fetch('api/auth.php?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        this.currentUser = data.user;
+        this.renderUserBadge();
+        this.closeAuthModal();
+        this.showSnackbar(`Bienvenido/a, ${data.user.name}`);
+        this.refreshCurrentView();
+      } else {
+        alert(data.message || 'Error al iniciar sesión.');
+      }
+    } catch (err) {
+      alert('Error de conexión.');
+    }
+  },
+
+  async handleRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+
+    try {
+      const res = await fetch('api/auth.php?action=register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, username, password })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        this.currentUser = data.user;
+        this.renderUserBadge();
+        this.closeAuthModal();
+        this.showSnackbar(`¡Cuenta registrada! Rol: ${data.user.role.toUpperCase()}`);
+        this.refreshCurrentView();
+      } else {
+        alert(data.message || 'Error al registrar usuario.');
+      }
+    } catch (err) {
+      alert('Error de conexión.');
     }
   },
 
@@ -155,7 +251,7 @@ const App = {
     }
   },
 
-  // 1. RICH HOME LANDING VIEW (STANDINGS, SIMULTANEOUS GAMES, LEADERS, SEDES)
+  // 1. RICH HOME LANDING VIEW (CLEAN REAL DATA MODE)
   async renderHomeView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Liga Metropolitana...</div></div>`;
 
@@ -181,16 +277,22 @@ const App = {
       let html = `
         <div class="view-content">
           <!-- Hero Header -->
-          <div class="md-card" style="background: linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%); text-align:center; position:relative; overflow:hidden;">
-            <div style="font-size:0.75rem; font-weight:700; color:#FFC107; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
-            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;">${this.settings.site_name || 'Buenos Aires'} - ${this.activeSeason ? this.activeSeason.name : '2026'}</h2>
-            <p style="font-size:0.8rem; color:#94A3B8;">Tablas de posiciones, seguimiento simultáneo en Ezeiza y sedes, y estadísticas oficiales en vivo.</p>
+          <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
+            <div style="font-size:0.75rem; font-weight:700; color:#F59E0B; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
+            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;">${this.settings.site_name || 'Buenos Aires'}</h2>
+            <p style="font-size:0.8rem; color:#94A3B8;">Estadísticas oficiales, calendario de partidos, tablas de posiciones y anotación en vivo.</p>
+
+            ${!this.currentUser ? `
+              <div style="margin-top:10px;">
+                <button class="md-btn md-btn-gold" style="font-size:0.8rem; padding:6px 16px;" onclick="App.openAuthModal('register')">🌟 Registrarse como Administrador</button>
+              </div>
+            ` : ''}
           </div>
 
           <!-- Section: Live / Simultaneous Matches -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#D32F2F;">sports_baseball</span> Partidos en Desarrollo / Recientes</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#EF4444;">sports_baseball</span> Partidos en Vivo / Recientes</h3>
               <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('calendar')">Ver Calendario</button>
             </div>
 
@@ -208,7 +310,7 @@ const App = {
                     <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
                     <div style="font-weight:700; font-size:0.95rem;">${g.away_team_name}</div>
                   </div>
-                  <div style="font-size:1.3rem; font-weight:800; color:#FFC107;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
+                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -216,16 +318,22 @@ const App = {
                     <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
                     <div style="font-weight:700; font-size:0.95rem;">${g.home_team_name}</div>
                   </div>
-                  <div style="font-size:1.3rem; font-weight:800; color:#FFC107;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
+                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
                 </div>
               </div>
-            `).join('') : '<div class="md-card">No hay partidos registrados.</div>'}
+            `).join('') : `
+              <div class="md-card" style="text-align:center; padding:24px;">
+                <span class="material-icons-round" style="font-size:36px; color:#3B82F6;">event_available</span>
+                <div style="font-weight:700; font-size:0.95rem; margin-top:6px;">No hay partidos programados aún</div>
+                <div style="font-size:0.8rem; color:#94A3B8;">Los nuevos partidos aparecerán aquí en tiempo real una vez creados en el calendario.</div>
+              </div>
+            `}
           </div>
 
           <!-- Section: Standings Table (Tabla de Posiciones) -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#FFC107;">format_list_numbered</span> Tabla de Posiciones</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">format_list_numbered</span> Tabla de Posiciones</h3>
             </div>
 
             <div class="md-table-wrapper">
@@ -258,7 +366,7 @@ const App = {
                       <td>${s.cf}</td>
                       <td>${s.cc}</td>
                     </tr>
-                  `).join('') : '<tr><td colspan="8">Sin datos de tabla disponibles.</td></tr>'}
+                  `).join('') : '<tr><td colspan="8" style="text-align:center; padding:16px;">Sin equipos registrados en la tabla de posiciones.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -267,7 +375,7 @@ const App = {
           <!-- Section: Top Batting Leaders -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#FFC107;">emoji_events</span> Líderes de Bateo (AVG)</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">emoji_events</span> Líderes de Bateo (AVG)</h3>
               <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('leaders')">Ver Todos</button>
             </div>
 
@@ -295,7 +403,7 @@ const App = {
                       <td>${p.hr}</td>
                       <td class="highlight-val">${p.avg}</td>
                     </tr>
-                  `).join('') : '<tr><td colspan="7">No hay datos suficientes aún.</td></tr>'}
+                  `).join('') : '<tr><td colspan="7" style="text-align:center; padding:16px;">Sin datos estadísticos registrados aún.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -311,10 +419,10 @@ const App = {
               ${stadia.length ? stadia.map(st => `
                 <div class="md-card" style="padding:12px; font-size:0.8rem;">
                   <div style="font-weight:800; color:#FFFFFF;">📍 ${st.name}</div>
-                  <div style="color:#FFC107; font-weight:700; font-size:0.75rem; margin-top:2px;">${st.field_name || 'Campo Principal'}</div>
+                  <div style="color:#F59E0B; font-weight:700; font-size:0.75rem; margin-top:2px;">${st.field_name || 'Campo Principal'}</div>
                   <div style="color:#94A3B8; font-size:0.7rem; margin-top:4px;">${st.city} • ${st.address}</div>
                 </div>
-              `).join('') : '<div>Sin sedes registradas.</div>'}
+              `).join('') : '<div style="grid-column:span 2; font-size:0.85rem; color:#94A3B8; padding:12px; text-align:center;">Sin sedes registradas. El administrador puede agregarlas en el panel.</div>'}
             </div>
           </div>
         </div>
@@ -330,7 +438,7 @@ const App = {
     if (!scorebug) return;
 
     if (!games || !games.length) {
-      scorebug.innerHTML = `<div style="padding:4px 12px; font-size:0.75rem; color:#94A3B8;">Liga Metropolitana de Béisbol - Sin partidos activos</div>`;
+      scorebug.innerHTML = `<div style="padding:4px 12px; font-size:0.75rem; color:#94A3B8;">Liga Metropolitana de Béisbol - Buenos Aires</div>`;
       return;
     }
 
@@ -358,7 +466,7 @@ const App = {
     `).join('');
   },
 
-  // 2. CALENDAR & SCHEDULE VIEW WITH SEDES
+  // 2. CALENDAR & SCHEDULE VIEW
   async renderCalendarView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando calendario...</div></div>`;
 
@@ -369,7 +477,7 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#2563EB;">calendar_month</span> Calendario y Sedes</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">calendar_month</span> Calendario de Partidos</h2>
           ${(this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role)) ? 
             `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
         </div>
@@ -385,19 +493,23 @@ const App = {
               <div style="text-align:center;">
                 <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
                 <div style="font-weight:800; font-size:1rem; margin-top:4px;">${g.away_team_name}</div>
-                <div style="font-size:1.6rem; font-weight:800; color:#FFC107;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
+                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
               </div>
               <div style="font-size:1.1rem; font-weight:800; color:#64748B;">VS</div>
               <div style="text-align:center;">
                 <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
                 <div style="font-weight:800; font-size:1rem; margin-top:4px;">${g.home_team_name}</div>
-                <div style="font-size:1.6rem; font-weight:800; color:#FFC107;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
+                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
               </div>
             </div>
 
             <div style="font-size:0.75rem; color:#94A3B8; text-align:center;">📍 Sede: ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
           </div>
-        `).join('') : '<div class="md-card">No hay partidos programados en esta categoría.</div>'}
+        `).join('') : `
+          <div class="md-card" style="text-align:center; padding:24px;">
+            <div style="font-weight:700; font-size:0.95rem;">No hay partidos programados en esta categoría</div>
+          </div>
+        `}
       </div>
     `;
     container.innerHTML = html;
@@ -427,8 +539,8 @@ const App = {
     let html = `
       <div class="view-content">
         <!-- Match Header Box -->
-        <div class="md-card" style="background: linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%); text-align:center;">
-          <div style="font-size:0.75rem; color:#FFC107; font-weight:700;">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+        <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
+          <div style="font-size:0.75rem; color:#F59E0B; font-weight:700;">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
             <div style="text-align:center;" onclick="App.showView('team_detail', ${g.away_team_id})">
@@ -490,7 +602,7 @@ const App = {
         <!-- Batting Box Score -->
         <div class="view-section">
           <h3 class="section-title">Estadísticas de Bateo</h3>
-          <div style="font-weight:700; color:#FFC107; margin-bottom:4px;">Visitante: ${g.away_team_name}</div>
+          <div style="font-weight:700; color:#F59E0B; margin-bottom:4px;">Visitante: ${g.away_team_name}</div>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -503,12 +615,12 @@ const App = {
                     <td>${b.ab}</td><td>${b.r}</td><td class="highlight-val">${b.h}</td>
                     <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
                   </tr>
-                `).join('') : '<tr><td colspan="10">Sin turnos al bate registrados.</td></tr>'}
+                `).join('') : '<tr><td colspan="10" style="text-align:center; padding:12px;">Sin turnos al bate registrados.</td></tr>'}
               </tbody>
             </table>
           </div>
 
-          <div style="font-weight:700; color:#FFC107; margin-top:12px; margin-bottom:4px;">Local: ${g.home_team_name}</div>
+          <div style="font-weight:700; color:#F59E0B; margin-top:12px; margin-bottom:4px;">Local: ${g.home_team_name}</div>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -521,7 +633,7 @@ const App = {
                     <td>${b.ab}</td><td>${b.r}</td><td class="highlight-val">${b.h}</td>
                     <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
                   </tr>
-                `).join('') : '<tr><td colspan="10">Sin turnos al bate registrados.</td></tr>'}
+                `).join('') : '<tr><td colspan="10" style="text-align:center; padding:12px;">Sin turnos al bate registrados.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -533,18 +645,18 @@ const App = {
           <div class="md-card">
             ${pbp.length ? pbp.map(p => `
               <div style="border-bottom:1px solid rgba(255,255,255,0.05); padding:8px 0;">
-                <div style="font-size:0.75rem; font-weight:700; color:#FFC107;">
+                <div style="font-size:0.75rem; font-weight:700; color:#F59E0B;">
                   ${p.half_inning === 'top' ? '▲' : '▼'} Inning ${p.inning} • Outs: ${p.outs_before}
                 </div>
                 <div style="font-size:0.9rem; font-weight:600; color:#FFFFFF; margin-top:2px;">
                   ${p.description}
                 </div>
               </div>
-            `).join('') : '<div>No hay jugadas registradas en el historial.</div>'}
+            `).join('') : '<div style="font-size:0.85rem; color:#94A3B8;">No hay jugadas registradas en el historial.</div>'}
           </div>
         </div>
 
-        <!-- Postcards Gallery (Max 10) -->
+        <!-- Postcards Gallery -->
         <div class="view-section">
           <div class="section-header">
             <h3 class="section-title">📸 Postales del Partido (${photos.length}/10)</h3>
@@ -576,7 +688,7 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#FFC107;">groups</span> Equipos de la Liga</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">groups</span> Equipos de la Liga</h2>
           ${canCreate ? `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateTeamModal()">➕ Crear Equipo</button>` : ''}
         </div>
 
@@ -588,14 +700,14 @@ const App = {
               <span class="md-chip" style="padding:2px 8px; font-size:0.65rem;">${t.category_name}</span>
               <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;">📍 Sede: ${t.home_stadium_name || 'Neutral'}</div>
             </div>
-          `).join('') : '<div style="grid-column:span 2;">No hay equipos creados en esta división.</div>'}
+          `).join('') : '<div style="grid-column:span 2; text-align:center; padding:24px; color:#94A3B8;">No hay equipos registrados en esta categoría.</div>'}
         </div>
       </div>
     `;
     container.innerHTML = html;
   },
 
-  // 5. TEAM DETAIL VIEW (ROSTER & PERMISSION ENFORCED)
+  // 5. TEAM DETAIL VIEW
   async renderTeamDetailView(container, teamId) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando plantel del equipo...</div></div>`;
 
@@ -618,8 +730,8 @@ const App = {
 
     let html = `
       <div class="view-content">
-        <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #0A192F 100%); text-align:center; align-items:center;">
-          <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:70px; height:70px; border-radius:50%; border:3px solid #FFC107;">
+        <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #070D1B 100%); text-align:center; align-items:center;">
+          <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:70px; height:70px; border-radius:50%; border:3px solid #F59E0B;">
           <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;">${t.name}</h2>
           <span class="md-chip active">${t.category_name} • Sede: ${t.home_stadium_name || 'Sin Sede Fija'}</span>
 
@@ -631,7 +743,7 @@ const App = {
             <div><div style="font-size:0.75rem; color:#94A3B8;">PJ</div><div style="font-size:1.2rem; font-weight:800;">${stats.games_played}</div></div>
             <div><div style="font-size:0.75rem; color:#94A3B8;">PG</div><div style="font-size:1.2rem; font-weight:800; color:#10B981;">${stats.wins}</div></div>
             <div><div style="font-size:0.75rem; color:#94A3B8;">PP</div><div style="font-size:1.2rem; font-weight:800; color:#EF4444;">${stats.losses}</div></div>
-            <div><div style="font-size:0.75rem; color:#94A3B8;">PCT</div><div style="font-size:1.2rem; font-weight:800; color:#FFC107;">${stats.pct}</div></div>
+            <div><div style="font-size:0.75rem; color:#94A3B8;">PCT</div><div style="font-size:1.2rem; font-weight:800; color:#F59E0B;">${stats.pct}</div></div>
           </div>
         </div>
 
@@ -656,12 +768,12 @@ const App = {
               <tbody>
                 ${players.length ? players.map(p => `
                   <tr onclick="App.showView('player_detail', ${p.id})" style="cursor:pointer;">
-                    <td style="font-weight:800; color:#FFC107;">#${p.jersey_number}</td>
+                    <td style="font-weight:800; color:#F59E0B;">#${p.jersey_number}</td>
                     <td style="font-weight:700;">${p.first_name} ${p.last_name}</td>
                     <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position_primary}</span></td>
                     <td style="font-size:0.8rem; color:#94A3B8;">B: ${p.bats} / L: ${p.throws}</td>
                   </tr>
-                `).join('') : '<tr><td colspan="4">Sin jugadores registrados en el plantel.</td></tr>'}
+                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin jugadores registrados en el plantel.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -688,10 +800,10 @@ const App = {
 
     let html = `
       <div class="view-content">
-        <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #0A192F 100%); text-align:center; align-items:center;">
-          <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:80px; height:80px; border-radius:50%; border:3px solid #FFC107; object-fit:cover;">
+        <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #070D1B 100%); text-align:center; align-items:center;">
+          <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:80px; height:80px; border-radius:50%; border:3px solid #F59E0B; object-fit:cover;">
           <div style="font-size:1.6rem; font-weight:800; color:#FFFFFF; margin-top:4px;">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
-          <div style="font-size:0.9rem; font-weight:700; color:#FFC107;">${p.team_name} • ${p.category_name}</div>
+          <div style="font-size:0.9rem; font-weight:700; color:#F59E0B;">${p.team_name} • ${p.category_name}</div>
 
           <div style="display:flex; gap:8px; margin-top:8px;">
             <span class="md-chip active">Pos: ${p.position_primary}</span>
@@ -704,7 +816,7 @@ const App = {
           <h3 class="section-title">Estadísticas de Bateo</h3>
           <div class="md-card">
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
-              <div><div style="font-size:0.7rem; color:#94A3B8;">AVG</div><div style="font-size:1.3rem; font-weight:800; color:#FFC107;">${b.avg || '.000'}</div></div>
+              <div><div style="font-size:0.7rem; color:#94A3B8;">AVG</div><div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${b.avg || '.000'}</div></div>
               <div><div style="font-size:0.7rem; color:#94A3B8;">HR</div><div style="font-size:1.3rem; font-weight:800;">${b.hr || 0}</div></div>
               <div><div style="font-size:0.7rem; color:#94A3B8;">CI</div><div style="font-size:1.3rem; font-weight:800;">${b.rbi || 0}</div></div>
               <div><div style="font-size:0.7rem; color:#94A3B8;">OPS</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.ops || '.000'}</div></div>
@@ -727,7 +839,7 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#FFC107;">military_tech</span> Líderes Departamentales</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">military_tech</span> Líderes Departamentales</h2>
         </div>
 
         <div class="md-card">
@@ -767,12 +879,12 @@ const App = {
             <tbody>
               ${leaders.length ? leaders.map((l, idx) => `
                 <tr onclick="App.showView('player_detail', ${l.player_id})" style="cursor:pointer;">
-                  <td style="font-weight:800; color:${idx === 0 ? '#FFC107' : '#94A3B8'};">#${idx + 1}</td>
+                  <td style="font-weight:800; color:${idx === 0 ? '#F59E0B' : '#94A3B8'};">#${idx + 1}</td>
                   <td style="font-weight:700;">#${l.jersey_number} ${l.first_name} ${l.last_name}</td>
                   <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${l.team_short}</span></td>
                   <td class="highlight-val" style="font-size:1rem;">${l[stat] || l.avg || l.era}</td>
                 </tr>
-              `).join('') : '<tr><td colspan="4">Sin líderes en este departamento.</td></tr>'}
+              `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin líderes registrados en este departamento.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -781,10 +893,19 @@ const App = {
     container.innerHTML = html;
   },
 
-  // 8. FULL AUTONOMOUS ADMIN SUITE WITH TABBED MANAGEMENT
+  // 8. FULL AUTONOMOUS ADMIN SUITE
   async renderAdminView(container) {
     if (!this.currentUser || !['super_admin', 'admin'].includes(this.currentUser.role)) {
-      container.innerHTML = `<div class="view-content"><div class="md-card">Acceso denegado. Se requieren permisos de Administrador.</div></div>`;
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:24px;">
+            <span class="material-icons-round" style="font-size:40px; color:#EF4444;">lock</span>
+            <div style="font-weight:800; font-size:1.1rem; margin-top:8px;">Acceso Restringido</div>
+            <p style="font-size:0.85rem; color:#94A3B8;">Debes iniciar sesión con una cuenta de Administrador o registrarte si es la primera vez.</p>
+            <button class="md-btn md-btn-gold" style="margin-top:12px;" onclick="App.openAuthModal('register')">🌟 Registrar Super Admin</button>
+          </div>
+        </div>
+      `;
       return;
     }
 
@@ -867,13 +988,13 @@ const App = {
               <tr><th>Sede</th><th>Campo / Cancha</th><th>Ubicación</th></tr>
             </thead>
             <tbody>
-              ${stadia.map(s => `
+              ${stadia.length ? stadia.map(s => `
                 <tr>
                   <td style="font-weight:800;">📍 ${s.name}</td>
-                  <td style="color:#FFC107; font-weight:700;">${s.field_name || 'Principal'}</td>
+                  <td style="color:#F59E0B; font-weight:700;">${s.field_name || 'Principal'}</td>
                   <td style="font-size:0.8rem; color:#94A3B8;">${s.city} • ${s.address}</td>
                 </tr>
-              `).join('')}
+              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin sedes registradas.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -898,13 +1019,13 @@ const App = {
               <tr><th>Equipo</th><th>Categoría</th><th>Sede Fija</th></tr>
             </thead>
             <tbody>
-              ${teams.map(t => `
+              ${teams.length ? teams.map(t => `
                 <tr onclick="App.showView('team_detail', ${t.id})" style="cursor:pointer;">
                   <td style="font-weight:800;">${t.name} (${t.short_name})</td>
                   <td><span class="md-chip">${t.category_name}</span></td>
                   <td style="font-size:0.8rem; color:#94A3B8;">${t.home_stadium_name || 'Neutral'}</td>
                 </tr>
-              `).join('')}
+              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin equipos registrados.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -939,8 +1060,8 @@ const App = {
 
     let html = `
       <div class="md-card">
-        <h3 style="font-size:1rem; font-weight:800; color:#FFC107;">👥 Gestión de Usuarios y Roles</h3>
-        <p style="font-size:0.8rem; color:#94A3B8;">Filtra por correo electrónico para asignar permisos de administración por club (Lanús, Berazategui, DAOM, etc.).</p>
+        <h3 style="font-size:1rem; font-weight:800; color:#F59E0B;">👥 Gestión de Usuarios y Roles</h3>
+        <p style="font-size:0.8rem; color:#94A3B8;">Filtra por correo electrónico para asignar permisos por club o rol de administración.</p>
 
         <div class="form-group" style="margin-top:8px;">
           <input type="text" id="user-search-input" class="form-control" placeholder="Buscar correo electrónico..." value="${q}" oninput="App.renderUsersManagementView(document.getElementById('admin-tab-content'))">
@@ -965,73 +1086,17 @@ const App = {
                   <div style="font-size:0.75rem; color:#94A3B8;">${u.email}</div>
                 </td>
                 <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
-                <td style="font-size:0.8rem; color:#FFC107;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
+                <td style="font-size:0.8rem; color:#F59E0B;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
                 <td>
                   <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.7rem;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})">✏️ Permisos</button>
                 </td>
               </tr>
-            `).join('') : '<tr><td colspan="4">No se encontraron usuarios.</td></tr>'}
+            `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">No se encontraron usuarios.</td></tr>'}
           </tbody>
         </table>
       </div>
     `;
     container.innerHTML = html;
-  },
-
-  // AUTH MODALS & USER ACTIONS
-  showAuthChoiceModal() {
-    const isLogin = confirm("¿Ya tienes una cuenta? Haz clic en Aceptar para Iniciar Sesión, o Cancelar para Crear Cuenta Nueva.");
-    if (isLogin) {
-      this.showLoginModal();
-    } else {
-      this.showRegisterModal();
-    }
-  },
-
-  showRegisterModal() {
-    const name = prompt("Nombre completo:");
-    if (!name) return;
-    const email = prompt("Correo electrónico:");
-    if (!email) return;
-    const username = prompt("Nombre de usuario:");
-    if (!username) return;
-    const password = prompt("Contraseña:");
-    if (!password) return;
-
-    fetch('api/auth.php?action=register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, username, password })
-    }).then(res => res.json()).then(data => {
-      alert(data.message);
-      if (data.success) {
-        this.currentUser = data.user;
-        this.renderUserBadge();
-        this.refreshCurrentView();
-      }
-    });
-  },
-
-  showLoginModal() {
-    const username = prompt("Usuario o Correo electrónico:", "admin");
-    if (!username) return;
-    const password = prompt("Contraseña:", "admin123");
-    if (!password) return;
-
-    fetch('api/auth.php?action=login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    }).then(res => res.json()).then(data => {
-      if (data.success) {
-        this.currentUser = data.user;
-        this.renderUserBadge();
-        this.showSnackbar(`Bienvenido, ${data.user.name}`);
-        this.refreshCurrentView();
-      } else {
-        alert(data.message);
-      }
-    });
   },
 
   showUserModal() {
@@ -1158,7 +1223,7 @@ const App = {
     const teams = dataTeams.teams || [];
     const stadia = dataStadia.stadiums || [];
 
-    if (teams.length < 2) return alert("Se requieren al menos 2 equipos en la categoría.");
+    if (teams.length < 2) return alert("Se requieren al menos 2 equipos creados en la categoría para programar un partido.");
 
     const awayId = prompt(`Seleccione ID Equipo Visitante:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[0].id);
     const homeId = prompt(`Seleccione ID Equipo Local:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[1] ? teams[1].id : teams[0].id);
