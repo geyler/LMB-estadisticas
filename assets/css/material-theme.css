@@ -37,6 +37,49 @@
   --max-app-width: 768px;
 }
 
+/* Light Theme Mode */
+body.light-theme {
+  --lmb-navy-dark: #F1F5F9;
+  --lmb-navy-surface: #FFFFFF;
+  --lmb-navy-card: #FFFFFF;
+  --lmb-navy-card-hover: #F8FAFC;
+  
+  --md-sys-color-background: #F8FAFC;
+  --md-sys-color-surface: #FFFFFF;
+  --md-sys-color-surface-variant: #E2E8F0;
+  --md-sys-color-on-surface: #0F172A;
+  --md-sys-color-on-surface-variant: #475569;
+  --md-sys-color-outline: rgba(0, 0, 0, 0.12);
+  
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+body.light-theme .md-card {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+body.light-theme .md-top-app-bar,
+body.light-theme .md-bottom-nav {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: #E2E8F0 !important;
+}
+
+body.light-theme .form-control {
+  background: #F8FAFC !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+body.light-theme .md-bottom-sheet {
+  background: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

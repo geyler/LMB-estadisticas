@@ -17,6 +17,7 @@ const App = {
 
   async init() {
     try {
+      this.initTheme();
       await this.loadSettings();
       await this.checkAuth();
       await this.loadLeagues();
@@ -27,6 +28,96 @@ const App = {
     } finally {
       this.showView('home');
     }
+  },
+
+  initTheme() {
+    const savedTheme = localStorage.getItem('lmb_theme_preference') || 'dark';
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+    this.updateThemeButtonIcon();
+  },
+
+  toggleTheme() {
+    const isLight = document.body.classList.toggle('light-theme');
+    const newTheme = isLight ? 'light' : 'dark';
+    localStorage.setItem('lmb_theme_preference', newTheme);
+    this.updateThemeButtonIcon();
+    this.showSnackbar(`Tema ${isLight ? 'Claro ☀️' : 'Oscuro 🌙'} activado.`);
+  },
+
+  updateThemeButtonIcon() {
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) {
+      const isLight = document.body.classList.contains('light-theme');
+      btn.innerHTML = isLight ? '☀️' : '🌙';
+    }
+  },
+
+  showPrompt(title, message, defaultValue = '') {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('custom-prompt-modal');
+      if (!modal) { resolve(prompt(message, defaultValue)); return; }
+      document.getElementById('prompt-modal-title').textContent = title;
+      document.getElementById('prompt-modal-msg').innerText = message;
+      const input = document.getElementById('prompt-modal-input');
+      input.value = defaultValue;
+      modal.classList.add('open');
+      setTimeout(() => input.focus(), 100);
+
+      const okBtn = document.getElementById('prompt-modal-ok');
+      const cancelBtn = document.getElementById('prompt-modal-cancel');
+
+      const cleanup = () => {
+        modal.classList.remove('open');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+
+      okBtn.onclick = () => { const val = input.value.trim(); cleanup(); resolve(val); };
+      cancelBtn.onclick = () => { cleanup(); resolve(null); };
+    });
+  },
+
+  setupInfiniteScroll(containerId, itemSelector, pageSize = 8) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const items = Array.from(container.querySelectorAll(itemSelector));
+    if (items.length <= pageSize) return;
+
+    items.forEach((item, index) => {
+      if (index >= pageSize) item.style.display = 'none';
+    });
+
+    let currentVisible = pageSize;
+
+    const sentinel = document.createElement('div');
+    sentinel.className = 'infinite-scroll-sentinel';
+    sentinel.style.cssText = 'text-align:center; padding:12px; font-size:0.75rem; color:#94A3B8; font-weight:700; width:100%; grid-column: 1 / -1;';
+    sentinel.innerHTML = `⬇️ Mostrando ${currentVisible} de ${items.length}. Desplaza para ver más...`;
+    container.appendChild(sentinel);
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && currentVisible < items.length) {
+          const nextBatch = currentVisible + pageSize;
+          for (let i = currentVisible; i < Math.min(nextBatch, items.length); i++) {
+            items[i].style.display = '';
+          }
+          currentVisible = Math.min(nextBatch, items.length);
+          if (currentVisible >= items.length) {
+            sentinel.style.display = 'none';
+            observer.disconnect();
+          } else {
+            sentinel.innerHTML = `⬇️ Mostrando ${currentVisible} de ${items.length}. Desplaza para ver más...`;
+          }
+        }
+      });
+    }, { rootMargin: '80px' });
+
+    observer.observe(sentinel);
   },
 
   initPwaInstaller() {
@@ -1068,6 +1159,7 @@ const App = {
 
     const p = data.player;
     const b = p.batting_stats || {};
+    const pi = p.pitching_stats || {};
 
     let html = `
       <div class="view-content">
@@ -1076,36 +1168,54 @@ const App = {
           <div style="font-size:1.6rem; font-weight:800; color:#FFFFFF; margin-top:4px;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
           <div style="font-size:0.9rem; font-weight:700; color:#F59E0B;" class="text-truncate">${p.team_name} • ${p.category_name}</div>
 
-          <div style="display:flex; gap:8px; margin-top:8px;">
+          <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
             <span class="md-chip active">Pos: ${p.position_primary}</span>
             <span class="md-chip">Batea: ${p.bats === 'R' ? 'Derecho' : (p.bats === 'L' ? 'Zurdo' : 'Ambidextro')}</span>
             <span class="md-chip">Lanza: ${p.throws === 'R' ? 'Derecho' : 'Zurdo'}</span>
           </div>
         </div>
 
-        <!-- Batting Stats Card -->
+        <!-- Batting Stats Table -->
         <div class="view-section">
-          <h3 class="section-title">📊 Estadísticas de Bateo</h3>
-          <div class="md-card">
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
-              <div><div style="font-size:0.7rem; color:#94A3B8;">AVG</div><div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${b.avg || '.000'}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">HR</div><div style="font-size:1.3rem; font-weight:800;">${b.hr || 0}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">CI (RBI)</div><div style="font-size:1.3rem; font-weight:800;">${b.rbi || 0}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">H (Hits)</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.h || 0}</div></div>
-            </div>
+          <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">sports_baseball</span> Tabla de Estadísticas de Bateo (Ofensiva)</h3>
+          <div class="md-table-wrapper">
+            <table class="md-table" style="text-align:center; font-size:0.8rem;">
+              <thead>
+                <tr>
+                  <th>JJ</th><th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th><th>BR</th><th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${b.gp || 0}</td><td>${b.ab || 0}</td><td>${b.r || 0}</td><td style="font-weight:800; color:#3B82F6;">${b.h || 0}</td>
+                  <td>${b.doubles || 0}</td><td>${b.triples || 0}</td><td style="font-weight:800; color:#EF4444;">${b.hr || 0}</td><td style="font-weight:800;">${b.rbi || 0}</td>
+                  <td>${b.bb || 0}</td><td>${b.so || 0}</td><td>${b.sb || 0}</td>
+                  <td style="font-weight:800; color:#F59E0B;">${b.avg || '.000'}</td><td>${b.obp || '.000'}</td><td>${b.slg || '.000'}</td><td style="font-weight:800; color:#10B981;">${b.ops || '.000'}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Pitching Stats Card -->
-        <div class="view-section">
-          <h3 class="section-title">⚾ Estadísticas de Pitcheo (Lanzador)</h3>
-          <div class="md-card">
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; text-align:center;">
-              <div><div style="font-size:0.7rem; color:#94A3B8;">ERA</div><div style="font-size:1.3rem; font-weight:800; color:#3B82F6;">${b.era || '0.00'}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">SO (Ponches)</div><div style="font-size:1.3rem; font-weight:800;">${b.so || 0}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">W (Victorias)</div><div style="font-size:1.3rem; font-weight:800; color:#10B981;">${b.wins || 0}</div></div>
-              <div><div style="font-size:0.7rem; color:#94A3B8;">SV (Salvados)</div><div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${b.saves || 0}</div></div>
-            </div>
+        <!-- Pitching Stats Table -->
+        <div class="view-section" style="margin-top:16px;">
+          <h3 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">sports</span> Tabla de Estadísticas de Pitcheo (Lanzador)</h3>
+          <div class="md-table-wrapper">
+            <table class="md-table" style="text-align:center; font-size:0.8rem;">
+              <thead>
+                <tr>
+                  <th>JJ</th><th>G-P</th><th>SV</th><th>IP</th><th>H</th><th>C</th><th>CL</th><th>BB</th><th>SO</th><th>ERA</th><th>WHIP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${pi.gp || 0}</td><td>${pi.wins || 0}-${pi.losses || 0}</td><td style="color:#F59E0B; font-weight:800;">${pi.saves || 0}</td>
+                  <td style="font-weight:800;">${pi.ip_display || '0.0'}</td><td>${pi.h || 0}</td><td>${pi.r || 0}</td><td>${pi.er || 0}</td>
+                  <td>${pi.bb || 0}</td><td style="font-weight:800; color:#EF4444;">${pi.so || 0}</td>
+                  <td style="font-weight:800; color:#3B82F6;">${pi.era || '0.00'}</td><td style="font-weight:700;">${pi.whip || '0.00'}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1218,16 +1328,6 @@ const App = {
         <div id="admin-tab-content">
           <!-- Dynamic Tab Content Rendered Below -->
         </div>
-
-        ${this.currentUser.role === 'super_admin' ? `
-          <div class="md-card" style="margin-top:20px; border:1px solid rgba(239, 68, 68, 0.4); text-align:center; padding:16px;">
-            <div style="font-weight:800; color:#EF4444; font-size:0.85rem;">⚠️ Zona Peligrosa - Mantenimiento de Producción</div>
-            <div style="font-size:0.78rem; color:#94A3B8; margin:4px 0 10px 0;">¿Deseas reiniciar la base de datos totalmente a cero para iniciar una nueva liga limpia?</div>
-            <button class="md-btn md-btn-outlined" style="color:#EF4444; border-color:#EF4444; font-size:0.75rem; width:100%;" onclick="App.confirmDatabaseReset()">
-              💥 Reiniciar Base de Datos a Cero (Wipe Total)
-            </button>
-          </div>
-        ` : ''}
       </div>
     `;
     container.innerHTML = html;
@@ -1548,101 +1648,139 @@ const App = {
   },
 
   showEditUserModal(userId, userName, currentRole, currentTeamId) {
-    const newRole = prompt(`Editar Rol para ${userName}:\n(super_admin, admin, team_admin, scorekeeper, viewer)`, currentRole);
-    if (!newRole) return;
-
-    fetch('api/teams.php?action=list').then(res => res.json()).then(data => {
-      const teams = data.teams || [];
-      let teamPrompt = `Seleccionar Equipo Asignado (0 = Ninguno/Global):\n0: Ninguno\n`;
-      teams.forEach(t => { teamPrompt += `${t.id}: ${t.name}\n`; });
-
-      const assignedTeamId = prompt(teamPrompt, currentTeamId);
-
-      fetch('api/auth.php?action=user_update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, role: newRole, assigned_team_id: assignedTeamId })
-      }).then(res => res.json()).then(resData => {
-        this.showAlert("Gestión de Usuarios", resData.message, "person", "#3B82F6");
-        this.refreshCurrentView();
-      });
-    });
+    this.showRoleEditModal({ id: userId, name: userName, username: userName, role: currentRole, assigned_team_id: currentTeamId });
   },
 
-  showCreateStadiumModal() {
-    const name = prompt("Nombre de la Sede / Predio (ej. Estadio Ezeiza, Predio DAOM):");
+  async showRoleEditModal(user) {
+    const modal = document.getElementById('role-edit-modal');
+    if (!modal) return;
+    document.getElementById('re-user-id').value = user.id;
+    document.getElementById('re-user-info').textContent = `Usuario: ${user.name} (${user.role || 'viewer'})`;
+    document.getElementById('re-user-role').value = user.role || 'viewer';
+
+    const teamSelect = document.getElementById('re-user-team');
+    teamSelect.innerHTML = '<option value="">- Sin equipo específico -</option>';
+    try {
+      const res = await fetch('api/teams.php?action=list');
+      const data = await res.json();
+      if (data.success && data.teams) {
+        data.teams.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.name} (${t.category_name || 'Sin categoría'})`;
+          if (user.assigned_team_id == t.id) opt.selected = true;
+          teamSelect.appendChild(opt);
+        });
+      }
+    } catch(e){}
+
+    modal.classList.add('open');
+  },
+
+  closeRoleEditModal() {
+    const modal = document.getElementById('role-edit-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveUserRole(e) {
+    e.preventDefault();
+    const userId = document.getElementById('re-user-id').value;
+    const role = document.getElementById('re-user-role').value;
+    const assignedTeamId = document.getElementById('re-user-team').value;
+
+    try {
+      const res = await fetch('api/auth.php?action=user_update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, role: role, assigned_team_id: assignedTeamId ? parseInt(assignedTeamId) : null })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('✅ Permisos y equipo de usuario actualizados correctamente.');
+        this.closeRoleEditModal();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert("Error", data.message || "No se pudo actualizar.", "error", "#EF4444");
+      }
+    } catch(err) {
+      this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
+    }
+  },
+
+  async showCreateStadiumModal() {
+    const name = await this.showPrompt("Nueva Sede / Predio", "Nombre del estadio o complejo deportivo (ej. Estadio Ezeiza, Predio DAOM):");
     if (!name) return;
-    const fieldName = prompt("Nombre de la Cancha / Campo (ej. Cancha 1, Cancha 2, Campo Central):", "Cancha 1");
-    const address = prompt("Dirección:");
-    const city = prompt("Ciudad:", "Ezeiza");
+    const fieldName = await this.showPrompt("Nombre del Campo / Cancha", "Identificador de la cancha (ej. Cancha 1, Campo Principal):", "Cancha 1");
+    const address = await this.showPrompt("Dirección de la Sede", "Dirección física:");
+    const city = await this.showPrompt("Ciudad", "Ciudad o Municipio:", "Buenos Aires");
 
     fetch('api/leagues.php?action=create_stadium', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, field_name: fieldName, address, city })
     }).then(res => res.json()).then(data => {
-      this.showAlert("Sedes Deportivo", data.message, "stadium", "#10B981");
+      this.showSnackbar(data.message || 'Sede registrada exitosamente.');
       this.refreshCurrentView();
     });
   },
 
-  showCreateSeasonModal() {
-    const name = prompt("Nombre de la Nueva Temporada (ej. Temporada Oficial 2026):");
+  async showCreateSeasonModal() {
+    const name = await this.showPrompt("Nueva Temporada Oficial", "Nombre de la temporada (ej. Temporada Oficial 2026):");
     if (!name) return;
-    const year = prompt("Año:", new Date().getFullYear());
+    const year = await this.showPrompt("Año de la Temporada", "Año de la temporada:", new Date().getFullYear().toString());
 
     fetch('api/leagues.php?action=create_season', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, year })
     }).then(res => res.json()).then(data => {
-      this.showAlert("Gestión de Ligas", data.message, "emoji_events", "#F59E0B");
+      this.showSnackbar(data.message || 'Temporada registrada.');
       this.loadLeagues();
       this.refreshCurrentView();
     });
   },
 
-  showCreateTeamModal() {
+  async showCreateTeamModal() {
     const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
-    const name = prompt("Nombre completo del Equipo:");
+    const name = await this.showPrompt("Nuevo Equipo", "Nombre completo del equipo de béisbol:");
     if (!name) return;
-    const shortName = prompt("Nombre abreviado (4 letras):", name.substring(0, 4).toUpperCase());
+    const shortName = await this.showPrompt("Abreviatura (4 Letras)", "Identificador corto:", name.substring(0, 4).toUpperCase());
 
-    fetch('api/leagues.php?action=stadiums').then(res => res.json()).then(data => {
+    fetch('api/leagues.php?action=stadiums').then(res => res.json()).then(async data => {
       const stadia = data.stadiums || [];
-      let stPrompt = `Seleccionar Sede Fija (0 = Sin sede fija / Neutral):\n0: Neutral\n`;
-      stadia.forEach(s => { stPrompt += `${s.id}: ${s.name} (${s.field_name})\n`; });
+      let stPrompt = `Seleccionar ID de Sede Fija (0 = Neutral):\n0: Neutral\n`;
+      stadia.forEach(s => { stPrompt += `${s.id}: ${s.name} (${s.field_name || 'Principal'})\n`; });
 
-      const stadiumId = prompt(stPrompt, 0);
+      const stadiumId = await this.showPrompt("Sede Deportiva del Equipo", stPrompt, "0");
 
       fetch('api/teams.php?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: catId, name, short_name: shortName, home_stadium_id: stadiumId })
+        body: JSON.stringify({ category_id: catId, name, short_name: shortName, home_stadium_id: parseInt(stadiumId || 0) })
       }).then(res => res.json()).then(resData => {
-        this.showAlert("Equipos de la Liga", resData.message, "shield", "#3B82F6");
+        this.showSnackbar(resData.message || 'Equipo creado exitosamente.');
         this.refreshCurrentView();
       });
     });
   },
 
-  showMoveTeamModal() {
-    fetch('api/teams.php?action=list').then(res => res.json()).then(data => {
+  async showMoveTeamModal() {
+    fetch('api/teams.php?action=list').then(res => res.json()).then(async data => {
       const teams = data.teams || [];
-      let teamPrompt = `Seleccionar Equipo a mover:\n` + teams.map(t => `${t.id}: ${t.name} (${t.category_name})`).join('\n');
-      const teamId = prompt(teamPrompt);
+      let teamPrompt = `Seleccionar ID de Equipo a mover:\n` + teams.map(t => `${t.id}: ${t.name} (${t.category_name || 'Sin Categoría'})`).join('\n');
+      const teamId = await this.showPrompt("Reubicación de Equipo", teamPrompt);
       if (!teamId) return;
 
-      let catPrompt = `Seleccionar Nueva Categoría:\n` + this.categories.map(c => `${c.id}: ${c.name}`).join('\n');
-      const newCatId = prompt(catPrompt);
+      let catPrompt = `Seleccionar ID de Nueva Categoría:\n` + this.categories.map(c => `${c.id}: ${c.name}`).join('\n');
+      const newCatId = await this.showPrompt("Categoría Destino", catPrompt);
       if (!newCatId) return;
 
       fetch('api/leagues.php?action=move_team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: teamId, category_id: newCatId, notes: 'Ascenso/Descenso' })
+        body: JSON.stringify({ team_id: parseInt(teamId), category_id: parseInt(newCatId), notes: 'Ascenso/Descenso' })
       }).then(res => res.json()).then(resData => {
-        this.showAlert("Categorización de Equipo", resData.message, "swap_vert", "#F59E0B");
+        this.showSnackbar(resData.message || 'Equipo reubicado.');
         this.loadLeagues();
         this.refreshCurrentView();
       });
@@ -1661,11 +1799,14 @@ const App = {
     const teams = dataTeams.teams || [];
     const stadia = dataStadia.stadiums || [];
 
-    if (teams.length < 2) return this.showAlert("Programar Partido", "Se requieren al menos 2 equipos creados en la categoría para programar un partido.", "warning", "#EF4444");
+    if (teams.length < 2) return this.showAlert("Programar Partido", "Se requieren al menos 2 equipos en esta categoría para programar un partido.", "warning", "#EF4444");
 
-    const awayId = prompt(`Seleccione ID Equipo Visitante:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[0].id);
-    const homeId = prompt(`Seleccione ID Equipo Local:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[1] ? teams[1].id : teams[0].id);
-    const stadiumId = prompt(`Seleccione ID Sede Deportiva / Cancha:\n` + stadia.map(s => `${s.id}: ${s.name} (${s.field_name || 'Principal'})`).join('\n'), stadia[0] ? stadia[0].id : 1);
+    let teamListText = teams.map(t => `${t.id}: ${t.name}`).join('\n');
+    const awayId = await this.showPrompt("Equipo Visitante", `Selecciona ID de Equipo Visitante:\n${teamListText}`, teams[0].id.toString());
+    const homeId = await this.showPrompt("Equipo Local", `Selecciona ID de Equipo Local:\n${teamListText}`, teams[1] ? teams[1].id.toString() : teams[0].id.toString());
+    
+    let stadiumListText = stadia.map(s => `${s.id}: ${s.name} (${s.field_name || 'Principal'})`).join('\n');
+    const stadiumId = await this.showPrompt("Sede y Cancha", `Selecciona ID de la Sede Deportiva:\n${stadiumListText}`, stadia[0] ? stadia[0].id.toString() : "1");
 
     if (homeId && awayId) {
       fetch('api/games.php?action=create', {
@@ -1673,40 +1814,65 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category_id: catId,
-          home_team_id: homeId,
-          away_team_id: awayId,
-          stadium_id: stadiumId,
+          home_team_id: parseInt(homeId),
+          away_team_id: parseInt(awayId),
+          stadium_id: parseInt(stadiumId || 1),
           game_date: new Date().toISOString().slice(0, 19).replace('T', ' ')
         })
       }).then(res => res.json()).then(resData => {
-        this.showAlert("Programación de Partido", resData.message, "event_available", "#10B981");
+        this.showSnackbar(resData.message || 'Partido programado exitosamente.');
         this.showView('calendar');
       });
     }
   },
 
   showCreatePlayerModal(teamId) {
-    const firstName = prompt("Nombre del Jugador:");
-    if (!firstName) return;
-    const lastName = prompt("Apellido:");
-    if (!lastName) return;
-    const jersey = prompt("Número de camiseta:", "10");
-    const pos = prompt("Posición principal (P, C, 1B, 2B, 3B, SS, LF, CF, RF, DH):", "OF");
+    const modal = document.getElementById('create-player-modal');
+    if (!modal) return;
+    document.getElementById('cp-team-id').value = teamId;
+    document.getElementById('cp-first-name').value = '';
+    document.getElementById('cp-last-name').value = '';
+    document.getElementById('cp-jersey').value = '10';
+    document.getElementById('cp-position').value = 'OF';
+    modal.classList.add('open');
+  },
 
-    fetch('api/players.php?action=create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        team_id: teamId,
-        first_name: firstName,
-        last_name: lastName,
-        jersey_number: jersey,
-        position_primary: pos
-      })
-    }).then(res => res.json()).then(data => {
-      this.showAlert("Plantel del Equipo", data.message, "person_add", "#10B981");
-      this.showView('team_detail', teamId);
-    });
+  closeCreatePlayerModal() {
+    const modal = document.getElementById('create-player-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveNewPlayer(e) {
+    e.preventDefault();
+    const teamId = document.getElementById('cp-team-id').value;
+    const firstName = document.getElementById('cp-first-name').value.trim();
+    const lastName = document.getElementById('cp-last-name').value.trim();
+    const jersey = document.getElementById('cp-jersey').value;
+    const position = document.getElementById('cp-position').value;
+
+    try {
+      const res = await fetch('api/players.php?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_id: parseInt(teamId),
+          first_name: firstName,
+          last_name: lastName,
+          jersey_number: jersey,
+          position_primary: position
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('✅ Jugador registrado exitosamente en el equipo.');
+        this.closeCreatePlayerModal();
+        if (this.currentView === 'team_detail') this.renderTeamDetailView(document.getElementById('view-container'), teamId);
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo registrar al jugador.', 'error', '#EF4444');
+      }
+    } catch(err) {
+      this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    }
   },
 
   updateSettings() {
@@ -2056,23 +2222,6 @@ const App = {
       }
     } catch (err) {
       this.showAlert('Error', 'Error de conexión al guardar estadísticas.', 'wifi_off', '#EF4444');
-    }
-  },
-
-  async confirmDatabaseReset() {
-    if (confirm("⚠️ ¿Estás completamente seguro de borrar TODO y dejar la base de datos a cero?\n\nSe eliminarán todos los equipos, partidos, estadísticas y usuarios para comenzar una instalación totalmente limpia desde cero.")) {
-      try {
-        const res = await fetch('api/seed_reset.php');
-        const data = await res.json();
-        if (data.success) {
-          alert("✅ Base de datos reiniciada a cero con éxito. La página se recargará ahora para que te registres como el primer usuario administrador.");
-          window.location.reload();
-        } else {
-          alert("Error: " + (data.message || "No se pudo reiniciar la base de datos."));
-        }
-      } catch (e) {
-        alert("Error de conexión al intentar reiniciar la base de datos.");
-      }
     }
   },
 

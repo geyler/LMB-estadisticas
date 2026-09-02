@@ -17,12 +17,46 @@ session_start();
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>LMB Béisbol | Liga Metropolitana Bs. As.</title>
   
-  <meta name="description" content="Plataforma oficial de la Liga Metropolitana de Béisbol de Buenos Aires. Estadísticas en vivo, posiciones y resultados.">
+  <meta name="description" content="Plataforma oficial de la Liga Metropolitana de Béisbol de Buenos Aires. Estadísticas en vivo, posiciones, calendarios y perfiles de jugadores.">
   <meta name="theme-color" content="#070D1B">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LMB Stats">
   <link rel="apple-touch-icon" href="assets/images/lmb_logo.png">
+
+  <!-- Open Graph & Social SEO -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="LMB Béisbol - Liga Metropolitana de Béisbol">
+  <meta property="og:description" content="Estadísticas oficiales, partidos en vivo, tablas de posiciones y líderes de bateo y pitcheo de la LMB Buenos Aires.">
+  <meta property="og:image" content="assets/images/lmb_logo.png">
+  <meta property="og:site_name" content="LMB Béisbol">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="LMB Béisbol - Liga Metropolitana">
+  <meta name="twitter:description" content="Sigue las estadísticas oficiales y anotación en vivo de la Liga Metropolitana de Béisbol de Buenos Aires.">
+  <meta name="twitter:image" content="assets/images/lmb_logo.png">
+
+  <!-- Structured Data JSON-LD Schema.org -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SportsOrganization",
+    "name": "Liga Metropolitana de Béisbol",
+    "alternateName": "LMB",
+    "url": "https://lmb.cubasoft.net",
+    "logo": "https://lmb.cubasoft.net/assets/images/lmb_logo.png",
+    "sport": "Baseball",
+    "location": {
+      "@type": "Place",
+      "name": "Buenos Aires",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Buenos Aires",
+        "addressCountry": "AR"
+      }
+    },
+    "description": "Estadísticas oficiales, calendario de partidos, posiciones y anotación en vivo de la Liga Metropolitana de Béisbol de Buenos Aires."
+  }
+  </script>
   
   <link rel="manifest" href="assets/manifest.json">
   <link rel="icon" type="image/png" href="assets/images/lmb_logo.png">
@@ -55,14 +89,19 @@ session_start();
       <div class="brand-wrapper" onclick="App.showView('home')">
         <img id="brand-site-logo" src="assets/images/lmb_logo.png" alt="LMB Logo" class="brand-logo">
         <div class="brand-title">
-          <h1 id="brand-site-title" class="text-truncate">LMB BÉISBOL</h1>
-          <span>Bs. As.</span>
+          <h1 id="brand-site-title" class="text-truncate">LMB</h1>
+          <span>BS. AS.</span>
         </div>
       </div>
 
-      <button id="user-action-btn" class="md-btn md-btn-outlined" style="padding: 4px 10px; font-size: 0.75rem;">
-        <span class="material-icons-round" style="font-size: 16px;">login</span> Acceder
-      </button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="theme-toggle-btn" class="md-btn md-btn-outlined" style="padding: 4px 8px; font-size: 0.85rem;" onclick="App.toggleTheme()" title="Cambiar Tema">
+          🌙
+        </button>
+        <button id="user-action-btn" class="md-btn md-btn-outlined" style="padding: 4px 10px; font-size: 0.75rem;">
+          <span class="material-icons-round" style="font-size: 16px;">login</span> Acceder
+        </button>
+      </div>
     </header>
 
     <!-- Scorebug Ticker Carousel -->
@@ -283,6 +322,114 @@ session_start();
 
         <div id="manual-stats-body" style="display:flex; flex-direction:column; gap:12px;">
           <!-- Injected dynamically by App.renderManualStatsContent -->
+        </div>
+      </div>
+    </div>
+
+    <!-- User Role & Team Assignment Modal (Replaces Browser Prompt) -->
+    <div id="role-edit-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet">
+        <div class="sheet-handle" onclick="App.closeRoleEditModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">manage_accounts</span> Asignar Rol y Equipo de Usuario
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeRoleEditModal()">✕</button>
+        </div>
+        <form id="role-edit-form" onsubmit="App.handleSaveUserRole(event)" style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+          <input type="hidden" id="re-user-id">
+          <div style="font-size:0.85rem; font-weight:700; color:#3B82F6;" id="re-user-info">Usuario</div>
+          <div class="form-group">
+            <label style="color:#F59E0B; font-weight:800;">Rol de Administración</label>
+            <select id="re-user-role" class="form-control" style="background:#0F172A; font-weight:700;">
+              <option value="super_admin">👑 Super Administrador</option>
+              <option value="admin">🛡️ Administrador de Liga</option>
+              <option value="team_admin">🧢 Administrador de Equipo</option>
+              <option value="scorekeeper">⚾ Anotador / Scorekeeper</option>
+              <option value="viewer">👁️ Espectador / Usuario</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Equipo Asignado (opcional)</label>
+            <select id="re-user-team" class="form-control" style="background:#0F172A;">
+              <option value="">- Sin equipo específico -</option>
+            </select>
+          </div>
+          <button type="submit" class="md-btn md-btn-gold" style="width:100%;">💾 Guardar Cambios de Rol</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Create Player Modal (Replaces Browser Prompts) -->
+    <div id="create-player-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet">
+        <div class="sheet-handle" onclick="App.closeCreatePlayerModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#10B981;">person_add</span> Registrar Jugador en Plantel
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeCreatePlayerModal()">✕</button>
+        </div>
+        <form id="create-player-form" onsubmit="App.handleSaveNewPlayer(event)" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+          <input type="hidden" id="cp-team-id">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Nombre</label>
+              <input type="text" id="cp-first-name" class="form-control" required placeholder="Ej. Juan">
+            </div>
+            <div class="form-group">
+              <label>Apellido</label>
+              <input type="text" id="cp-last-name" class="form-control" required placeholder="Ej. Pérez">
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Nº de Camiseta (#)</label>
+              <input type="number" id="cp-jersey" class="form-control" required min="0" max="99" value="10">
+            </div>
+            <div class="form-group">
+              <label>Posición Principal</label>
+              <select id="cp-position" class="form-control" style="background:#0F172A;">
+                <option value="P">P - Lanzador / Pitcher</option>
+                <option value="C">C - Receptor / Catcher</option>
+                <option value="1B">1B - Primera Base</option>
+                <option value="2B">2B - Segunda Base</option>
+                <option value="3B">3B - Tercera Base</option>
+                <option value="SS">SS - Torpedero / Shortstop</option>
+                <option value="LF">LF - Jardinero Izquierdo</option>
+                <option value="CF">CF - Jardinero Central</option>
+                <option value="RF">RF - Jardinero Derecho</option>
+                <option value="OF">OF - Jardinero General</option>
+                <option value="DH">DH - Bateador Designado</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%;">➕ Guardar Jugador</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Custom Confirm Dialog Modal -->
+    <div id="custom-confirm-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;" id="confirm-modal-title">Confirmación</div>
+        <p style="font-size:0.85rem; color:#94A3B8; margin:8px 0 16px 0;" id="confirm-modal-msg">¿Deseas realizar esta acción?</p>
+        <div style="display:flex; gap:10px;">
+          <button class="md-btn md-btn-outlined" style="flex:1;" id="confirm-modal-cancel">Cancelar</button>
+          <button class="md-btn md-btn-primary" style="flex:1;" id="confirm-modal-ok">Aceptar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Prompt Dialog Modal -->
+    <div id="custom-prompt-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;" id="prompt-modal-title">Ingresar Valor</div>
+        <p style="font-size:0.82rem; color:#94A3B8; margin:4px 0 8px 0;" id="prompt-modal-msg">Ingrese el valor requerido:</p>
+        <input type="text" id="prompt-modal-input" class="form-control" style="margin-bottom:14px;">
+        <div style="display:flex; gap:10px;">
+          <button class="md-btn md-btn-outlined" style="flex:1;" id="prompt-modal-cancel">Cancelar</button>
+          <button class="md-btn md-btn-gold" style="flex:1;" id="prompt-modal-ok">Aceptar</button>
         </div>
       </div>
     </div>

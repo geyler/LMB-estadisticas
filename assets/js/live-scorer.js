@@ -229,29 +229,44 @@ const LiveScorer = {
     this.renderScorerInterface();
   },
 
-  showSubstitutionModal(type) {
+  async showSubstitutionModal(type) {
     const isTop = this.game.half_inning === 'top';
-    const playerList = (type === 'batter') ? (isTop ? this.awayBatters : this.homeBatters) : (isTop ? this.homePitchers : this.awayPitchers);
+    const isBatter = (type === 'batter');
+    const teamId = isBatter ? (isTop ? this.game.away_team_id : this.game.home_team_id) : (isTop ? this.game.home_team_id : this.game.away_team_id);
+    
+    try {
+      const res = await fetch(`api/players.php?team_id=${teamId}`);
+      const data = await res.json();
+      const players = data.players || [];
 
-    if (!playerList.length) {
-      App.showAlert("Sustitución de Jugador", "No hay más jugadores registrados en el plantel de este equipo para realizar sustituciones.", "info", "#F59E0B");
-      return;
-    }
-
-    let promptText = `Seleccionar ${type === 'batter' ? 'Nuevo Bateador' : 'Nuevo Lanzador'}:\n`;
-    playerList.forEach(p => {
-      promptText += `${p.player_id}: #${p.jersey_number} ${p.first_name} ${p.last_name}\n`;
-    });
-
-    const selectedId = prompt(promptText);
-    if (selectedId) {
-      if (type === 'batter') {
-        this.activeBatterId = selectedId;
-      } else {
-        this.activePitcherId = selectedId;
+      if (!players.length) {
+        App.showAlert("Rotación de Jugadores", "No hay jugadores registrados en el plantel de este equipo.", "info", "#F59E0B");
+        return;
       }
-      App.showSnackbar("Sustitución realizada exitosamente.");
-      this.renderScorerInterface();
+
+      let optionsList = players.map(p => `${p.id}: #${p.jersey_number} ${p.first_name} ${p.last_name} (${p.position_primary})`).join('\n');
+      const inputVal = await App.showPrompt(
+        `Rotación / Cambio de ${isBatter ? 'Bateador' : 'Lanzador (Pitcher)'}`,
+        `Cualquier jugador de la nómina puede pitchar o ingresar al campo.\nIngresa el ID del jugador:\n${optionsList}`,
+        isBatter ? (this.activeBatterId ? this.activeBatterId.toString() : '') : (this.activePitcherId ? this.activePitcherId.toString() : '')
+      );
+
+      if (inputVal) {
+        const found = players.find(p => p.id == inputVal || p.jersey_number == inputVal);
+        if (found) {
+          if (isBatter) {
+            this.activeBatterId = found.id;
+          } else {
+            this.activePitcherId = found.id;
+          }
+          App.showSnackbar(`🔄 Cambio registrado: #${found.jersey_number} ${found.first_name} ${found.last_name} como ${isBatter ? 'Bateador' : 'Lanzador'}.`);
+          this.renderScorerInterface();
+        } else {
+          App.showSnackbar("ID o número de camiseta no encontrado.");
+        }
+      }
+    } catch(e) {
+      App.showSnackbar("Error al obtener el plantel del equipo.");
     }
   },
 
