@@ -287,22 +287,16 @@ function seedProductionBase($pdo) {
         ('site_logo', 'assets/images/lmb_logo.png')
     ");
 
-    // 2. Initial Season 2026
-    $pdo->exec("INSERT INTO seasons (name, year, is_active) VALUES ('Temporada Oficial 2026', 2026, 1)");
-    $seasonId = $pdo->lastInsertId();
+    // 2. Initial Season 2026 if empty
+    $stmtSeasonCheck = $pdo->query("SELECT COUNT(*) FROM seasons");
+    if ($stmtSeasonCheck->fetchColumn() == 0) {
+        $pdo->exec("INSERT INTO seasons (name, year, is_active) VALUES ('Temporada Oficial 2026', 2026, 1)");
+        $seasonId = $pdo->lastInsertId();
 
-
-    // 3. Default Categories
-    $categories = [
-        ['name' => 'A1 - Primera División', 'code' => 'A1', 'level' => 1],
-        ['name' => 'A2 - Segunda División', 'code' => 'A2', 'level' => 2],
-        ['name' => 'A3 - Tercera División', 'code' => 'A3', 'level' => 3],
-        ['name' => 'Infantiles', 'code' => 'INF', 'level' => 4],
-        ['name' => 'Little League', 'code' => 'LTL', 'level' => 5],
-    ];
-
-    $stmtCat = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)");
-    foreach ($categories as $cat) {
-        $stmtCat->execute([$seasonId, $cat['name'], $cat['code'], $cat['level']]);
+        $stmtCatCheck = $pdo->query("SELECT COUNT(*) FROM categories");
+        if ($stmtCatCheck->fetchColumn() == 0) {
+            $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)")
+                ->execute([$seasonId, 'Primera División', 'DIV1', 1]);
+        }
     }
 }

@@ -225,3 +225,25 @@ if ($action === 'update' && $method === 'POST') {
     echo json_encode(['success' => true, 'message' => 'Datos del equipo actualizados.']);
     exit;
 }
+
+// 6. Delete Team
+if ($action === 'delete' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID de equipo requerido.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM teams WHERE id = ?");
+    $stmt->execute([$id]);
+
+    echo json_encode(['success' => true, 'message' => 'Equipo eliminado exitosamente.']);
+    exit;
+}

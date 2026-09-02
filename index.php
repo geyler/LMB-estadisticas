@@ -475,6 +475,113 @@ session_start();
       </div>
     </div>
 
+    <!-- Post-Game Manual Player Stats Entry Modal -->
+    <div id="game-stats-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:540px; max-height:92vh; overflow-y:auto;">
+        <div class="sheet-handle" onclick="App.closeGameStatsModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">analytics</span> Cargar / Editar Estadísticas Post-Partido
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeGameStatsModal()">✕</button>
+        </div>
+        <form id="game-stats-form" onsubmit="App.handleSaveManualPlayerStats(event)" style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+          <input type="hidden" id="gs-game-id">
+          <input type="hidden" id="gs-team-id">
+
+          <div class="form-group">
+            <label style="color:#3B82F6; font-weight:800;">Seleccionar Jugador del Partido</label>
+            <select id="gs-player-id" class="form-control" style="background:#0F172A; font-weight:700;" onchange="App.onManualStatPlayerChange(this.value)">
+              <!-- Loaded dynamically -->
+            </select>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px;">
+            <div style="font-size:0.85rem; font-weight:800; color:#F59E0B; margin-bottom:8px;">🏏 ESTADÍSTICAS DE BATEO</div>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+              <div>
+                <label style="font-size:0.7rem;">Turnos (AB)</label>
+                <input type="number" id="gs-ab" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Hits (H)</label>
+                <input type="number" id="gs-h" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Carreras (R)</label>
+                <input type="number" id="gs-r" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Dobles (2B)</label>
+                <input type="number" id="gs-2b" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Triples (3B)</label>
+                <input type="number" id="gs-3b" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Jonrones (HR)</label>
+                <input type="number" id="gs-hr" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Impulsadas (RBI)</label>
+                <input type="number" id="gs-rbi" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Boletos (BB)</label>
+                <input type="number" id="gs-bb" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Ponches (SO)</label>
+                <input type="number" id="gs-so" class="form-control" min="0" value="0">
+              </div>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px;">
+            <div style="font-size:0.85rem; font-weight:800; color:#3B82F6; margin-bottom:8px;">⚾ ESTADÍSTICAS DE PITCHEO (Si lanzó)</div>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+              <div>
+                <label style="font-size:0.7rem;">Outs (IP: 3 outs = 1 Inn)</label>
+                <input type="number" id="gs-p-ipouts" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Hits (H)</label>
+                <input type="number" id="gs-p-h" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Carreras (R)</label>
+                <input type="number" id="gs-p-r" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Limpias (ER)</label>
+                <input type="number" id="gs-p-er" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Boletos (BB)</label>
+                <input type="number" id="gs-p-bb" class="form-control" min="0" value="0">
+              </div>
+              <div>
+                <label style="font-size:0.7rem;">Ponches (SO)</label>
+                <input type="number" id="gs-p-so" class="form-control" min="0" value="0">
+              </div>
+              <div style="grid-column: span 3;">
+                <label style="font-size:0.7rem;">Decisión de Lanzador</label>
+                <select id="gs-p-decision" class="form-control" style="background:#0F172A;">
+                  <option value="NONE">Ninguna / Relevo Normal</option>
+                  <option value="W">W - Lanzador Ganador</option>
+                  <option value="L">L - Lanzador Perdedor</option>
+                  <option value="SV">SV - Juego Salvado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="md-btn md-btn-gold" style="width:100%;">💾 Guardar Estadísticas de Jugador</button>
+        </form>
+      </div>
+    </div>
+
     <!-- Custom Confirm Dialog Modal -->
     <div id="custom-confirm-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:440px;">

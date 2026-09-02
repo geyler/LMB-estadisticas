@@ -1249,17 +1249,26 @@ const App = {
                   <th>Jugador</th>
                   <th>Posición</th>
                   <th>Batea/Lanza</th>
+                  ${isAuthorizedForTeam ? `<th>Acciones</th>` : ''}
                 </tr>
               </thead>
               <tbody>
                 ${activePlayers.length ? activePlayers.map(p => `
-                  <tr onclick="App.showView('player_detail', ${p.id})" style="cursor:pointer;">
-                    <td style="font-weight:800; color:#F59E0B;">#${p.jersey_number}</td>
-                    <td style="font-weight:700;" class="text-truncate">${p.first_name} ${p.last_name}</td>
+                  <tr>
+                    <td style="font-weight:800; color:#F59E0B; cursor:pointer;" onclick="App.showView('player_detail', ${p.id})">#${p.jersey_number}</td>
+                    <td style="font-weight:700; cursor:pointer;" class="text-truncate" onclick="App.showView('player_detail', ${p.id})">${p.first_name} ${p.last_name}</td>
                     <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position_primary}</span></td>
                     <td style="font-size:0.8rem; color:#94A3B8;">B: ${p.bats} / L: ${p.throws}</td>
+                    ${isAuthorizedForTeam ? `
+                      <td>
+                        <div style="display:flex; gap:4px;">
+                          <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditPlayerModal(${p.id}, '${p.first_name}', '${p.last_name}', ${p.jersey_number}, '${p.position_primary}')">✏️ Editar</button>
+                          <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deletePlayer(${p.id}, '${p.first_name} ${p.last_name}')">🗑️ Baja</button>
+                        </div>
+                      </td>
+                    ` : ''}
                   </tr>
-                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin jugadores activos registrados.</td></tr>'}
+                `).join('') : `<tr><td colspan="${isAuthorizedForTeam ? 5 : 4}" style="text-align:center; padding:16px;">Sin jugadores activos registrados.</td></tr>`}
               </tbody>
             </table>
           </div>
@@ -1303,9 +1312,11 @@ const App = {
             <span class="md-chip">Lanza: ${p.throws === 'R' ? 'Derecho' : 'Zurdo'}</span>
           </div>
 
-          <div style="display:flex; gap:8px; margin-top:10px;">
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
             ${isAuthorized ? `
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEditPlayerModal(${p.id}, '${p.first_name}', '${p.last_name}', ${p.jersey_number}, '${p.position_primary}')">✏️ Editar Perfil</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showFileUploadModal('player', ${p.id}, 'Subir Foto de ${p.first_name}')">📷 Cambiar Foto</button>
+              <button class="md-btn md-btn-danger" style="padding:4px 10px; font-size:0.75rem;" onclick="App.deletePlayer(${p.id}, '${p.first_name} ${p.last_name}')">🗑️ Dar de Baja</button>
             ` : ''}
             <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEntityGalleryModal('player', ${p.id}, 'Galería de ${p.first_name}')">🖼️ Galería (Postales)</button>
           </div>
@@ -1483,24 +1494,32 @@ const App = {
         <div class="md-card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
-            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
+            <div style="display:flex; gap:6px;">
+              <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateCategoryModal()">➕ Nueva Categoría</button>
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
+            </div>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
+          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
           <table class="md-table">
             <thead>
-              <tr><th>Categoría</th><th>Código</th><th>Nivel</th></tr>
+              <tr><th>Categoría / División</th><th>Código</th><th>Acciones</th></tr>
             </thead>
             <tbody>
-              ${this.categories.map(c => `
+              ${this.categories.length ? this.categories.map(c => `
                 <tr>
                   <td style="font-weight:700;">${c.name}</td>
                   <td><span class="md-chip" style="padding:2px 6px;">${c.code}</span></td>
-                  <td>Nivel ${c.level}</td>
+                  <td>
+                    <div style="display:flex; gap:4px;">
+                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditCategoryModal(${c.id}, '${c.name}', '${c.code}')">✏️ Editar</button>
+                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteCategory(${c.id}, '${c.name}')">🗑️ Borrar</button>
+                    </div>
+                  </td>
                 </tr>
-              `).join('')}
+              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px; color:#94A3B8;">Sin categorías registradas. Puedes crear las tuyas de 0.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -1522,14 +1541,19 @@ const App = {
         <div class="md-table-wrapper" style="margin-top:12px;">
           <table class="md-table">
             <thead>
-              <tr><th>Sede</th><th>Campo / Cancha</th><th>Ubicación</th></tr>
+              <tr><th>Sede</th><th>Ubicación</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               ${stadia.length ? stadia.map(s => `
                 <tr>
                   <td style="font-weight:800;">📍 ${s.name}</td>
-                  <td style="color:#F59E0B; font-weight:700;">${s.field_name || 'Principal'}</td>
                   <td style="font-size:0.8rem; color:#94A3B8;">${s.city} • ${s.address}</td>
+                  <td>
+                    <div style="display:flex; gap:4px;">
+                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditStadiumModal(${s.id}, '${s.name}', '${s.address}')">✏️ Editar</button>
+                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteStadium(${s.id}, '${s.name}')">🗑️ Borrar</button>
+                    </div>
+                  </td>
                 </tr>
               `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin sedes registradas.</td></tr>'}
             </tbody>
@@ -1553,14 +1577,19 @@ const App = {
         <div class="md-table-wrapper" style="margin-top:12px;">
           <table class="md-table">
             <thead>
-              <tr><th>Equipo</th><th>Categoría</th><th>Sede Fija</th></tr>
+              <tr><th>Equipo</th><th>Categoría</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               ${teams.length ? teams.map(t => `
-                <tr onclick="App.showView('team_detail', ${t.id})" style="cursor:pointer;">
-                  <td style="font-weight:800;">${t.name} (${t.short_name})</td>
+                <tr>
+                  <td style="font-weight:800; cursor:pointer;" onclick="App.showView('team_detail', ${t.id})">${t.name} (${t.short_name})</td>
                   <td><span class="md-chip">${t.category_name}</span></td>
-                  <td style="font-size:0.8rem; color:#94A3B8;">${t.home_stadium_name || 'Neutral'}</td>
+                  <td>
+                    <div style="display:flex; gap:4px;">
+                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditTeamModal(${t.id}, '${t.name}', '${t.short_name}', ${t.home_stadium_id || 0})">✏️ Editar</button>
+                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteTeam(${t.id}, '${t.name}')">🗑️ Borrar</button>
+                    </div>
+                  </td>
                 </tr>
               `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin equipos registrados.</td></tr>'}
             </tbody>
@@ -2547,6 +2576,199 @@ const App = {
       }
     } catch (err) {
       this.showAlert('Error', 'Error de conexión al guardar estadísticas.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  // CATEGORY CRUD
+  async showCreateCategoryModal() {
+    const name = await this.showPrompt("Nueva Categoría / División", "Nombre de la categoría (Ej. Primera A, Segunda B, Senior):");
+    if (!name) return;
+    const code = await this.showPrompt("Código Corto", "Abreviatura (Ej. DIV1, SEN, A2):", name.substring(0, 4).toUpperCase());
+    if (!code) return;
+
+    try {
+      const res = await fetch('api/leagues.php?action=create_category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, code, season_id: this.activeSeason ? this.activeSeason.id : 1 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('✅ Categoría creada exitosamente.');
+        await this.loadLeagues();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo crear.', 'error', '#EF4444');
+      }
+    } catch(e) {
+      this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  async showEditCategoryModal(catId, currentName, currentCode) {
+    const name = await this.showPrompt("Editar Categoría", "Nuevo nombre:", currentName);
+    if (!name) return;
+    const code = await this.showPrompt("Editar Código", "Nuevo código:", currentCode);
+    if (!code) return;
+
+    try {
+      const res = await fetch('api/leagues.php?action=update_category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: catId, name, code })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Categoría actualizada.');
+        await this.loadLeagues();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo actualizar.', 'error', '#EF4444');
+      }
+    } catch(e) {}
+  },
+
+  async deleteCategory(catId, catName) {
+    const confirmDelete = await this.showConfirm("Eliminar Categoría", `¿Deseas eliminar la categoría "${catName}"?`, "delete", "#EF4444");
+    if (confirmDelete) {
+      try {
+        const res = await fetch('api/leagues.php?action=delete_category', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: catId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar('Categoría eliminada.');
+          await this.loadLeagues();
+          this.refreshCurrentView();
+        } else {
+          this.showAlert('Error', data.message || 'No se pudo eliminar la categoría.', 'warning', '#F59E0B');
+        }
+      } catch(e) {}
+    }
+  },
+
+  // STADIUM CRUD
+  async showEditStadiumModal(stadiumId, currentName, currentAddress) {
+    const name = await this.showPrompt("Editar Sede Deportiva", "Nombre de la sede:", currentName);
+    if (!name) return;
+    const address = await this.showPrompt("Editar Ubicación", "Dirección / Cancha:", currentAddress || '');
+
+    try {
+      const res = await fetch('api/leagues.php?action=update_stadium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: stadiumId, name, address })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Sede actualizada.');
+        this.refreshCurrentView();
+      }
+    } catch(e) {}
+  },
+
+  async deleteStadium(stadiumId, stadiumName) {
+    const confirmDelete = await this.showConfirm("Eliminar Sede", `¿Deseas eliminar la sede "${stadiumName}"?`, "delete", "#EF4444");
+    if (confirmDelete) {
+      try {
+        const res = await fetch('api/leagues.php?action=delete_stadium', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: stadiumId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar('Sede eliminada.');
+          this.refreshCurrentView();
+        }
+      } catch(e) {}
+    }
+  },
+
+  // TEAM CRUD
+  async showEditTeamModal(teamId, currentName, currentShort, currentStadiumId) {
+    const name = await this.showPrompt("Editar Equipo", "Nombre del equipo:", currentName);
+    if (!name) return;
+    const shortName = await this.showPrompt("Editar Abreviatura", "Identificador corto:", currentShort);
+    if (!shortName) return;
+
+    try {
+      const res = await fetch('api/teams.php?action=update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: teamId, name, short_name: shortName, home_stadium_id: currentStadiumId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Equipo actualizado.');
+        this.refreshCurrentView();
+      }
+    } catch(e) {}
+  },
+
+  async deleteTeam(teamId, teamName) {
+    const confirmDelete = await this.showConfirm("Eliminar Equipo", `¿Deseas eliminar definitivamente el equipo "${teamName}"?`, "delete", "#EF4444");
+    if (confirmDelete) {
+      try {
+        const res = await fetch('api/teams.php?action=delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: teamId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar('Equipo eliminado.');
+          this.refreshCurrentView();
+        }
+      } catch(e) {}
+    }
+  },
+
+  // PLAYER CRUD
+  async showEditPlayerModal(playerId, currentFirst, currentLast, currentJersey, currentPos) {
+    const firstName = await this.showPrompt("Editar Jugador", "Nombre:", currentFirst);
+    if (!firstName) return;
+    const lastName = await this.showPrompt("Editar Apellido", "Apellido:", currentLast);
+    if (!lastName) return;
+    const jersey = await this.showPrompt("Número de Camiseta", "Número (#):", (currentJersey || 10).toString());
+
+    try {
+      const res = await fetch('api/players.php?action=update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: playerId,
+          first_name: firstName,
+          last_name: lastName,
+          jersey_number: parseInt(jersey || currentJersey),
+          position_primary: currentPos || 'OF'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Jugador actualizado.');
+        this.refreshCurrentView();
+      }
+    } catch(e) {}
+  },
+
+  async deletePlayer(playerId, playerName) {
+    const confirmDelete = await this.showConfirm("Dar de Baja Jugador", `¿Deseas eliminar a "${playerName}" del plantel?`, "delete", "#EF4444");
+    if (confirmDelete) {
+      try {
+        const res = await fetch('api/players.php?action=delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: playerId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar('Jugador dado de baja.');
+          this.refreshCurrentView();
+        }
+      } catch(e) {}
     }
   },
 

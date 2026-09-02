@@ -29,26 +29,9 @@ if ($action === 'list') {
 
     $categories = [];
     if ($activeSeason) {
-        // Dynamic visibility gating: Only return categories that have teams or games, unless admin!
-        $isAdmin = (isset($_SESSION['user']) && in_array($_SESSION['user']['role'], ['super_admin', 'admin']));
-
-        if ($isAdmin) {
-            $stmtCat = $pdo->prepare("SELECT * FROM categories WHERE season_id = ? ORDER BY level ASC");
-            $stmtCat->execute([$activeSeason['id']]);
-            $categories = $stmtCat->fetchAll();
-        } else {
-            // Public view: only show categories with at least 1 team or game
-            $stmtCat = $pdo->prepare("
-                SELECT DISTINCT c.* 
-                FROM categories c 
-                LEFT JOIN teams t ON c.id = t.category_id 
-                LEFT JOIN games g ON c.id = g.category_id 
-                WHERE c.season_id = ? AND (t.id IS NOT NULL OR g.id IS NOT NULL)
-                ORDER BY c.level ASC
-            ");
-            $stmtCat->execute([$activeSeason['id']]);
-            $categories = $stmtCat->fetchAll();
-        }
+        $stmtCat = $pdo->prepare("SELECT * FROM categories WHERE season_id = ? ORDER BY level ASC, id ASC");
+        $stmtCat->execute([$activeSeason['id']]);
+        $categories = $stmtCat->fetchAll();
     }
 
     echo json_encode([
@@ -92,6 +75,50 @@ if ($action === 'create_stadium' && $method === 'POST') {
     exit;
 }
 
+if ($action === 'update_stadium' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+    $name = trim($input['name'] ?? '');
+    $address = trim($input['address'] ?? '');
+
+    if (!$id || empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'ID y Nombre de sede requeridos.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE stadiums SET name = ?, address = ? WHERE id = ?");
+    $stmt->execute([$name, $address, $id]);
+
+    echo json_encode(['success' => true, 'message' => 'Sede deportiva actualizada.']);
+    exit;
+}
+
+if ($action === 'delete_stadium' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID de sede requerido.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM stadiums WHERE id = ?");
+    $stmt->execute([$id]);
+
+    echo json_encode(['success' => true, 'message' => 'Sede deportiva eliminada.']);
+    exit;
+}
+
 if ($action === 'create_season' && $method === 'POST') {
     if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
         echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
@@ -113,20 +140,81 @@ if ($action === 'create_season' && $method === 'POST') {
     $stmt->execute([$name, $year]);
     $seasonId = $pdo->lastInsertId();
 
-    $defaultCategories = [
-        ['name' => 'A1 - Primera División', 'code' => 'A1', 'level' => 1],
-        ['name' => 'A2 - Segunda División', 'code' => 'A2', 'level' => 2],
-        ['name' => 'A3 - Tercera División', 'code' => 'A3', 'level' => 3],
-        ['name' => 'Infantiles', 'code' => 'INF', 'level' => 4],
-        ['name' => 'Little League', 'code' => 'LTL', 'level' => 5],
-    ];
+    echo json_encode(['success' => true, 'season_id' => $seasonId, 'message' => 'Temporada creada exitosamente.']);
+    exit;
+}
 
-    $stmtCat = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)");
-    foreach ($defaultCategories as $cat) {
-        $stmtCat->execute([$seasonId, $cat['name'], $cat['code'], $cat['level']]);
+if ($action === 'create_category' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
     }
 
-    echo json_encode(['success' => true, 'season_id' => $seasonId, 'message' => 'Temporada creada exitosamente con sus categorías.']);
+    $input = json_decode(file_get_contents('php://input'), true);
+    $name = trim($input['name'] ?? '');
+    $code = trim($input['code'] ?? strtoupper(substr($name, 0, 4)));
+    $seasonId = intval($input['season_id'] ?? 0);
+
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Nombre de categoría requerido.']);
+        exit;
+    }
+
+    if (!$seasonId) {
+        $stmtSeason = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1");
+        $seasonId = $stmtSeason->fetchColumn() ?: 1;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, 1)");
+    $stmt->execute([$seasonId, $name, $code]);
+    $catId = $pdo->lastInsertId();
+
+    echo json_encode(['success' => true, 'category_id' => $catId, 'message' => 'Categoría / División creada.']);
+    exit;
+}
+
+if ($action === 'update_category' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+    $name = trim($input['name'] ?? '');
+    $code = trim($input['code'] ?? '');
+
+    if (!$id || empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'ID y Nombre de categoría requeridos.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE categories SET name = ?, code = ? WHERE id = ?");
+    $stmt->execute([$name, $code, $id]);
+
+    echo json_encode(['success' => true, 'message' => 'Categoría actualizada exitosamente.']);
+    exit;
+}
+
+if ($action === 'delete_category' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID de categoría requerido.']);
+        exit;
+    }
+
+    // Delete category
+    $stmt = $pdo->prepare("DELETE FROM categories WHERE id = ?");
+    $stmt->execute([$id]);
+
+    echo json_encode(['success' => true, 'message' => 'Categoría / División eliminada.']);
     exit;
 }
 
