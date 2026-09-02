@@ -26,7 +26,7 @@ session_start();
   
   <link rel="manifest" href="assets/manifest.json">
   <link rel="icon" type="image/png" href="assets/images/lmb_logo.png">
-  <link rel="stylesheet" href="assets/css/material-theme.css?v=3.0">
+  <link rel="stylesheet" href="assets/css/material-theme.css?v=<?= time() ?>">
 </head>
 <body>
 
@@ -291,9 +291,9 @@ session_start();
 
 
   <!-- Scripts -->
-  <script src="assets/js/offline-sync.js?v=3.0"></script>
-  <script src="assets/js/live-scorer.js?v=3.0"></script>
-  <script src="assets/js/app.js?v=3.0"></script>
+  <script src="assets/js/offline-sync.js?v=<?= time() ?>"></script>
+  <script src="assets/js/live-scorer.js?v=<?= time() ?>"></script>
+  <script src="assets/js/app.js?v=<?= time() ?>"></script>
 
   <script>
     // Enforce 100% Real-Time Database Mode: Purge all local cache storage & unregister stale workers
