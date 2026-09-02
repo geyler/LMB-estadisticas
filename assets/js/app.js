@@ -520,9 +520,7 @@ const App = {
               <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
                   <span class="text-truncate">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
-                  <span class="md-chip ${g.status === 'live' ? 'active' : ''}" style="padding:2px 8px; font-size:0.65rem;">
-                    ${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}
-                  </span>
+                  ${App.getStatusBadge(g.status)}
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
@@ -530,7 +528,7 @@ const App = {
                     <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
                     <div style="font-weight:700; font-size:0.95rem;" class="text-truncate">${g.away_team_name}</div>
                   </div>
-                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
+                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -538,7 +536,7 @@ const App = {
                     <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
                     <div style="font-weight:700; font-size:0.95rem;" class="text-truncate">${g.home_team_name}</div>
                   </div>
-                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
+                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
                 </div>
               </div>
             `).join('') : `
@@ -662,6 +660,25 @@ const App = {
     }
   },
 
+  getStatusBadge(status) {
+    switch (status) {
+      case 'scheduled':
+        return `<span class="md-badge badge-scheduled">📅 Programado</span>`;
+      case 'live':
+        return `<span class="md-badge badge-live">🔴 EN VIVO</span>`;
+      case 'delayed':
+        return `<span class="md-badge badge-delayed">⏳ Retrasado</span>`;
+      case 'awaiting_data':
+        return `<span class="md-badge badge-awaiting">📝 Esperando datos</span>`;
+      case 'finished':
+        return `<span class="md-badge badge-finished">🏁 Finalizado</span>`;
+      case 'cancelled':
+        return `<span class="md-badge badge-cancelled">❌ Cancelado</span>`;
+      default:
+        return `<span class="md-badge badge-scheduled">${(status || 'programado').toUpperCase()}</span>`;
+    }
+  },
+
   renderScorebugCarousel(games) {
     const scorebug = document.getElementById('scorebug-carousel');
     if (!scorebug) return;
@@ -675,21 +692,21 @@ const App = {
       <div class="scorebug-card ${g.status === 'live' ? 'live' : ''}" onclick="App.showView('game_detail', ${g.id})">
         <div class="scorebug-status">
           <span class="text-truncate">${g.category_code} • ${g.stadium_field || 'Cancha 1'}</span>
-          ${g.status === 'live' ? '<span class="live-tag">● EN VIVO</span>' : (g.status === 'finished' ? 'FINAL' : 'PROX')}
+          ${App.getStatusBadge(g.status)}
         </div>
         <div class="scorebug-team-row">
           <div class="scorebug-team-name text-truncate">
             <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
             <span class="text-truncate">${g.away_short}</span>
           </div>
-          <div class="scorebug-score">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
+          <div class="scorebug-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
         </div>
         <div class="scorebug-team-row">
           <div class="scorebug-team-name text-truncate">
             <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
             <span class="text-truncate">${g.home_short}</span>
           </div>
-          <div class="scorebug-score">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
+          <div class="scorebug-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
         </div>
       </div>
     `).join('');
@@ -702,37 +719,45 @@ const App = {
     const res = await fetch(`api/games.php?action=list&category_id=${this.currentCategory}`);
     const data = await res.json();
     const games = data.games || [];
+    const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
 
     let html = `
       <div class="view-content">
         <div class="section-header">
           <h2 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">calendar_month</span> Calendario de Partidos</h2>
-          ${(this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role)) ? 
+          ${canEdit ? 
             `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
         </div>
 
         ${games.length ? games.map(g => `
-          <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
-            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94A3B8;">
+          <div class="md-card md-card-interactive">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
               <span class="text-truncate">${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')} ${new Date(g.game_date).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})} hs</span>
-              <span class="md-chip ${g.status === 'live' ? 'active' : ''}">${g.status === 'live' ? '🔴 EN VIVO' : (g.status === 'finished' ? 'FINAL' : 'PROGRAMADO')}</span>
+              ${App.getStatusBadge(g.status)}
             </div>
 
-            <div style="display:flex; justify-content:space-around; align-items:center; margin:12px 0;">
+            <div style="display:flex; justify-content:space-around; align-items:center; margin:12px 0;" onclick="App.showView('game_detail', ${g.id})">
               <div style="text-align:center;" class="text-truncate">
                 <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
                 <div style="font-weight:800; font-size:1rem; margin-top:4px;" class="text-truncate">${g.away_team_name}</div>
-                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.away_score : '-'}</div>
+                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
               </div>
               <div style="font-size:1.1rem; font-weight:800; color:#64748B;">VS</div>
               <div style="text-align:center;" class="text-truncate">
                 <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
                 <div style="font-weight:800; font-size:1rem; margin-top:4px;" class="text-truncate">${g.home_team_name}</div>
-                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${g.status !== 'scheduled' ? g.home_score : '-'}</div>
+                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
               </div>
             </div>
 
             <div style="font-size:0.75rem; color:#94A3B8; text-align:center;" class="text-truncate">📍 Sede: ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+
+            ${canEdit ? `
+              <div style="display:flex; gap:6px; margin-top:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
+                <button class="md-btn md-btn-outlined" style="flex:1; padding:4px 8px; font-size:0.72rem;" onclick="event.stopPropagation(); App.openGameResultModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️ Cargar Resultado / Estado</button>
+                <button class="md-btn md-btn-outlined" style="flex:1; padding:4px 8px; font-size:0.72rem;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">🧢 Estadísticas Jugadores</button>
+              </div>
+            ` : ''}
           </div>
         `).join('') : `
           <div class="md-card" style="text-align:center; padding:24px;">
@@ -779,7 +804,7 @@ const App = {
             </div>
 
             <div>
-              <span class="md-chip ${g.status === 'live' ? 'active' : ''}">${g.status === 'live' ? '🔴 EN VIVO' : 'FINAL'}</span>
+              ${App.getStatusBadge(g.status)}
             </div>
 
             <div style="text-align:center;" onclick="App.showView('team_detail', ${g.home_team_id})">
@@ -789,12 +814,29 @@ const App = {
             </div>
           </div>
 
+          ${g.recap_notes ? `
+            <div style="background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; font-size:0.8rem; color:#94A3B8; margin-bottom:8px;" class="text-wrap-safe">
+              📝 ${g.recap_notes}
+            </div>
+          ` : ''}
+
           ${canEdit ? `
-            <button class="md-btn md-btn-gold" style="width:100%; margin-top:8px;" onclick="LiveScorer.init(${JSON.stringify(data).replace(/"/g, '&quot;')})">
-              ⚾ Ir al Anotador en Vivo (Momento a Momento)
-            </button>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+              <div style="display:flex; gap:6px;">
+                <button class="md-btn md-btn-outlined" style="flex:1; font-size:0.75rem;" onclick="App.openGameResultModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
+                  ✏️ Editar Resultado y Estado
+                </button>
+                <button class="md-btn md-btn-outlined" style="flex:1; font-size:0.75rem;" onclick="App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
+                  🧢 Cargar Stats Jugadores
+                </button>
+              </div>
+              <button class="md-btn md-btn-gold" style="width:100%; font-size:0.8rem;" onclick="LiveScorer.init(${JSON.stringify(data).replace(/"/g, '&quot;')})">
+                ⚾ Abrir Anotador en Vivo (Jugada por Jugada)
+              </button>
+            </div>
           ` : ''}
         </div>
+
 
         <!-- Inning Line Score Table -->
         <div class="view-section">
@@ -1701,7 +1743,314 @@ const App = {
     setTimeout(() => { bar.style.display = 'none'; }, 3000);
   },
 
+  openGameResultModal(game) {
+    this.editingGame = game;
+    document.getElementById('gr-game-id').value = game.id;
+    document.getElementById('gr-status').value = game.status || 'finished';
+    document.getElementById('gr-away-team-label').innerText = game.away_team_name || 'Visitante';
+    document.getElementById('gr-home-team-label').innerText = game.home_team_name || 'Local';
+    document.getElementById('gr-away-score').value = game.away_score || 0;
+    document.getElementById('gr-home-score').value = game.home_score || 0;
+    document.getElementById('gr-away-hits').value = game.away_hits || 0;
+    document.getElementById('gr-home-hits').value = game.home_hits || 0;
+    document.getElementById('gr-away-errors').value = game.away_errors || 0;
+    document.getElementById('gr-home-errors').value = game.home_errors || 0;
+    document.getElementById('gr-recap-notes').value = game.recap_notes || '';
+
+    const modal = document.getElementById('game-result-modal');
+    if (modal) modal.classList.add('open');
+  },
+
+  closeGameResultModal() {
+    const modal = document.getElementById('game-result-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveGameResult(e) {
+    e.preventDefault();
+    const gameId = document.getElementById('gr-game-id').value;
+    const status = document.getElementById('gr-status').value;
+    const awayScore = document.getElementById('gr-away-score').value;
+    const homeScore = document.getElementById('gr-home-score').value;
+    const awayHits = document.getElementById('gr-away-hits').value;
+    const homeHits = document.getElementById('gr-home-hits').value;
+    const awayErrors = document.getElementById('gr-away-errors').value;
+    const homeErrors = document.getElementById('gr-home-errors').value;
+    const recapNotes = document.getElementById('gr-recap-notes').value;
+
+    try {
+      const res = await fetch('api/games.php?action=update_result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: gameId,
+          status,
+          away_score: awayScore,
+          home_score: homeScore,
+          away_hits: awayHits,
+          home_hits: homeHits,
+          away_errors: awayErrors,
+          home_errors: homeErrors,
+          recap_notes: recapNotes
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.closeGameResultModal();
+        this.showSnackbar(data.message || 'Resultado guardado correctamente.');
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Atención', data.message || 'Error al guardar resultado.', 'error', '#EF4444');
+      }
+    } catch (err) {
+      this.showAlert('Error', 'Error de conexión al guardar resultado.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  async openManualStatsModal(game) {
+    this.currentManualGame = game;
+    this.currentManualTeamKey = 'away';
+
+    try {
+      const [resAway, resHome, resDetail] = await Promise.all([
+        fetch(`api/players.php?action=list&team_id=${game.away_team_id}`),
+        fetch(`api/players.php?action=list&team_id=${game.home_team_id}`),
+        fetch(`api/games.php?action=detail&id=${game.id}`)
+      ]);
+
+      const dataAway = await resAway.json();
+      const dataHome = await resHome.json();
+      const dataDetail = await resDetail.json();
+
+      this.awayRoster = dataAway.players || [];
+      this.homeRoster = dataHome.players || [];
+      this.manualGameDetail = dataDetail;
+
+      const modal = document.getElementById('manual-stats-modal');
+      if (modal) modal.classList.add('open');
+
+      this.switchManualStatsTeam('away');
+    } catch (e) {
+      this.showAlert('Error', 'No se pudieron obtener las plantillas para estadísticas.', 'warning', '#EF4444');
+    }
+  },
+
+  closeManualStatsModal() {
+    const modal = document.getElementById('manual-stats-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  switchManualStatsTeam(teamKey) {
+    this.currentManualTeamKey = teamKey;
+    const tabAway = document.getElementById('ms-tab-away');
+    const tabHome = document.getElementById('ms-tab-home');
+
+    if (teamKey === 'away') {
+      if (tabAway) { tabAway.className = 'md-btn md-btn-primary'; tabAway.innerText = `Visitante: ${this.currentManualGame.away_short || 'Visitante'}`; }
+      if (tabHome) { tabHome.className = 'md-btn md-btn-outlined'; tabHome.innerText = `Local: ${this.currentManualGame.home_short || 'Local'}`; }
+    } else {
+      if (tabAway) { tabAway.className = 'md-btn md-btn-outlined'; tabAway.innerText = `Visitante: ${this.currentManualGame.away_short || 'Visitante'}`; }
+      if (tabHome) { tabHome.className = 'md-btn md-btn-primary'; tabHome.innerText = `Local: ${this.currentManualGame.home_short || 'Local'}`; }
+    }
+
+    this.renderManualStatsContent();
+  },
+
+  renderManualStatsContent() {
+    const body = document.getElementById('manual-stats-body');
+    if (!body || !this.currentManualGame) return;
+
+    const isAway = (this.currentManualTeamKey === 'away');
+    const teamId = isAway ? this.currentManualGame.away_team_id : this.currentManualGame.home_team_id;
+    const teamName = isAway ? this.currentManualGame.away_team_name : this.currentManualGame.home_team_name;
+    const roster = isAway ? this.awayRoster : this.homeRoster;
+    const existingBat = isAway ? (this.manualGameDetail?.away_batters || []) : (this.manualGameDetail?.home_batters || []);
+    const existingPitch = isAway ? (this.manualGameDetail?.away_pitchers || []) : (this.manualGameDetail?.home_pitchers || []);
+
+    if (!roster || !roster.length) {
+      body.innerHTML = `
+        <div class="md-card" style="text-align:center; padding:16px;">
+          <div style="font-weight:700;">No hay jugadores registrados en el plantel de ${teamName}</div>
+          <div style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Agrega jugadores al equipo desde la vista Equipos para cargar sus estadísticas.</div>
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <div style="font-size:0.85rem; font-weight:800; color:#F59E0B;" class="text-truncate">
+        Plantel: ${teamName} (${roster.length} jugadores)
+      </div>
+
+      <!-- BATTING STATS FORM TABLE -->
+      <div class="md-card">
+        <div style="font-weight:800; font-size:0.85rem; color:#FFFFFF; margin-bottom:6px;">📊 Estadísticas de Bateo (Ofensiva)</div>
+        <div class="md-table-wrapper" style="border:none;">
+          <table class="md-table">
+            <thead>
+              <tr>
+                <th>Jugador</th>
+                <th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th><th>BR</th><th>E</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${roster.map(p => {
+                const ex = existingBat.find(b => b.player_id == p.id) || {};
+                return `
+                  <tr>
+                    <td style="font-weight:700;" class="text-truncate">
+                      #${p.jersey_number} ${p.first_name} ${p.last_name}
+                      <input type="hidden" class="ms-bat-player-id" value="${p.id}">
+                    </td>
+                    <td><input type="number" min="0" class="form-control ms-bat-ab" style="padding:4px; width:45px; text-align:center;" value="${ex.ab || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-r" style="padding:4px; width:45px; text-align:center;" value="${ex.r || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-h" style="padding:4px; width:45px; text-align:center;" value="${ex.h || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-doubles" style="padding:4px; width:40px; text-align:center;" value="${ex.doubles || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-triples" style="padding:4px; width:40px; text-align:center;" value="${ex.triples || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-hr" style="padding:4px; width:40px; text-align:center;" value="${ex.hr || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-rbi" style="padding:4px; width:45px; text-align:center;" value="${ex.rbi || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-bb" style="padding:4px; width:40px; text-align:center;" value="${ex.bb || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-so" style="padding:4px; width:40px; text-align:center;" value="${ex.so || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-sb" style="padding:4px; width:40px; text-align:center;" value="${ex.sb || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-bat-e" style="padding:4px; width:40px; text-align:center;" value="${ex.e || 0}"></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PITCHING STATS FORM TABLE -->
+      <div class="md-card">
+        <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; margin-bottom:6px;">⚾ Estadísticas de Pitcheo (Lanzadores)</div>
+        <div class="md-table-wrapper" style="border:none;">
+          <table class="md-table">
+            <thead>
+              <tr>
+                <th>Lanzador</th>
+                <th>Outs (3=1IP)</th><th>H</th><th>C</th><th>CL (ER)</th><th>BB</th><th>SO</th><th>Decisión</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${roster.map(p => {
+                const ex = existingPitch.find(pt => pt.player_id == p.id) || {};
+                return `
+                  <tr>
+                    <td style="font-weight:700;" class="text-truncate">
+                      #${p.jersey_number} ${p.first_name} ${p.last_name}
+                      <input type="hidden" class="ms-pitch-player-id" value="${p.id}">
+                    </td>
+                    <td><input type="number" min="0" class="form-control ms-pitch-outs" style="padding:4px; width:50px; text-align:center;" value="${ex.ip_outs || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-pitch-h" style="padding:4px; width:45px; text-align:center;" value="${ex.h || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-pitch-r" style="padding:4px; width:45px; text-align:center;" value="${ex.r || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-pitch-er" style="padding:4px; width:45px; text-align:center;" value="${ex.er || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-pitch-bb" style="padding:4px; width:40px; text-align:center;" value="${ex.bb || 0}"></td>
+                    <td><input type="number" min="0" class="form-control ms-pitch-so" style="padding:4px; width:40px; text-align:center;" value="${ex.so || 0}"></td>
+                    <td>
+                      <select class="form-control ms-pitch-decision" style="padding:4px; width:70px; font-size:0.75rem;">
+                        <option value="NONE" ${ex.decision === 'NONE' ? 'selected' : ''}>-</option>
+                        <option value="W" ${ex.decision === 'W' ? 'selected' : ''}>G (W)</option>
+                        <option value="L" ${ex.decision === 'L' ? 'selected' : ''}>P (L)</option>
+                        <option value="SV" ${ex.decision === 'SV' ? 'selected' : ''}>S (SV)</option>
+                        <option value="H" ${ex.decision === 'H' ? 'selected' : ''}>H (Hold)</option>
+                      </select>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <button class="md-btn md-btn-gold" style="width:100%; margin-top:4px;" onclick="App.handleSaveManualStats()">
+        💾 Guardar Estadísticas del Equipo ${teamName}
+      </button>
+    `;
+
+    body.innerHTML = html;
+  },
+
+  async handleSaveManualStats() {
+    if (!this.currentManualGame) return;
+
+    const isAway = (this.currentManualTeamKey === 'away');
+    const teamId = isAway ? this.currentManualGame.away_team_id : this.currentManualGame.home_team_id;
+
+    // Collect Batting Stats
+    const battingStats = [];
+    document.querySelectorAll('.ms-bat-player-id').forEach(el => {
+      const row = el.closest('tr');
+      const pId = el.value;
+      const ab = parseInt(row.querySelector('.ms-bat-ab')?.value || 0);
+      const r = parseInt(row.querySelector('.ms-bat-r')?.value || 0);
+      const h = parseInt(row.querySelector('.ms-bat-h')?.value || 0);
+      const doubles = parseInt(row.querySelector('.ms-bat-doubles')?.value || 0);
+      const triples = parseInt(row.querySelector('.ms-bat-triples')?.value || 0);
+      const hr = parseInt(row.querySelector('.ms-bat-hr')?.value || 0);
+      const rbi = parseInt(row.querySelector('.ms-bat-rbi')?.value || 0);
+      const bb = parseInt(row.querySelector('.ms-bat-bb')?.value || 0);
+      const so = parseInt(row.querySelector('.ms-bat-so')?.value || 0);
+      const sb = parseInt(row.querySelector('.ms-bat-sb')?.value || 0);
+      const e = parseInt(row.querySelector('.ms-bat-e')?.value || 0);
+
+      if (ab > 0 || r > 0 || h > 0 || rbi > 0 || bb > 0 || so > 0 || e > 0) {
+        battingStats.push({
+          player_id: pId,
+          ab, r, h, singles: Math.max(0, h - doubles - triples - hr), doubles, triples, hr, rbi, bb, so, sb, e
+        });
+      }
+    });
+
+    // Collect Pitching Stats
+    const pitchingStats = [];
+    document.querySelectorAll('.ms-pitch-player-id').forEach(el => {
+      const row = el.closest('tr');
+      const pId = el.value;
+      const ip_outs = parseInt(row.querySelector('.ms-pitch-outs')?.value || 0);
+      const h = parseInt(row.querySelector('.ms-pitch-h')?.value || 0);
+      const r = parseInt(row.querySelector('.ms-pitch-r')?.value || 0);
+      const er = parseInt(row.querySelector('.ms-pitch-er')?.value || 0);
+      const bb = parseInt(row.querySelector('.ms-pitch-bb')?.value || 0);
+      const so = parseInt(row.querySelector('.ms-pitch-so')?.value || 0);
+      const decision = row.querySelector('.ms-pitch-decision')?.value || 'NONE';
+
+      if (ip_outs > 0 || h > 0 || r > 0 || er > 0 || bb > 0 || so > 0 || decision !== 'NONE') {
+        pitchingStats.push({
+          player_id: pId,
+          ip_outs, h, r, er, bb, so, decision
+        });
+      }
+    });
+
+    try {
+      const res = await fetch('api/games.php?action=save_manual_stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          game_id: this.currentManualGame.id,
+          team_id: teamId,
+          batting_stats: battingStats,
+          pitching_stats: pitchingStats
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || 'Estadísticas guardadas con éxito.');
+        const resDetail = await fetch(`api/games.php?action=detail&id=${this.currentManualGame.id}`);
+        this.manualGameDetail = await resDetail.json();
+        this.renderManualStatsContent();
+      } else {
+        this.showAlert('Atención', data.message || 'Error al guardar estadísticas.', 'error', '#EF4444');
+      }
+    } catch (err) {
+      this.showAlert('Error', 'Error de conexión al guardar estadísticas.', 'wifi_off', '#EF4444');
+    }
+  },
+
   setupEventListeners() {}
+
 };
 
 document.addEventListener('DOMContentLoaded', () => {

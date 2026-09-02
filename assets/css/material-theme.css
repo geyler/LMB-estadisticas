@@ -56,7 +56,7 @@ body {
   line-height: 1.4;
 }
 
-/* Strict Text Truncation Rule */
+/* Strict Text Truncation & Overflow Safety Rules */
 .text-truncate {
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -73,6 +73,47 @@ body {
   vertical-align: middle;
   max-width: 120px;
 }
+
+.text-wrap-safe {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  hyphens: auto;
+}
+
+/* Ensure flex children shrink properly without text overflow */
+div, span, p, h1, h2, h3, h4, h5, th, td, button, label, input, select {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Status Badges */
+.md-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge-scheduled { background: rgba(59, 130, 246, 0.15); color: #60A5FA; border-color: rgba(59, 130, 246, 0.4); }
+.badge-live { background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border-color: #EF4444; animation: pulse-live 1.5s infinite; }
+.badge-delayed { background: rgba(245, 158, 11, 0.2); color: #FCD34D; border-color: #F59E0B; }
+.badge-awaiting { background: rgba(168, 85, 247, 0.2); color: #E9D5FF; border-color: #A855F7; }
+.badge-finished { background: rgba(16, 185, 129, 0.2); color: #6EE7B7; border-color: #10B981; }
+.badge-cancelled { background: rgba(100, 116, 139, 0.2); color: #CBD5E1; border-color: #64748B; }
+
+@keyframes pulse-live {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
 
 /* Master Outer Container (Max 768px Fluid) */
 #app-container {

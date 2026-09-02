@@ -192,23 +192,103 @@ session_start();
       </div>
     </div>
 
-    <!-- Custom HTML Alert & Confirmation Dialog Overlay (NO native alert/confirm) -->
-    <div id="custom-alert-modal" class="md-modal-backdrop" style="z-index: 1000;">
-      <div class="md-card" style="max-width: 400px; width: calc(100% - 32px); padding: 24px 20px; background: #0F172A; border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); text-align: center; margin: auto; position: relative;">
-        <div style="margin-bottom: 12px;">
-          <span id="custom-alert-icon" class="material-icons-round" style="font-size: 48px; color: #F59E0B;">info</span>
-        </div>
-        <h3 id="custom-alert-title" style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">Aviso</h3>
-        <div id="custom-alert-message" style="font-size: 0.88rem; color: #94A3B8; line-height: 1.4; margin-bottom: 20px;">Mensaje de alerta</div>
+    <!-- Direct Match Result & Status Modal -->
+    <div id="game-result-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet">
+        <div class="sheet-handle" onclick="App.closeGameResultModal()"></div>
         
-        <div style="display: flex; gap: 10px; justify-content: center;">
-          <button id="custom-alert-cancel-btn" class="md-btn md-btn-outlined" style="display: none; flex: 1; padding: 10px;" onclick="App.closeCustomAlert(false)">Cancelar</button>
-          <button id="custom-alert-ok-btn" class="md-btn md-btn-primary" style="flex: 1; padding: 10px;" onclick="App.closeCustomAlert(true)">Aceptar</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">edit_note</span> Cargar Resultado y Estado del Partido
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeGameResultModal()">✕</button>
+        </div>
+
+        <form id="game-result-form" onsubmit="App.handleSaveGameResult(event)" style="display:flex; flex-direction:column; gap:10px;">
+          <input type="hidden" id="gr-game-id">
+          
+          <div class="form-group">
+            <label style="color:#F59E0B; font-weight:800;">Estado del Partido</label>
+            <select id="gr-status" class="form-control" style="background:#0F172A; font-weight:700;">
+              <option value="scheduled">📅 Programado</option>
+              <option value="live">🔴 En Vivo</option>
+              <option value="delayed">⏳ Retrasado</option>
+              <option value="awaiting_data">📝 Esperando datos</option>
+              <option value="finished">🏁 Finalizado</option>
+              <option value="cancelled">❌ Cancelado</option>
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(255,255,255,0.03); padding:10px; border-radius:12px;">
+            <div style="text-align:center;">
+              <div id="gr-away-team-label" style="font-weight:800; color:#F59E0B; font-size:0.85rem;" class="text-truncate">Visitante</div>
+              <div class="form-group" style="margin-top:6px;">
+                <label>Carreras (C)</label>
+                <input type="number" id="gr-away-score" class="form-control" min="0" value="0" style="text-align:center; font-size:1.1rem; font-weight:800;">
+              </div>
+              <div class="form-group" style="margin-top:4px;">
+                <label>Hits (H)</label>
+                <input type="number" id="gr-away-hits" class="form-control" min="0" value="0" style="text-align:center;">
+              </div>
+              <div class="form-group" style="margin-top:4px;">
+                <label>Errores (E)</label>
+                <input type="number" id="gr-away-errors" class="form-control" min="0" value="0" style="text-align:center;">
+              </div>
+            </div>
+
+            <div style="text-align:center;">
+              <div id="gr-home-team-label" style="font-weight:800; color:#3B82F6; font-size:0.85rem;" class="text-truncate">Local</div>
+              <div class="form-group" style="margin-top:6px;">
+                <label>Carreras (C)</label>
+                <input type="number" id="gr-home-score" class="form-control" min="0" value="0" style="text-align:center; font-size:1.1rem; font-weight:800;">
+              </div>
+              <div class="form-group" style="margin-top:4px;">
+                <label>Hits (H)</label>
+                <input type="number" id="gr-home-hits" class="form-control" min="0" value="0" style="text-align:center;">
+              </div>
+              <div class="form-group" style="margin-top:4px;">
+                <label>Errores (E)</label>
+                <input type="number" id="gr-home-errors" class="form-control" min="0" value="0" style="text-align:center;">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Notas / Resumen del Partido</label>
+            <textarea id="gr-recap-notes" class="form-control" rows="2" placeholder="Comentarios del partido, incidencias o motivo de retraso..."></textarea>
+          </div>
+
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%; margin-top:4px;">💾 Guardar Resultado y Estado</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Manual Player Stats Entry Modal -->
+    <div id="manual-stats-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-height: 92vh;">
+        <div class="sheet-handle" onclick="App.closeManualStatsModal()"></div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;" class="text-truncate">
+            <span class="material-icons-round" style="color:#10B981;">groups</span> Estadísticas Individuales de Jugadores
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeManualStatsModal()">✕</button>
+        </div>
+
+        <!-- Team Selector Tabs for Manual Stats -->
+        <div style="display:flex; gap:8px; margin-bottom:4px;">
+          <button id="ms-tab-away" class="md-btn md-btn-primary" style="flex:1; font-size:0.8rem;" onclick="App.switchManualStatsTeam('away')">Visitante</button>
+          <button id="ms-tab-home" class="md-btn md-btn-outlined" style="flex:1; font-size:0.8rem;" onclick="App.switchManualStatsTeam('home')">Local</button>
+        </div>
+
+        <div id="manual-stats-body" style="display:flex; flex-direction:column; gap:12px;">
+          <!-- Injected dynamically by App.renderManualStatsContent -->
         </div>
       </div>
     </div>
 
   </div>
+
 
   <!-- Scripts -->
   <script src="assets/js/offline-sync.js?v=3.0"></script>

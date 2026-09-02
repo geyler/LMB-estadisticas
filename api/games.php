@@ -229,6 +229,160 @@ if ($action === 'update' && $method === 'POST') {
     exit;
 }
 
+// Update Direct Game Result & Status
+if ($action === 'update_result' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'scorekeeper', 'team_admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $gameId = intval($input['id'] ?? 0);
+    $status = trim($input['status'] ?? 'finished');
+    $homeScore = intval($input['home_score'] ?? 0);
+    $awayScore = intval($input['away_score'] ?? 0);
+    $homeHits = intval($input['home_hits'] ?? 0);
+    $awayHits = intval($input['away_hits'] ?? 0);
+    $homeErrors = intval($input['home_errors'] ?? 0);
+    $awayErrors = intval($input['away_errors'] ?? 0);
+    $recapNotes = trim($input['recap_notes'] ?? '');
+    $winningPitcherId = !empty($input['winning_pitcher_id']) ? intval($input['winning_pitcher_id']) : null;
+    $losingPitcherId = !empty($input['losing_pitcher_id']) ? intval($input['losing_pitcher_id']) : null;
+    $savingPitcherId = !empty($input['saving_pitcher_id']) ? intval($input['saving_pitcher_id']) : null;
+    $mvpPlayerId = !empty($input['mvp_player_id']) ? intval($input['mvp_player_id']) : null;
+
+    if (!$gameId) {
+        echo json_encode(['success' => false, 'message' => 'ID de partido requerido.']);
+        exit;
+    }
+
+    $allowedStatuses = ['scheduled', 'live', 'delayed', 'awaiting_data', 'finished', 'cancelled'];
+    if (!in_array($status, $allowedStatuses)) {
+        $status = 'finished';
+    }
+
+    $stmt = $pdo->prepare("UPDATE games SET 
+        status = ?, 
+        home_score = ?, 
+        away_score = ?, 
+        home_hits = ?, 
+        away_hits = ?, 
+        home_errors = ?, 
+        away_errors = ?, 
+        recap_notes = ?, 
+        winning_pitcher_id = ?, 
+        losing_pitcher_id = ?, 
+        saving_pitcher_id = ?, 
+        mvp_player_id = ? 
+        WHERE id = ?");
+    $stmt->execute([
+        $status, 
+        $homeScore, 
+        $awayScore, 
+        $homeHits, 
+        $awayHits, 
+        $homeErrors, 
+        $awayErrors, 
+        $recapNotes, 
+        $winningPitcherId, 
+        $losingPitcherId, 
+        $savingPitcherId, 
+        $mvpPlayerId, 
+        $gameId
+    ]);
+
+    echo json_encode(['success' => true, 'message' => 'Resultado y estado del partido guardados exitosamente.']);
+    exit;
+}
+
+// Save Player Stats Separately (Manual Boxscore Entry)
+if ($action === 'save_manual_stats' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'scorekeeper', 'team_admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $gameId = intval($input['game_id'] ?? 0);
+    $teamId = intval($input['team_id'] ?? 0);
+    $battingStats = $input['batting_stats'] ?? [];
+    $pitchingStats = $input['pitching_stats'] ?? [];
+
+    if (!$gameId || !$teamId) {
+        echo json_encode(['success' => false, 'message' => 'ID de partido y equipo requeridos.']);
+        exit;
+    }
+
+    // Process Batting Stats
+    if (!empty($battingStats) && is_array($battingStats)) {
+        foreach ($battingStats as $b) {
+            $playerId = intval($b['player_id'] ?? 0);
+            if (!$playerId) continue;
+
+            $ab = intval($b['ab'] ?? 0);
+            $r = intval($b['r'] ?? 0);
+            $h = intval($b['h'] ?? 0);
+            $singles = intval($b['singles'] ?? 0);
+            $doubles = intval($b['doubles'] ?? 0);
+            $triples = intval($b['triples'] ?? 0);
+            $hr = intval($b['hr'] ?? 0);
+            $rbi = intval($b['rbi'] ?? 0);
+            $bb = intval($b['bb'] ?? 0);
+            $so = intval($b['so'] ?? 0);
+            $sb = intval($b['sb'] ?? 0);
+            $e = intval($b['e'] ?? 0);
+            $pos = trim($b['position'] ?? 'DH');
+
+            // Check existing
+            $stmtCheck = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+            $stmtCheck->execute([$gameId, $playerId]);
+            $existing = $stmtCheck->fetch();
+
+            if ($existing) {
+                $pdo->prepare("UPDATE game_batting_stats SET team_id = ?, position = ?, ab = ?, r = ?, h = ?, singles = ?, doubles = ?, triples = ?, hr = ?, rbi = ?, bb = ?, so = ?, sb = ?, e = ? WHERE id = ?")
+                    ->execute([$teamId, $pos, $ab, $r, $h, $singles, $doubles, $triples, $hr, $rbi, $bb, $so, $sb, $e, $existing['id']]);
+            } else {
+                $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, position, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, e) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                    ->execute([$gameId, $teamId, $playerId, $pos, $ab, $r, $h, $singles, $doubles, $triples, $hr, $rbi, $bb, $so, $sb, $e]);
+            }
+        }
+    }
+
+    // Process Pitching Stats
+    if (!empty($pitchingStats) && is_array($pitchingStats)) {
+        foreach ($pitchingStats as $p) {
+            $playerId = intval($p['player_id'] ?? 0);
+            if (!$playerId) continue;
+
+            $ipOuts = intval($p['ip_outs'] ?? 0);
+            $h = intval($p['h'] ?? 0);
+            $r = intval($p['r'] ?? 0);
+            $er = intval($p['er'] ?? 0);
+            $bb = intval($p['bb'] ?? 0);
+            $so = intval($p['so'] ?? 0);
+            $hr = intval($p['hr'] ?? 0);
+            $isStarter = !empty($p['is_starter']) ? 1 : 0;
+            $decision = trim($p['decision'] ?? 'NONE');
+
+            // Check existing
+            $stmtCheck = $pdo->prepare("SELECT id FROM game_pitching_stats WHERE game_id = ? AND player_id = ?");
+            $stmtCheck->execute([$gameId, $playerId]);
+            $existing = $stmtCheck->fetch();
+
+            if ($existing) {
+                $pdo->prepare("UPDATE game_pitching_stats SET team_id = ?, ip_outs = ?, h = ?, r = ?, er = ?, bb = ?, so = ?, hr = ?, is_starter = ?, decision = ? WHERE id = ?")
+                    ->execute([$teamId, $ipOuts, $h, $r, $er, $bb, $so, $hr, $isStarter, $decision, $existing['id']]);
+            } else {
+                $pdo->prepare("INSERT INTO game_pitching_stats (game_id, team_id, player_id, ip_outs, h, r, er, bb, so, hr, is_starter, decision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                    ->execute([$gameId, $teamId, $playerId, $ipOuts, $h, $r, $er, $bb, $so, $hr, $isStarter, $decision]);
+            }
+        }
+    }
+
+    echo json_encode(['success' => true, 'message' => 'Estadísticas de jugadores cargadas correctamente.']);
+    exit;
+}
+
 // Delete Game
 if ($action === 'delete' && $method === 'POST') {
     if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
@@ -254,3 +408,4 @@ if ($action === 'delete' && $method === 'POST') {
     echo json_encode(['success' => true, 'message' => 'Partido eliminado del calendario.']);
     exit;
 }
+

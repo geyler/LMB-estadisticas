@@ -266,7 +266,9 @@ function initDatabaseSchemaAndSeed($pdo) {
 
 function seedProductionBase($pdo) {
     // 1. Initial Site Settings
-    $pdo->exec("INSERT INTO site_settings (setting_key, setting_value) VALUES
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    $insertCmd = ($driver === 'sqlite') ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
+    $pdo->exec("{$insertCmd} INTO site_settings (setting_key, setting_value) VALUES
         ('site_name', 'Liga Metropolitana de Béisbol'),
         ('site_logo', 'assets/images/lmb_logo.png')
     ");
@@ -274,6 +276,7 @@ function seedProductionBase($pdo) {
     // 2. Initial Season 2026
     $pdo->exec("INSERT INTO seasons (name, year, is_active) VALUES ('Temporada Oficial 2026', 2026, 1)");
     $seasonId = $pdo->lastInsertId();
+
 
     // 3. Default Categories
     $categories = [
