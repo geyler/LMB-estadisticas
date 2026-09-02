@@ -94,7 +94,10 @@ session_start();
         </div>
       </div>
 
-      <div style="display:flex; align-items:center; gap:8px;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button class="md-btn md-btn-outlined" style="padding: 4px 8px; font-size: 0.78rem;" onclick="App.showView('onboarding')" title="Guía Paso a Paso">
+          📖 Guía
+        </button>
         <button id="theme-toggle-btn" class="md-btn md-btn-outlined" style="padding: 4px 8px; font-size: 0.85rem;" onclick="App.toggleTheme()" title="Cambiar Tema">
           🌙
         </button>
@@ -360,18 +363,30 @@ session_start();
       </div>
     </div>
 
-    <!-- Create Player Modal (Replaces Browser Prompts) -->
+    <!-- Create Player / Staff Modal (Replaces Browser Prompts) -->
     <div id="create-player-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet">
         <div class="sheet-handle" onclick="App.closeCreatePlayerModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#10B981;">person_add</span> Registrar Jugador en Plantel
+            <span class="material-icons-round" style="color:#10B981;">person_add</span> Registrar en Plantel del Equipo
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeCreatePlayerModal()">✕</button>
         </div>
         <form id="create-player-form" onsubmit="App.handleSaveNewPlayer(event)" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
           <input type="hidden" id="cp-team-id">
+          
+          <div class="form-group">
+            <label style="color:#F59E0B; font-weight:800;">Tipo de Integrante</label>
+            <select id="cp-role-type" class="form-control" style="background:#0F172A; font-weight:700;">
+              <option value="player">⚾ Jugador Activo</option>
+              <option value="manager">🧢 Manager / Mánager Principal</option>
+              <option value="pitching_coach">⚾ Coach de Pitcheo</option>
+              <option value="batting_coach">🏏 Coach de Bateo</option>
+              <option value="delegado">📋 Delegado / Representante de Club</option>
+            </select>
+          </div>
+
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div class="form-group">
               <label>Nombre</label>
@@ -404,8 +419,59 @@ session_start();
               </select>
             </div>
           </div>
-          <button type="submit" class="md-btn md-btn-primary" style="width:100%;">➕ Guardar Jugador</button>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%;">➕ Guardar en Plantel</button>
         </form>
+      </div>
+    </div>
+
+    <!-- Single File / Photo Upload Modal -->
+    <div id="file-upload-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:480px;">
+        <div class="sheet-handle" onclick="App.closeFileUploadModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#3B82F6;">cloud_upload</span> Subir Logo / Foto
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeFileUploadModal()">✕</button>
+        </div>
+        <form id="file-upload-form" onsubmit="App.handleUploadFile(event)" style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+          <input type="hidden" id="upload-type" value="logo">
+          <input type="hidden" id="upload-target-id" value="0">
+          <div class="form-group">
+            <label style="font-weight:700; color:#F59E0B;" id="upload-label-title">Seleccionar Archivo de Imagen</label>
+            <input type="file" id="upload-file-input" class="form-control" accept="image/*" required style="padding:8px; background:#0F172A;">
+          </div>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%;">📤 Cargar Imagen</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Multi-Entity Photo Gallery Modal (Up to 10 photos) -->
+    <div id="entity-gallery-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:600px; max-height:90vh; overflow-y:auto;">
+        <div class="sheet-handle" onclick="App.closeEntityGalleryModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">photo_library</span> Galería de Postales e Imágenes (Máx. 10)
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeEntityGalleryModal()">✕</button>
+        </div>
+        
+        <div id="gallery-upload-section" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.04); border-radius:12px;">
+          <form id="gallery-upload-form" onsubmit="App.handleUploadGalleryPhoto(event)" style="display:flex; flex-direction:column; gap:8px;">
+            <input type="hidden" id="gallery-entity-type">
+            <input type="hidden" id="gallery-entity-id">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input type="file" id="gallery-file-input" class="form-control" accept="image/*" required style="flex:1; font-size:0.8rem; padding:4px;">
+              <input type="text" id="gallery-caption-input" class="form-control" placeholder="Descripción / Leyenda" style="flex:1; font-size:0.8rem;">
+              <button type="submit" class="md-btn md-btn-gold" style="padding:6px 12px; font-size:0.8rem; flex-shrink:0;">➕ Subir</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="gallery-photos-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px; margin-top:12px;">
+          <!-- Loaded dynamically -->
+        </div>
       </div>
     </div>
 

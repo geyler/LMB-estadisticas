@@ -254,12 +254,26 @@ function initDatabaseSchemaAndSeed($pdo) {
             image_url VARCHAR(255) NOT NULL,
             caption VARCHAR(255) DEFAULT '',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+
+        "CREATE TABLE IF NOT EXISTS entity_photos (
+            id {$autoInc},
+            entity_type VARCHAR(20) NOT NULL,
+            entity_id INT NOT NULL,
+            image_url VARCHAR(255) NOT NULL,
+            caption VARCHAR(255) DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );"
     ];
 
     foreach ($statements as $sql) {
         $pdo->exec($sql);
     }
+
+    // Dynamic Column Migrations for Existing Tables
+    try {
+        $pdo->exec("ALTER TABLE players ADD COLUMN role_type VARCHAR(20) DEFAULT 'player';");
+    } catch (Exception $ex) {}
 
     seedProductionBase($pdo);
 }

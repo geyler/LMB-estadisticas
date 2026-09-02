@@ -161,6 +161,7 @@ if ($action === 'create' && $method === 'POST') {
     $jerseyNumber = intval($input['jersey_number'] ?? 0);
     $positionPrimary = trim($input['position_primary'] ?? 'OF');
     $positionSecondary = trim($input['position_secondary'] ?? '');
+    $roleType = trim($input['role_type'] ?? 'player');
     $bats = trim($input['bats'] ?? 'R');
     $throws = trim($input['throws'] ?? 'R');
     $photoUrl = trim($input['photo_url'] ?? '');
@@ -173,15 +174,15 @@ if ($action === 'create' && $method === 'POST') {
     // Role team check for team_admin
     $user = $_SESSION['user'];
     if ($user['role'] === 'team_admin' && !empty($user['assigned_team_id']) && $user['assigned_team_id'] != $teamId) {
-        echo json_encode(['success' => false, 'message' => 'Solo puedes agregar jugadores a tu club asignado.']);
+        echo json_encode(['success' => false, 'message' => 'Solo puedes agregar integrantes a tu club asignado.']);
         exit;
     }
 
-    $stmt = $pdo->prepare("INSERT INTO players (team_id, first_name, last_name, jersey_number, position_primary, position_secondary, bats, throws, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$teamId, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $photoUrl]);
+    $stmt = $pdo->prepare("INSERT INTO players (team_id, first_name, last_name, jersey_number, position_primary, position_secondary, role_type, bats, throws, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$teamId, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $roleType, $bats, $throws, $photoUrl]);
     $playerId = $pdo->lastInsertId();
 
-    echo json_encode(['success' => true, 'player_id' => $playerId, 'message' => 'Jugador registrado exitosamente.']);
+    echo json_encode(['success' => true, 'player_id' => $playerId, 'message' => 'Integrante registrado exitosamente en el plantel.']);
     exit;
 }
 

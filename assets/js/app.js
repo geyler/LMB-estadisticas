@@ -525,6 +525,9 @@ const App = {
       case 'home':
         this.renderHomeView(container);
         break;
+      case 'onboarding':
+        this.renderOnboardingView(container);
+        break;
       case 'calendar':
         this.renderCalendarView(container);
         break;
@@ -552,6 +555,98 @@ const App = {
       default:
         this.renderHomeView(container);
     }
+  },
+
+  // ONBOARDING & GUIDED SETUP TUTORIAL VIEW
+  async renderOnboardingView(container) {
+    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Guía de Inicio...</div></div>`;
+
+    const [resCat, resTeams, resStadia, resPlayers, resGames] = await Promise.all([
+      fetch('api/leagues.php?action=categories'),
+      fetch('api/teams.php?action=list'),
+      fetch('api/leagues.php?action=stadiums'),
+      fetch('api/players.php?action=list'),
+      fetch('api/games.php?action=list')
+    ]);
+
+    const cats = (await resCat.json()).categories || [];
+    const teams = (await resTeams.json()).teams || [];
+    const stadia = (await resStadia.json()).stadiums || [];
+    const players = (await resPlayers.json()).players || [];
+    const games = (await resGames.json()).games || [];
+
+    const isAuth = (this.currentUser && ['super_admin', 'admin'].includes(this.currentUser.role));
+
+    let html = `
+      <div class="view-content">
+        <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #070D1B 100%); text-align:center;">
+          <div style="font-size:2rem; margin-bottom:4px;">📖</div>
+          <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;" class="text-truncate">Guía Paso a Paso de Inicio de Liga</h2>
+          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Sigue este flujo guiado e intuitivo para completar la base de datos de tu liga desde cero.</p>
+        </div>
+
+        <!-- Paso 1 -->
+        <div class="md-card" style="margin-top:12px; border-left:4px solid ${cats.length ? '#10B981' : '#F59E0B'};">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 1: Temporadas y Categorías</div>
+            <span class="md-chip ${cats.length ? 'active' : ''}">${cats.length ? `✅ ${cats.length} Categorías` : '⚠️ Requerido'}</span>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Crea las divisiones de la liga (ej. A1 Primera División, A2 Segunda División, Infantiles).</p>
+          ${isAuth ? `<button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('admin')">⚙️ Gestionar Categorías</button>` : ''}
+        </div>
+
+        <!-- Paso 2 -->
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${stadia.length ? '#10B981' : '#F59E0B'};">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 2: Sedes y Campos Deportivos</div>
+            <span class="md-chip ${stadia.length ? 'active' : ''}">${stadia.length ? `✅ ${stadia.length} Sedes` : '⚠️ Requerido'}</span>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Registra los estadios y canchas donde se disputarán los partidos oficializados de la temporada.</p>
+          ${isAuth ? `<button class="md-btn md-btn-primary" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateStadiumModal()">📍 Registrar Nueva Sede</button>` : ''}
+        </div>
+
+        <!-- Paso 3 -->
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${teams.length >= 2 ? '#10B981' : '#F59E0B'};">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 3: Registro de Equipos</div>
+            <span class="md-chip ${teams.length >= 2 ? 'active' : ''}">${teams.length ? `✅ ${teams.length} Equipos` : '⚠️ Mínimo 2 equipos'}</span>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Registra los clubes participantes y asócialos a su categoría y sede correspondiente.</p>
+          ${isAuth ? `<button class="md-btn md-btn-primary" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateTeamModal()">🛡️ Registrar Equipo</button>` : ''}
+        </div>
+
+        <!-- Paso 4 -->
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${players.length >= 14 ? '#10B981' : '#F59E0B'};">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 4: Jugadores y Cuerpo Técnico</div>
+            <span class="md-chip ${players.length >= 14 ? 'active' : ''}">${players.length ? `✅ ${players.length} Integrantes` : '⚠️ 7-9 jugadores por equipo'}</span>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Carga los planteles (jugadores activos, managers y cuerpo técnico). Se exigen al menos 7 a 9 jugadores por equipo.</p>
+          ${teams.length ? `<button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('teams')">👥 Ver Equipos para Cargar Plantel</button>` : ''}
+        </div>
+
+        <!-- Paso 5 -->
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${games.length ? '#10B981' : '#F59E0B'};">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 5: Programación de Partidos</div>
+            <span class="md-chip ${games.length ? 'active' : ''}">${games.length ? `✅ ${games.length} Partidos` : '⚠️ Pendiente'}</span>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Programa los juegos fijando la sede, horario y contendientes.</p>
+          ${isAuth ? `<button class="md-btn md-btn-gold" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
+        </div>
+
+        <!-- Paso 6 -->
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #3B82F6;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 6: Anotación en Vivo o Carga Directa</div>
+            <span class="md-chip active">📊 Sistema Preparado</span>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Anota jugada por jugada en tiempo real o ingresa resultados y planillas una vez finalizados los encuentros.</p>
+          <button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
   },
 
   // 1. RICH HOME LANDING VIEW (CLEAN REAL DATA MODE)
@@ -1082,8 +1177,18 @@ const App = {
     }
 
     const t = data.team;
-    const players = data.players || [];
+    const allMembers = data.players || [];
     const stats = t.stats || {};
+
+    const activePlayers = allMembers.filter(p => !p.role_type || p.role_type === 'player');
+    const coachingStaff = allMembers.filter(p => p.role_type && p.role_type !== 'player');
+
+    const roleLabels = {
+      'manager': '🧢 Mánager Principal',
+      'pitching_coach': '⚾ Coach de Pitcheo',
+      'batting_coach': '🏏 Coach de Bateo',
+      'delegado': '📋 Delegado de Club'
+    };
 
     const isAuthorizedForTeam = (this.currentUser && (
       ['super_admin', 'admin'].includes(this.currentUser.role) ||
@@ -1093,13 +1198,16 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #070D1B 100%); text-align:center; align-items:center;">
-          <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:70px; height:70px; border-radius:50%; border:3px solid #F59E0B;">
+          <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:74px; height:74px; border-radius:50%; border:3px solid #F59E0B; object-fit:cover;">
           <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;" class="text-truncate">${t.name}</h2>
           <span class="md-chip active">${t.category_name} • Sede: ${t.home_stadium_name || 'Sin Sede Fija'}</span>
 
-          ${isAuthorizedForTeam ? `
-            <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem; margin-top:8px;" onclick="App.uploadTeamLogo(${t.id})">📷 Cambiar Logo de Equipo</button>
-          ` : ''}
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
+            ${isAuthorizedForTeam ? `
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showFileUploadModal('logo', ${t.id}, 'Subir Logo de ${t.name}')">📷 Logo</button>
+            ` : ''}
+            <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEntityGalleryModal('team', ${t.id}, 'Galería de ${t.name}')">🖼️ Galería (Postales)</button>
+          </div>
 
           <div style="display:flex; justify-content:space-around; width:100%; margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
             <div><div style="font-size:0.75rem; color:#94A3B8;">PJ</div><div style="font-size:1.2rem; font-weight:800;">${stats.games_played}</div></div>
@@ -1109,11 +1217,27 @@ const App = {
           </div>
         </div>
 
-        <div class="view-section">
+        <!-- Cuerpo Técnico -->
+        ${coachingStaff.length ? `
+          <div class="view-section" style="margin-top:14px;">
+            <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">engineering</span> Cuerpo Técnico y Dirección</h3>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:10px; margin-top:8px;">
+              ${coachingStaff.map(c => `
+                <div class="md-card" style="padding:8px; text-align:center;">
+                  <div style="font-size:0.75rem; color:#F59E0B; font-weight:800;">${roleLabels[c.role_type] || c.role_type}</div>
+                  <div style="font-weight:700; font-size:0.85rem; color:#FFF;" class="text-truncate">${c.first_name} ${c.last_name}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Plantel Activo -->
+        <div class="view-section" style="margin-top:14px;">
           <div class="section-header">
-            <h3 class="section-title">Plantel de Jugadores (Roster)</h3>
+            <h3 class="section-title">Jugadores Activos (${activePlayers.length})</h3>
             ${isAuthorizedForTeam ? `
-              <button class="md-btn md-btn-primary" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showCreatePlayerModal(${t.id})">➕ Registrar Jugador</button>
+              <button class="md-btn md-btn-primary" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showCreatePlayerModal(${t.id})">➕ Agregar Integrante</button>
             ` : ''}
           </div>
 
@@ -1128,14 +1252,14 @@ const App = {
                 </tr>
               </thead>
               <tbody>
-                ${players.length ? players.map(p => `
+                ${activePlayers.length ? activePlayers.map(p => `
                   <tr onclick="App.showView('player_detail', ${p.id})" style="cursor:pointer;">
                     <td style="font-weight:800; color:#F59E0B;">#${p.jersey_number}</td>
                     <td style="font-weight:700;" class="text-truncate">${p.first_name} ${p.last_name}</td>
                     <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position_primary}</span></td>
                     <td style="font-size:0.8rem; color:#94A3B8;">B: ${p.bats} / L: ${p.throws}</td>
                   </tr>
-                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin jugadores registrados en el plantel.</td></tr>'}
+                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin jugadores activos registrados.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -1161,6 +1285,11 @@ const App = {
     const b = p.batting_stats || {};
     const pi = p.pitching_stats || {};
 
+    const isAuthorized = (this.currentUser && (
+      ['super_admin', 'admin'].includes(this.currentUser.role) ||
+      (this.currentUser.role === 'team_admin' && this.currentUser.assigned_team_id == p.team_id)
+    ));
+
     let html = `
       <div class="view-content">
         <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #070D1B 100%); text-align:center; align-items:center;">
@@ -1172,6 +1301,13 @@ const App = {
             <span class="md-chip active">Pos: ${p.position_primary}</span>
             <span class="md-chip">Batea: ${p.bats === 'R' ? 'Derecho' : (p.bats === 'L' ? 'Zurdo' : 'Ambidextro')}</span>
             <span class="md-chip">Lanza: ${p.throws === 'R' ? 'Derecho' : 'Zurdo'}</span>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            ${isAuthorized ? `
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showFileUploadModal('player', ${p.id}, 'Subir Foto de ${p.first_name}')">📷 Cambiar Foto</button>
+            ` : ''}
+            <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEntityGalleryModal('player', ${p.id}, 'Galería de ${p.first_name}')">🖼️ Galería (Postales)</button>
           </div>
         </div>
 
@@ -1741,6 +1877,12 @@ const App = {
   },
 
   async showCreateTeamModal() {
+    if (!this.categories || !this.categories.length) {
+      const go = await this.showConfirm("Configuración Requerida", "Para registrar un equipo primero se debe crear al menos 1 Temporada y Categoría en la liga.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
+      if (go) this.showView('onboarding');
+      return;
+    }
+
     const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
     const name = await this.showPrompt("Nuevo Equipo", "Nombre completo del equipo de béisbol:");
     if (!name) return;
@@ -1767,6 +1909,9 @@ const App = {
   async showMoveTeamModal() {
     fetch('api/teams.php?action=list').then(res => res.json()).then(async data => {
       const teams = data.teams || [];
+      if (!teams.length) {
+        return this.showAlert("Atención", "No hay equipos registrados para reubicar.", "warning", "#F59E0B");
+      }
       let teamPrompt = `Seleccionar ID de Equipo a mover:\n` + teams.map(t => `${t.id}: ${t.name} (${t.category_name || 'Sin Categoría'})`).join('\n');
       const teamId = await this.showPrompt("Reubicación de Equipo", teamPrompt);
       if (!teamId) return;
@@ -1799,7 +1944,17 @@ const App = {
     const teams = dataTeams.teams || [];
     const stadia = dataStadia.stadiums || [];
 
-    if (teams.length < 2) return this.showAlert("Programar Partido", "Se requieren al menos 2 equipos en esta categoría para programar un partido.", "warning", "#EF4444");
+    if (teams.length < 2) {
+      const go = await this.showConfirm("Configuración Requerida", "Para programar un partido se necesitan al menos 2 equipos en la categoría.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
+      if (go) this.showView('onboarding');
+      return;
+    }
+
+    if (!stadia.length) {
+      const go = await this.showConfirm("Configuración Requerida", "No hay sedes deportivas registradas. Se necesita al menos 1 sede o campo.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
+      if (go) this.showView('onboarding');
+      return;
+    }
 
     let teamListText = teams.map(t => `${t.id}: ${t.name}`).join('\n');
     const awayId = await this.showPrompt("Equipo Visitante", `Selecciona ID de Equipo Visitante:\n${teamListText}`, teams[0].id.toString());
@@ -1826,10 +1981,23 @@ const App = {
     }
   },
 
-  showCreatePlayerModal(teamId) {
+  async showCreatePlayerModal(teamId = null) {
+    if (!teamId) {
+      const res = await fetch('api/teams.php?action=list');
+      const data = await res.json();
+      const teams = data.teams || [];
+      if (!teams.length) {
+        const go = await this.showConfirm("Configuración Requerida", "Para registrar jugadores o cuerpo técnico primero debes crear un equipo.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
+        if (go) this.showView('onboarding');
+        return;
+      }
+      teamId = teams[0].id;
+    }
+
     const modal = document.getElementById('create-player-modal');
     if (!modal) return;
     document.getElementById('cp-team-id').value = teamId;
+    if (document.getElementById('cp-role-type')) document.getElementById('cp-role-type').value = 'player';
     document.getElementById('cp-first-name').value = '';
     document.getElementById('cp-last-name').value = '';
     document.getElementById('cp-jersey').value = '10';
@@ -1845,6 +2013,7 @@ const App = {
   async handleSaveNewPlayer(e) {
     e.preventDefault();
     const teamId = document.getElementById('cp-team-id').value;
+    const roleType = document.getElementById('cp-role-type') ? document.getElementById('cp-role-type').value : 'player';
     const firstName = document.getElementById('cp-first-name').value.trim();
     const lastName = document.getElementById('cp-last-name').value.trim();
     const jersey = document.getElementById('cp-jersey').value;
@@ -1856,6 +2025,7 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           team_id: parseInt(teamId),
+          role_type: roleType,
           first_name: firstName,
           last_name: lastName,
           jersey_number: jersey,
@@ -1864,14 +2034,169 @@ const App = {
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar('✅ Jugador registrado exitosamente en el equipo.');
+        this.showSnackbar('✅ Integrante registrado exitosamente en el equipo.');
         this.closeCreatePlayerModal();
         if (this.currentView === 'team_detail') this.renderTeamDetailView(document.getElementById('view-container'), teamId);
       } else {
-        this.showAlert('Error', data.message || 'No se pudo registrar al jugador.', 'error', '#EF4444');
+        this.showAlert('Error', data.message || 'No se pudo registrar al integrante.', 'error', '#EF4444');
       }
     } catch(err) {
       this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  // SINGLE FILE UPLOAD MODAL
+  showFileUploadModal(type, targetId, titleText = 'Subir Imagen') {
+    const modal = document.getElementById('file-upload-modal');
+    if (!modal) return;
+    document.getElementById('upload-type').value = type;
+    document.getElementById('upload-target-id').value = targetId;
+    document.getElementById('upload-label-title').textContent = titleText;
+    document.getElementById('upload-file-input').value = '';
+    modal.classList.add('open');
+  },
+
+  closeFileUploadModal() {
+    const modal = document.getElementById('file-upload-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleUploadFile(e) {
+    e.preventDefault();
+    const type = document.getElementById('upload-type').value;
+    const targetId = document.getElementById('upload-target-id').value;
+    const fileInput = document.getElementById('upload-file-input');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      this.showSnackbar('Por favor selecciona una imagen.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('upload_type', type);
+    if (type === 'logo') formData.append('team_id', targetId);
+    if (type === 'player') formData.append('player_id', targetId);
+
+    try {
+      const res = await fetch('api/media.php', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('✅ Imagen subida y actualizada exitosamente.');
+        this.closeFileUploadModal();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'Error al subir archivo.', 'error', '#EF4444');
+      }
+    } catch(err) {
+      this.showAlert('Error', 'Error de conexión al subir imagen.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  // MULTI-ENTITY PHOTO GALLERY MODAL (UP TO 10 PHOTOS)
+  async showEntityGalleryModal(entityType, entityId, title = '') {
+    const modal = document.getElementById('entity-gallery-modal');
+    if (!modal) return;
+    document.getElementById('gallery-entity-type').value = entityType;
+    document.getElementById('gallery-entity-id').value = entityId;
+    document.getElementById('gallery-file-input').value = '';
+    document.getElementById('gallery-caption-input').value = '';
+    
+    modal.classList.add('open');
+    this.loadEntityGalleryPhotos(entityType, entityId);
+  },
+
+  closeEntityGalleryModal() {
+    const modal = document.getElementById('entity-gallery-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async loadEntityGalleryPhotos(entityType, entityId) {
+    const container = document.getElementById('gallery-photos-container');
+    if (!container) return;
+    container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:12px;">Cargando postales...</div>';
+
+    try {
+      const res = await fetch(`api/media.php?action=gallery&entity_type=${entityType}&entity_id=${entityId}`);
+      const data = await res.json();
+      const photos = data.photos || [];
+
+      if (!photos.length) {
+        container.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94A3B8; padding:16px;">Sin postales registradas aún. ¡Agrega la primera postal (Máximo 10)!</div>';
+        return;
+      }
+
+      const isAuth = (this.currentUser && ['super_admin', 'admin', 'team_admin'].includes(this.currentUser.role));
+
+      container.innerHTML = photos.map(p => `
+        <div style="position:relative; background:#0F172A; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.08);">
+          <img src="${p.image_url}" style="width:100%; height:110px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open('${p.image_url}', '_blank')">
+          ${p.caption ? `<div style="padding:4px; font-size:0.7rem; color:#94A3B8;" class="text-truncate">${p.caption}</div>` : ''}
+          ${isAuth ? `<button style="position:absolute; top:4px; right:4px; background:rgba(239,68,68,0.85); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:0.7rem; cursor:pointer;" onclick="App.deleteEntityGalleryPhoto(${p.id}, '${entityType}', ${entityId})">✕</button>` : ''}
+        </div>
+      `).join('');
+    } catch(e) {
+      container.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#EF4444;">Error al cargar galería.</div>';
+    }
+  },
+
+  async handleUploadGalleryPhoto(e) {
+    e.preventDefault();
+    const entityType = document.getElementById('gallery-entity-type').value;
+    const entityId = document.getElementById('gallery-entity-id').value;
+    const fileInput = document.getElementById('gallery-file-input');
+    const caption = document.getElementById('gallery-caption-input').value.trim();
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      this.showSnackbar('Por favor selecciona una imagen.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('upload_type', 'entity_gallery');
+    formData.append('entity_type', entityType);
+    formData.append('entity_id', entityId);
+    formData.append('caption', caption || 'Postal informativa');
+
+    try {
+      const res = await fetch('api/media.php', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('✅ Postal subida a la galería exitosamente.');
+        document.getElementById('gallery-file-input').value = '';
+        document.getElementById('gallery-caption-input').value = '';
+        this.loadEntityGalleryPhotos(entityType, entityId);
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Atención', data.message || 'No se pudo subir la postal.', 'warning', '#F59E0B');
+      }
+    } catch(err) {
+      this.showAlert('Error', 'Error de conexión al subir la postal.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  async deleteEntityGalleryPhoto(photoId, entityType, entityId) {
+    const confirmDelete = await this.showConfirm("Eliminar Postal", "¿Deseas eliminar esta postal de la galería?", "delete", "#EF4444");
+    if (confirmDelete) {
+      try {
+        const res = await fetch('api/media.php?action=delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photo_id: photoId, entity_type: entityType })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar('Postal eliminada.');
+          this.loadEntityGalleryPhotos(entityType, entityId);
+        }
+      } catch(e){}
     }
   },
 

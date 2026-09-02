@@ -26,6 +26,32 @@ const LiveScorer = {
     this.homePitchers = gameDetailData.home_pitchers || [];
     this.awayPitchers = gameDetailData.away_pitchers || [];
 
+    // Enforce Minimum Roster Size (7 players per team)
+    if (this.homeBatters.length < 7 || this.awayBatters.length < 7) {
+      const container = document.getElementById('view-container');
+      if (container) {
+        container.innerHTML = `
+          <div class="view-content">
+            <div class="md-card" style="background: linear-gradient(135deg, #7F1D1D 0%, #070D1B 100%); text-align:center;">
+              <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
+              <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;">Nómina Incompleta para Partido</h2>
+              <p style="font-size:0.85rem; color:#94A3B8; margin-top:8px;">
+                Para poder iniciar la consola de anotación en vivo, se exige un mínimo de <strong>7 jugadores activos</strong> en el plantel de cada equipo.<br><br>
+                • <strong>${this.game.away_short}</strong>: ${this.awayBatters.length} jugadores<br>
+                • <strong>${this.game.home_short}</strong>: ${this.homeBatters.length} jugadores
+              </p>
+              <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+                <button class="md-btn md-btn-gold" onclick="App.showView('team_detail', ${this.game.away_team_id})">👥 Plantel ${this.game.away_short}</button>
+                <button class="md-btn md-btn-gold" onclick="App.showView('team_detail', ${this.game.home_team_id})">👥 Plantel ${this.game.home_short}</button>
+                <button class="md-btn md-btn-outlined" onclick="App.showView('onboarding')">📖 Guía de Inicio</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      return;
+    }
+
     this.outsCount = 0;
     this.awayLineupIndex = 0;
     this.homeLineupIndex = 0;
