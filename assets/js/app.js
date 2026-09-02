@@ -16,12 +16,17 @@ const App = {
   deferredPwaPrompt: null,
 
   async init() {
-    await this.loadSettings();
-    await this.checkAuth();
-    await this.loadLeagues();
-    this.setupEventListeners();
-    this.initPwaInstaller();
-    this.showView('home');
+    try {
+      await this.loadSettings();
+      await this.checkAuth();
+      await this.loadLeagues();
+      this.setupEventListeners();
+      this.initPwaInstaller();
+    } catch (e) {
+      console.error("Error en inicialización App:", e);
+    } finally {
+      this.showView('home');
+    }
   },
 
   initPwaInstaller() {
@@ -371,18 +376,23 @@ const App = {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Liga Metropolitana...</div></div>`;
 
     try {
-      const [resGames, resBatLeaders, resPitchLeaders, resStandings, resStadia] = await Promise.all([
-        fetch(`api/games.php?action=list&category_id=${this.currentCategory}`),
-        fetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=3`),
-        fetch(`api/leaderboards.php?type=pitching&stat=era&category_id=${this.currentCategory}&limit=3`),
-        fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`),
-        fetch(`api/leagues.php?action=stadiums`)
+      const safeFetch = async (url) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) return {};
+          return await res.json();
+        } catch (e) {
+          return {};
+        }
+      };
+
+      const [dataGames, dataBatLeaders, dataPitchLeaders, dataStandings, dataStadia] = await Promise.all([
+        safeFetch(`api/games.php?action=list&category_id=${this.currentCategory}`),
+        safeFetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=3`),
+        safeFetch(`api/leaderboards.php?type=pitching&stat=era&category_id=${this.currentCategory}&limit=3`),
+        safeFetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`),
+        safeFetch(`api/leagues.php?action=stadiums`)
       ]);
-      const dataGames = await resGames.json();
-      const dataBatLeaders = await resBatLeaders.json();
-      const dataPitchLeaders = await resPitchLeaders.json();
-      const dataStandings = await resStandings.json();
-      const dataStadia = await resStadia.json();
 
       const games = dataGames.games || [];
       const batLeaders = dataBatLeaders.leaders || [];

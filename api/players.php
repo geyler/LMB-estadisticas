@@ -4,7 +4,7 @@ session_start();
 require_once __DIR__ . '/../db/db.php';
 
 $pdo = getDBConnection();
-$method = $_SERVER['REQUEST_METHOD'];
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? 'list';
 
 if ($action === 'list') {

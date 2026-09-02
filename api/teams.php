@@ -4,7 +4,7 @@ session_start();
 require_once __DIR__ . '/../db/db.php';
 
 $pdo = getDBConnection();
-$method = $_SERVER['REQUEST_METHOD'];
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? 'list';
 
 // 1. Standings Table Calculation per Category
@@ -68,23 +68,25 @@ if ($action === 'standings') {
     }
 
     // Sort by Win PCT descending, then run diff
-    usort($standings, function($a, $b) {
-        if ($a['pct_val'] === $b['pct_val']) {
-            return $b['diff'] <=> $a['diff'];
-        }
-        return $b['pct_val'] <=> $a['pct_val'];
-    });
+    if (!empty($standings)) {
+        usort($standings, function($a, $b) {
+            if ($a['pct_val'] === $b['pct_val']) {
+                return $b['diff'] <=> $a['diff'];
+            }
+            return $b['pct_val'] <=> $a['pct_val'];
+        });
 
-    // Calculate Games Behind (GB) relative to leader
-    $leaderWins = $standings[0]['wins'] ?? 0;
-    $leaderLosses = $standings[0]['losses'] ?? 0;
+        // Calculate Games Behind (GB) relative to leader
+        $leaderWins = $standings[0]['wins'] ?? 0;
+        $leaderLosses = $standings[0]['losses'] ?? 0;
 
-    foreach ($standings as $idx => &$st) {
-        if ($idx === 0) {
-            $st['gb'] = '-';
-        } else {
-            $gbVal = (($leaderWins - $st['wins']) + ($st['losses'] - $leaderLosses)) / 2;
-            $st['gb'] = ($gbVal == 0) ? '-' : $gbVal;
+        foreach ($standings as $idx => &$st) {
+            if ($idx === 0) {
+                $st['gb'] = '-';
+            } else {
+                $gbVal = (($leaderWins - $st['wins']) + ($st['losses'] - $leaderLosses)) / 2;
+                $st['gb'] = ($gbVal == 0) ? '-' : $gbVal;
+            }
         }
     }
 
