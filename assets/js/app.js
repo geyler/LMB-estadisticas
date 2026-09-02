@@ -73,6 +73,90 @@ const App = {
     this.hidePwaBanner();
   },
 
+  // Custom HTML Alert & Confirm Dialogs (NO native browser alerts)
+  showAlert(title, message, icon = 'info', iconColor = '#F59E0B') {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('custom-alert-modal');
+      const titleEl = document.getElementById('custom-alert-title');
+      const msgEl = document.getElementById('custom-alert-message');
+      const iconEl = document.getElementById('custom-alert-icon');
+      const cancelBtn = document.getElementById('custom-alert-cancel-btn');
+      const okBtn = document.getElementById('custom-alert-ok-btn');
+
+      if (!modal) return resolve(true);
+
+      if (titleEl) titleEl.innerText = title;
+      if (msgEl) msgEl.innerHTML = message;
+      if (iconEl) {
+        iconEl.innerText = icon;
+        iconEl.style.color = iconColor;
+      }
+
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      if (okBtn) {
+        okBtn.className = 'md-btn md-btn-primary';
+        okBtn.innerText = 'Aceptar';
+      }
+
+      this.alertResolver = resolve;
+      modal.classList.add('open');
+    });
+  },
+
+  showConfirm(title, message, icon = 'help', iconColor = '#3B82F6') {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('custom-alert-modal');
+      const titleEl = document.getElementById('custom-alert-title');
+      const msgEl = document.getElementById('custom-alert-message');
+      const iconEl = document.getElementById('custom-alert-icon');
+      const cancelBtn = document.getElementById('custom-alert-cancel-btn');
+      const okBtn = document.getElementById('custom-alert-ok-btn');
+
+      if (!modal) return resolve(false);
+
+      if (titleEl) titleEl.innerText = title;
+      if (msgEl) msgEl.innerHTML = message;
+      if (iconEl) {
+        iconEl.innerText = icon;
+        iconEl.style.color = iconColor;
+      }
+
+      if (cancelBtn) cancelBtn.style.display = 'block';
+      if (okBtn) {
+        okBtn.className = 'md-btn md-btn-primary';
+        okBtn.innerText = 'Confirmar';
+      }
+
+      this.alertResolver = resolve;
+      modal.classList.add('open');
+    });
+  },
+
+  closeCustomAlert(result) {
+    const modal = document.getElementById('custom-alert-modal');
+    if (modal) modal.classList.remove('open');
+    if (this.alertResolver) {
+      this.alertResolver(result);
+      this.alertResolver = null;
+    }
+  },
+
+  showAuthError(message) {
+    const errorBox = document.getElementById('auth-error-alert');
+    const errorMsg = document.getElementById('auth-error-alert-msg');
+    if (errorBox && errorMsg) {
+      errorMsg.innerHTML = message;
+      errorBox.style.display = 'block';
+    } else {
+      this.showAlert('Atención', message, 'error_outline', '#EF4444');
+    }
+  },
+
+  clearAuthError() {
+    const errorBox = document.getElementById('auth-error-alert');
+    if (errorBox) errorBox.style.display = 'none';
+  },
+
   async installPwa() {
     if (this.deferredPwaPrompt) {
       this.deferredPwaPrompt.prompt();
@@ -85,7 +169,7 @@ const App = {
     } else {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (isIOS) {
-        alert("📱 Para instalar en iOS (iPhone/iPad):\n1. Toca el botón Compartir en Safari (icono ⎘).\n2. Selecciona 'Agregar a inicio' ( ➕ ).");
+        this.showAlert("Instalar en iOS (iPhone/iPad)", "📱 Para instalar en iOS:<br>1. Toca el botón <b>Compartir</b> en Safari (icono ⎘).<br>2. Selecciona <b>'Agregar a inicio'</b> ( ➕ ).", "get_app", "#3B82F6");
       } else {
         this.showSnackbar("Presione 'Agregar a pantalla principal' en las opciones de su navegador.");
       }
@@ -162,6 +246,7 @@ const App = {
   openAuthModal(defaultTab = 'login') {
     const modal = document.getElementById('auth-modal');
     if (!modal) return;
+    this.clearAuthError();
     modal.classList.add('open');
     this.switchAuthTab(defaultTab);
   },
@@ -169,10 +254,13 @@ const App = {
   closeAuthModal() {
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.remove('open');
+    this.clearAuthError();
   },
 
   async switchAuthTab(tab) {
     this.authTab = tab;
+    this.clearAuthError();
+
     const loginBtn = document.getElementById('auth-tab-login-btn');
     const regBtn = document.getElementById('auth-tab-register-btn');
     const loginForm = document.getElementById('login-form');
@@ -211,11 +299,13 @@ const App = {
 
   async handleLogin(e) {
     e.preventDefault();
+    this.clearAuthError();
+
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
 
     if (!username || !password) {
-      this.showSnackbar('Por favor complete usuario/correo y contraseña.');
+      this.showAuthError('Por favor complete usuario/correo y contraseña.');
       return;
     }
 
@@ -234,15 +324,17 @@ const App = {
         this.showSnackbar(data.message || `Bienvenido/a, ${data.user.name}`);
         this.refreshCurrentView();
       } else {
-        this.showSnackbar(data.message || 'Error al iniciar sesión.');
+        this.showAuthError(data.message || 'Usuario o contraseña incorrectos.');
       }
     } catch (err) {
-      this.showSnackbar('Error de conexión con el servidor.');
+      this.showAuthError('Error de conexión con el servidor.');
     }
   },
 
   async handleRegister(e) {
     e.preventDefault();
+    this.clearAuthError();
+
     const name = document.getElementById('reg-name').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const username = document.getElementById('reg-username').value.trim();
@@ -250,33 +342,33 @@ const App = {
     const confirmPassword = document.getElementById('reg-password-confirm').value.trim();
 
     if (!name || !email || !username || !password || !confirmPassword) {
-      this.showSnackbar('Por favor complete todos los campos.');
+      this.showAuthError('Por favor complete todos los campos obligatorios.');
       return;
     }
 
     if (name.length < 3) {
-      this.showSnackbar('El nombre debe tener al menos 3 caracteres.');
+      this.showAuthError('El nombre debe tener al menos 3 caracteres.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      this.showSnackbar('El correo electrónico no es válido.');
+      this.showAuthError('El correo electrónico ingresado no tiene un formato válido.');
       return;
     }
 
     if (username.length < 3) {
-      this.showSnackbar('El usuario debe tener al menos 3 caracteres.');
+      this.showAuthError('El usuario debe tener al menos 3 caracteres.');
       return;
     }
 
     if (password.length < 6) {
-      this.showSnackbar('La contraseña debe tener al menos 6 caracteres.');
+      this.showAuthError('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
     if (password !== confirmPassword) {
-      this.showSnackbar('Las contraseñas no coinciden.');
+      this.showAuthError('Las contraseñas no coinciden.');
       return;
     }
 
@@ -292,13 +384,13 @@ const App = {
         this.currentUser = data.user;
         this.renderUserBadge();
         this.closeAuthModal();
-        this.showSnackbar(data.message || `¡Cuenta registrada exitosamente!`);
+        this.showAlert('¡Cuenta Creada!', data.message || `¡Cuenta registrada exitosamente!`, 'check_circle', '#10B981');
         this.refreshCurrentView();
       } else {
-        this.showSnackbar(data.message || 'Error al registrar la cuenta.');
+        this.showAuthError(data.message || 'Error al registrar la cuenta.');
       }
     } catch (err) {
-      this.showSnackbar('Error de conexión al procesar el registro.');
+      this.showAuthError('Error de conexión al procesar el registro.');
     }
   },
 
@@ -1419,7 +1511,7 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, role: newRole, assigned_team_id: assignedTeamId })
       }).then(res => res.json()).then(resData => {
-        alert(resData.message);
+        this.showAlert("Gestión de Usuarios", resData.message, "person", "#3B82F6");
         this.refreshCurrentView();
       });
     });
@@ -1437,7 +1529,7 @@ const App = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, field_name: fieldName, address, city })
     }).then(res => res.json()).then(data => {
-      alert(data.message);
+      this.showAlert("Sedes Deportivo", data.message, "stadium", "#10B981");
       this.refreshCurrentView();
     });
   },
@@ -1452,7 +1544,7 @@ const App = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, year })
     }).then(res => res.json()).then(data => {
-      alert(data.message);
+      this.showAlert("Gestión de Ligas", data.message, "emoji_events", "#F59E0B");
       this.loadLeagues();
       this.refreshCurrentView();
     });
@@ -1476,7 +1568,7 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category_id: catId, name, short_name: shortName, home_stadium_id: stadiumId })
       }).then(res => res.json()).then(resData => {
-        alert(resData.message);
+        this.showAlert("Equipos de la Liga", resData.message, "shield", "#3B82F6");
         this.refreshCurrentView();
       });
     });
@@ -1498,7 +1590,7 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_id: teamId, category_id: newCatId, notes: 'Ascenso/Descenso' })
       }).then(res => res.json()).then(resData => {
-        alert(resData.message);
+        this.showAlert("Categorización de Equipo", resData.message, "swap_vert", "#F59E0B");
         this.loadLeagues();
         this.refreshCurrentView();
       });
@@ -1517,7 +1609,7 @@ const App = {
     const teams = dataTeams.teams || [];
     const stadia = dataStadia.stadiums || [];
 
-    if (teams.length < 2) return alert("Se requieren al menos 2 equipos creados en la categoría para programar un partido.");
+    if (teams.length < 2) return this.showAlert("Programar Partido", "Se requieren al menos 2 equipos creados en la categoría para programar un partido.", "warning", "#EF4444");
 
     const awayId = prompt(`Seleccione ID Equipo Visitante:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[0].id);
     const homeId = prompt(`Seleccione ID Equipo Local:\n` + teams.map(t => `${t.id}: ${t.name}`).join('\n'), teams[1] ? teams[1].id : teams[0].id);
@@ -1535,7 +1627,7 @@ const App = {
           game_date: new Date().toISOString().slice(0, 19).replace('T', ' ')
         })
       }).then(res => res.json()).then(resData => {
-        alert(resData.message);
+        this.showAlert("Programación de Partido", resData.message, "event_available", "#10B981");
         this.showView('calendar');
       });
     }
@@ -1560,7 +1652,7 @@ const App = {
         position_primary: pos
       })
     }).then(res => res.json()).then(data => {
-      alert(data.message);
+      this.showAlert("Plantel del Equipo", data.message, "person_add", "#10B981");
       this.showView('team_detail', teamId);
     });
   },
@@ -1572,7 +1664,7 @@ const App = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ site_name: siteName })
     }).then(res => res.json()).then(data => {
-      alert(data.message);
+      this.showAlert("Ajustes de Plataforma", data.message, "settings", "#3B82F6");
       this.loadSettings();
     });
   },
@@ -1594,7 +1686,7 @@ const App = {
         method: 'POST',
         body: formData
       }).then(res => res.json()).then(data => {
-        alert(data.message);
+        this.showAlert("Emblema de Equipo", data.message, "image", "#10B981");
         this.showView('team_detail', teamId);
       });
     };

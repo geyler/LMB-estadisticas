@@ -122,6 +122,14 @@ session_start();
           <div style="font-weight:800; font-size:0.82rem;">🌟 ¡Serás el primer usuario registrado y tomarás el control como Super Administrador!</div>
         </div>
 
+        <!-- Dynamic Auth Error Alert Banner -->
+        <div id="auth-error-alert" style="display:none; background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; border-radius: 12px; padding: 10px 14px; color: #FCA5A5; font-size: 0.82rem; margin-bottom: 6px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="material-icons-round" style="color:#EF4444; font-size:20px;">error_outline</span>
+            <div id="auth-error-alert-msg" style="flex:1;">Error mensaje</div>
+          </div>
+        </div>
+
         <!-- Login Form -->
         <form id="login-form" style="display:flex; flex-direction:column; gap:10px;" onsubmit="App.handleLogin(event)">
           <div class="form-group">
@@ -176,6 +184,22 @@ session_start();
 
         <div id="user-profile-details">
           <!-- Dynamic Profile Data injected by App.showUserModal -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom HTML Alert & Confirmation Dialog Overlay (NO native alert/confirm) -->
+    <div id="custom-alert-modal" class="md-modal-backdrop" style="z-index: 1000;">
+      <div class="md-card" style="max-width: 400px; width: calc(100% - 32px); padding: 24px 20px; background: #0F172A; border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); text-align: center; margin: auto; position: relative;">
+        <div style="margin-bottom: 12px;">
+          <span id="custom-alert-icon" class="material-icons-round" style="font-size: 48px; color: #F59E0B;">info</span>
+        </div>
+        <h3 id="custom-alert-title" style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">Aviso</h3>
+        <div id="custom-alert-message" style="font-size: 0.88rem; color: #94A3B8; line-height: 1.4; margin-bottom: 20px;">Mensaje de alerta</div>
+        
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="custom-alert-cancel-btn" class="md-btn md-btn-outlined" style="display: none; flex: 1; padding: 10px;" onclick="App.closeCustomAlert(false)">Cancelar</button>
+          <button id="custom-alert-ok-btn" class="md-btn md-btn-primary" style="flex: 1; padding: 10px;" onclick="App.closeCustomAlert(true)">Aceptar</button>
         </div>
       </div>
     </div>

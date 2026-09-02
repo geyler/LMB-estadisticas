@@ -163,7 +163,7 @@ const LiveScorer = {
 
   recordPlay(code, label) {
     if (!this.activeBatterId || !this.activePitcherId) {
-      alert("Por favor asegúrate de tener seleccionados bateador y lanzador.");
+      App.showAlert("Anotación en Vivo", "Por favor asegúrate de tener seleccionados un bateador y un lanzador activos.", "warning", "#EF4444");
       return;
     }
 
@@ -171,7 +171,7 @@ const LiveScorer = {
     if (code === 'OUT' || code === 'K') {
       this.outsCount++;
       if (this.outsCount >= 3) {
-        alert("¡3 Outs completados! Se cambia la media entrada automáticamente.");
+        App.showSnackbar("¡3 Outs completados! Cambio automático de media entrada.");
         this.outsCount = 0;
         this.toggleHalfInning();
         return;
@@ -196,12 +196,12 @@ const LiveScorer = {
       body: JSON.stringify(payload)
     }).then(res => res.json()).then(data => {
       if (data.success) {
-        App.showSnackbar(`Jugada: ${label}`);
+        App.showSnackbar(`Jugada registrada: ${label}`);
         // PILOTO AUTOMÁTICO: Avanza al siguiente bateador del lineup automáticamente
         this.advanceBatterLineup();
         this.renderScorerInterface();
       } else {
-        alert(data.message || 'Error al registrar jugada.');
+        App.showSnackbar(data.message || 'Error al registrar la jugada.');
       }
     });
   },
@@ -234,7 +234,7 @@ const LiveScorer = {
     const playerList = (type === 'batter') ? (isTop ? this.awayBatters : this.homeBatters) : (isTop ? this.homePitchers : this.awayPitchers);
 
     if (!playerList.length) {
-      alert("No hay más jugadores registrados en el plantel para realizar cambios.");
+      App.showAlert("Sustitución de Jugador", "No hay más jugadores registrados en el plantel de este equipo para realizar sustituciones.", "info", "#F59E0B");
       return;
     }
 
@@ -250,13 +250,14 @@ const LiveScorer = {
       } else {
         this.activePitcherId = selectedId;
       }
-      App.showSnackbar("Cambio realizado exitosamente.");
+      App.showSnackbar("Sustitución realizada exitosamente.");
       this.renderScorerInterface();
     }
   },
 
-  finishGame() {
-    if (confirm("¿Confirmar que el partido ha finalizado?")) {
+  async finishGame() {
+    const confirmed = await App.showConfirm("Finalizar Partido", "¿Está seguro de que desea dar por finalizado oficialmente este partido?", "sports_baseball", "#EF4444");
+    if (confirmed) {
       fetch('api/games.php?action=update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -267,7 +268,7 @@ const LiveScorer = {
           game_date: this.game.game_date
         })
       }).then(res => res.json()).then(data => {
-        alert("Partido finalizado guardado exitosamente.");
+        App.showAlert("Partido Finalizado", "El resultado final ha sido registrado exitosamente.", "check_circle", "#10B981");
         App.showView('game_detail', this.game.id);
       });
     }
