@@ -504,7 +504,7 @@ const App = {
 
             ${!this.currentUser ? `
               <div style="margin-top:10px;">
-                <button class="md-btn md-btn-gold" style="font-size:0.8rem; padding:6px 16px;" onclick="App.openAuthModal('register')">🌟 Registrarse como Administrador</button>
+                <button class="md-btn md-btn-gold" style="font-size:0.8rem; padding:6px 16px;" onclick="App.openAuthModal('register')">📝 Registrarse</button>
               </div>
             ` : ''}
           </div>
@@ -1192,8 +1192,8 @@ const App = {
           <div class="md-card" style="text-align:center; padding:24px;">
             <span class="material-icons-round" style="font-size:40px; color:#EF4444;">lock</span>
             <div style="font-weight:800; font-size:1.1rem; margin-top:8px;">Acceso Restringido</div>
-            <p style="font-size:0.85rem; color:#94A3B8;">Debes iniciar sesión con una cuenta de Administrador o registrarte si es la primera vez.</p>
-            <button class="md-btn md-btn-gold" style="margin-top:12px;" onclick="App.openAuthModal('register')">🌟 Registrar Super Admin</button>
+            <p style="font-size:0.85rem; color:#94A3B8;">Debes iniciar sesión con tu cuenta de usuario o registrarte.</p>
+            <button class="md-btn md-btn-gold" style="margin-top:12px;" onclick="App.openAuthModal('register')">📝 Registrarse</button>
           </div>
         </div>
       `;
@@ -1218,6 +1218,16 @@ const App = {
         <div id="admin-tab-content">
           <!-- Dynamic Tab Content Rendered Below -->
         </div>
+
+        ${this.currentUser.role === 'super_admin' ? `
+          <div class="md-card" style="margin-top:20px; border:1px solid rgba(239, 68, 68, 0.4); text-align:center; padding:16px;">
+            <div style="font-weight:800; color:#EF4444; font-size:0.85rem;">⚠️ Zona Peligrosa - Mantenimiento de Producción</div>
+            <div style="font-size:0.78rem; color:#94A3B8; margin:4px 0 10px 0;">¿Deseas reiniciar la base de datos totalmente a cero para iniciar una nueva liga limpia?</div>
+            <button class="md-btn md-btn-outlined" style="color:#EF4444; border-color:#EF4444; font-size:0.75rem; width:100%;" onclick="App.confirmDatabaseReset()">
+              💥 Reiniciar Base de Datos a Cero (Wipe Total)
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
     container.innerHTML = html;
@@ -2046,6 +2056,23 @@ const App = {
       }
     } catch (err) {
       this.showAlert('Error', 'Error de conexión al guardar estadísticas.', 'wifi_off', '#EF4444');
+    }
+  },
+
+  async confirmDatabaseReset() {
+    if (confirm("⚠️ ¿Estás completamente seguro de borrar TODO y dejar la base de datos a cero?\n\nSe eliminarán todos los equipos, partidos, estadísticas y usuarios para comenzar una instalación totalmente limpia desde cero.")) {
+      try {
+        const res = await fetch('api/seed_reset.php');
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Base de datos reiniciada a cero con éxito. La página se recargará ahora para que te registres como el primer usuario administrador.");
+          window.location.reload();
+        } else {
+          alert("Error: " + (data.message || "No se pudo reiniciar la base de datos."));
+        }
+      } catch (e) {
+        alert("Error de conexión al intentar reiniciar la base de datos.");
+      }
     }
   },
 

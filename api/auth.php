@@ -172,8 +172,8 @@ if ($action === 'register' && $method === 'POST') {
         'success' => true, 
         'user' => $newUser, 
         'message' => ($role === 'super_admin') 
-            ? '¡Felicidades! Se te ha asignado el rol de Super Administrador.' 
-            : 'Cuenta de usuario creada con éxito.'
+            ? '¡Felicidades! Al ser el primer usuario registrado, se te ha asignado el rol de Administrador Total.' 
+            : 'Cuenta de usuario creada con éxito. Los administradores asignarán tus permisos según corresponda.'
     ]);
     exit;
 }

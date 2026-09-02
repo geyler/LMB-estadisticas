@@ -10,22 +10,22 @@ const LiveScorer = {
   awayBatters: [],
   homePitchers: [],
   awayPitchers: [],
-  
+
   // Automated Lineup Index Pointers
   awayLineupIndex: 0,
   homeLineupIndex: 0,
-  
+
   activeBatterId: null,
   activePitcherId: null,
   outsCount: 0,
-  
+
   init(gameDetailData) {
     this.game = gameDetailData.game;
     this.homeBatters = gameDetailData.home_batters || [];
     this.awayBatters = gameDetailData.away_batters || [];
     this.homePitchers = gameDetailData.home_pitchers || [];
     this.awayPitchers = gameDetailData.away_pitchers || [];
-    
+
     this.outsCount = 0;
     this.awayLineupIndex = 0;
     this.homeLineupIndex = 0;
@@ -40,7 +40,7 @@ const LiveScorer = {
     const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
 
     const activeIndex = isTop ? this.awayLineupIndex : this.homeLineupIndex;
-    
+
     if (battingList.length > 0) {
       this.activeBatterId = battingList[activeIndex % battingList.length].player_id;
     } else {
@@ -86,7 +86,7 @@ const LiveScorer = {
         <!-- Live Header Box -->
         <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="md-chip active">🔴 ANOTADOR EN VIVO (PILOTO AUTOMÁTICO)</span>
+            <span class="md-chip active">🔴 ANOTADOR EN VIVO</span>
             <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
           </div>
 
