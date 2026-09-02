@@ -15,15 +15,36 @@ session_start();
   
   <meta name="description" content="Plataforma oficial de la Liga Metropolitana de Béisbol de Buenos Aires. Estadísticas en vivo, posiciones y resultados.">
   <meta name="theme-color" content="#070D1B">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LMB Stats">
+  <link rel="apple-touch-icon" href="assets/images/lmb_logo.png">
   
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="assets/manifest.json">
   <link rel="icon" type="image/png" href="assets/images/lmb_logo.png">
-  <link rel="stylesheet" href="assets/css/material-theme.css?v=2.1">
+  <link rel="stylesheet" href="assets/css/material-theme.css?v=2.2">
 </head>
 <body>
 
   <!-- App Shell Container (Max 768px Fluid) -->
   <div id="app-container">
+
+    <!-- Sticky PWA Installation Alert Banner -->
+    <div id="pwa-install-banner" class="md-card" style="display:none; position:fixed; bottom:74px; left:50%; transform:translateX(-50%); width: calc(100% - 24px); max-width: 744px; z-index: 250; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid var(--lmb-blue-primary); box-shadow: 0 8px 32px rgba(0,0,0,0.6); padding: 12px 14px; border-radius: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          <img src="assets/images/lmb_logo.png" style="width:40px; height:40px; min-width:40px; border-radius:50%; border:2px solid #F59E0B; object-fit:cover;" alt="LMB">
+          <div style="min-width:0;">
+            <div style="font-weight:800; font-size:0.88rem; color:#FFFFFF;" class="text-truncate">¡Instala LMB Stats App!</div>
+            <div style="font-size:0.75rem; color:#94A3B8; line-height:1.2;" class="text-truncate">Acceso directo, alertas en vivo y uso sin conexión.</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button class="md-btn md-btn-primary" style="padding:6px 12px; font-size:0.78rem;" onclick="App.installPwa()">Instalar</button>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.dismissPwaBanner()">✕</button>
+        </div>
+      </div>
+    </div>
     
     <!-- Top Sticky Header -->
     <header class="md-top-app-bar">
@@ -84,7 +105,7 @@ session_start();
     <!-- Snackbar Notification Toast -->
     <div id="snackbar" style="display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#3B82F6; color:#FFF; padding:10px 18px; border-radius:99px; font-size:0.8rem; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,0.5); z-index:400; white-space:nowrap;"></div>
 
-    <!-- Auth Bottom Sheet Modal Dialog -->
+    <!-- Auth Bottom Sheet Modal Dialog (Login & Register) -->
     <div id="auth-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet">
         <div class="sheet-handle" onclick="App.closeAuthModal()"></div>
@@ -104,14 +125,14 @@ session_start();
         <!-- Login Form -->
         <form id="login-form" style="display:flex; flex-direction:column; gap:10px;" onsubmit="App.handleLogin(event)">
           <div class="form-group">
-            <label>Usuario o Correo</label>
-            <input type="text" id="login-username" class="form-control" required placeholder="admin">
+            <label>Usuario o Correo Electrónico</label>
+            <input type="text" id="login-username" class="form-control" required placeholder="admin o correo@ejemplo.com">
           </div>
           <div class="form-group">
             <label>Contraseña</label>
             <input type="password" id="login-password" class="form-control" required placeholder="••••••••">
           </div>
-          <button type="submit" class="md-btn md-btn-primary" style="width:100%; margin-top:6px;">Ingresar</button>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%; margin-top:6px;">Acceder a la Cuenta</button>
         </form>
 
         <!-- Register Form -->
@@ -125,15 +146,37 @@ session_start();
             <input type="email" id="reg-email" class="form-control" required placeholder="correo@ejemplo.com">
           </div>
           <div class="form-group">
-            <label>Nombre de Usuario</label>
+            <label>Nombre de Usuario (Login)</label>
             <input type="text" id="reg-username" class="form-control" required placeholder="juanperez">
           </div>
           <div class="form-group">
-            <label>Contraseña</label>
-            <input type="password" id="reg-password" class="form-control" required placeholder="••••••••">
+            <label>Contraseña (mínimo 6 caracteres)</label>
+            <input type="password" id="reg-password" class="form-control" required minlength="6" placeholder="••••••••">
           </div>
-          <button type="submit" class="md-btn md-btn-gold" style="width:100%; margin-top:6px;">Registrar Cuenta</button>
+          <div class="form-group">
+            <label>Confirmar Contraseña</label>
+            <input type="password" id="reg-password-confirm" class="form-control" required minlength="6" placeholder="••••••••">
+          </div>
+          <button type="submit" class="md-btn md-btn-gold" style="width:100%; margin-top:6px;">Crear Cuenta de Usuario</button>
         </form>
+      </div>
+    </div>
+
+    <!-- Logged In User Profile & Account Settings Modal -->
+    <div id="user-profile-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet">
+        <div class="sheet-handle" onclick="App.closeUserProfileModal()"></div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">account_circle</span> Mi Perfil de Usuario
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeUserProfileModal()">❌</button>
+        </div>
+
+        <div id="user-profile-details">
+          <!-- Dynamic Profile Data injected by App.showUserModal -->
+        </div>
       </div>
     </div>
 

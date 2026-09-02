@@ -7,10 +7,21 @@ $pdo = getDBConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? ($method === 'POST' ? 'login' : 'me');
 
-// Check Session User
+// Public Check First User Status
+if ($action === 'check_first_user') {
+    $stmtCount = $pdo->query("SELECT COUNT(*) as total FROM users");
+    $totalUsers = intval($stmtCount->fetch()['total'] ?? 0);
+    echo json_encode([
+        'success' => true,
+        'total_users' => $totalUsers,
+        'is_first_user' => ($totalUsers === 0)
+    ]);
+    exit;
+}
+
+// Check Session User Profile
 if ($action === 'me') {
-    if (isset($_SESSION['user'])) {
-        // Refresh latest user record
+    if (isset($_SESSION['user']['id'])) {
         $stmt = $pdo->prepare("SELECT u.id, u.username, u.name, u.email, u.role, u.assigned_team_id, t.name as assigned_team_name 
                                FROM users u 
                                LEFT JOIN teams t ON u.assigned_team_id = t.id 
@@ -35,18 +46,21 @@ if ($action === 'login' && $method === 'POST') {
     $password = trim($input['password'] ?? '');
 
     if (empty($usernameOrEmail) || empty($password)) {
-        echo json_encode(['success' => false, 'message' => 'Ingrese usuario/email y contraseña.']);
+        echo json_encode(['success' => false, 'message' => 'Ingrese usuario o correo y contraseña.']);
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT u.*, t.name as assigned_team_name 
+                           FROM users u 
+                           LEFT JOIN teams t ON u.assigned_team_id = t.id 
+                           WHERE u.username = ? OR u.email = ? LIMIT 1");
     $stmt->execute([$usernameOrEmail, $usernameOrEmail]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password_hash'])) {
         unset($user['password_hash']);
         $_SESSION['user'] = $user;
-        echo json_encode(['success' => true, 'user' => $user]);
+        echo json_encode(['success' => true, 'user' => $user, 'message' => "¡Bienvenido/a de nuevo, {$user['name']}!"]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Usuario o contraseña incorrectos.']);
     }
@@ -57,36 +71,73 @@ if ($action === 'login' && $method === 'POST') {
 if ($action === 'register' && $method === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     $name = trim($input['name'] ?? '');
-    $email = trim($input['email'] ?? '');
-    $username = trim($input['username'] ?? '');
+    $email = strtolower(trim($input['email'] ?? ''));
+    $rawUsername = trim($input['username'] ?? '');
+    $username = strtolower(preg_replace('/[^a-zA-Z0-9_]/', '', $rawUsername));
     $password = trim($input['password'] ?? '');
+    $confirmPassword = trim($input['confirm_password'] ?? '');
 
     if (empty($name) || empty($email) || empty($username) || empty($password)) {
         echo json_encode(['success' => false, 'message' => 'Todos los campos son obligatorios.']);
         exit;
     }
 
+    if (mb_strlen($name) < 3) {
+        echo json_encode(['success' => false, 'message' => 'El nombre completo debe tener al menos 3 caracteres.']);
+        exit;
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'El correo electrónico ingresado no tiene un formato válido.']);
+        exit;
+    }
+
+    if (strlen($username) < 3) {
+        echo json_encode(['success' => false, 'message' => 'El nombre de usuario debe tener al menos 3 caracteres (letras, números o guiones bajos).']);
+        exit;
+    }
+
+    if (strlen($password) < 6) {
+        echo json_encode(['success' => false, 'message' => 'La contraseña debe tener al menos 6 caracteres.']);
+        exit;
+    }
+
+    if (!empty($confirmPassword) && $password !== $confirmPassword) {
+        echo json_encode(['success' => false, 'message' => 'Las contraseñas ingresadas no coinciden.']);
+        exit;
+    }
+
     // Check if email or username exists
-    $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1");
-    $stmtCheck->execute([$email, $username]);
-    if ($stmtCheck->fetch()) {
-        echo json_encode(['success' => false, 'message' => 'El correo o nombre de usuario ya está registrado.']);
+    $stmtCheckEmail = $pdo->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+    $stmtCheckEmail->execute([$email]);
+    if ($stmtCheckEmail->fetch()) {
+        echo json_encode(['success' => false, 'message' => 'El correo electrónico ya se encuentra registrado.']);
+        exit;
+    }
+
+    $stmtCheckUser = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+    $stmtCheckUser->execute([$username]);
+    if ($stmtCheckUser->fetch()) {
+        echo json_encode(['success' => false, 'message' => 'El nombre de usuario ya está en uso. Por favor elija otro.']);
         exit;
     }
 
     // Count total users
     $stmtCount = $pdo->query("SELECT COUNT(*) as total FROM users");
-    $totalUsers = $stmtCount->fetch()['total'];
+    $totalUsers = intval($stmtCount->fetch()['total'] ?? 0);
 
     // First user to register becomes Super Admin!
-    $role = ($totalUsers == 0) ? 'super_admin' : 'viewer';
+    $role = ($totalUsers === 0) ? 'super_admin' : 'viewer';
 
     $hash = password_hash($password, PASSWORD_BCRYPT);
     $stmtIns = $pdo->prepare("INSERT INTO users (username, password_hash, name, email, role) VALUES (?, ?, ?, ?, ?)");
     $stmtIns->execute([$username, $hash, $name, $email, $role]);
     $userId = $pdo->lastInsertId();
 
-    $stmtUser = $pdo->prepare("SELECT id, username, name, email, role FROM users WHERE id = ?");
+    $stmtUser = $pdo->prepare("SELECT u.id, u.username, u.name, u.email, u.role, u.assigned_team_id, t.name as assigned_team_name 
+                               FROM users u 
+                               LEFT JOIN teams t ON u.assigned_team_id = t.id 
+                               WHERE u.id = ? LIMIT 1");
     $stmtUser->execute([$userId]);
     $newUser = $stmtUser->fetch();
 
@@ -94,15 +145,62 @@ if ($action === 'register' && $method === 'POST') {
     echo json_encode([
         'success' => true, 
         'user' => $newUser, 
-        'message' => ($role === 'super_admin') ? '¡Felicidades! Eres el primer usuario registrado y has sido asignado como Super Administrador.' : 'Cuenta registrada exitosamente.'
+        'message' => ($role === 'super_admin') 
+            ? '¡Felicidades! Eres el primer usuario registrado y se te ha otorgado el rol de Super Administrador.' 
+            : 'Cuenta de usuario creada con éxito.'
     ]);
+    exit;
+}
+
+// User Change Password
+if ($action === 'change_password' && $method === 'POST') {
+    if (!isset($_SESSION['user']['id'])) {
+        echo json_encode(['success' => false, 'message' => 'Debe iniciar sesión para cambiar su contraseña.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $currentPassword = trim($input['current_password'] ?? '');
+    $newPassword = trim($input['new_password'] ?? '');
+    $confirmPassword = trim($input['confirm_password'] ?? '');
+
+    if (empty($currentPassword) || empty($newPassword)) {
+        echo json_encode(['success' => false, 'message' => 'Complete la contraseña actual y la nueva contraseña.']);
+        exit;
+    }
+
+    if (strlen($newPassword) < 6) {
+        echo json_encode(['success' => false, 'message' => 'La nueva contraseña debe tener al menos 6 caracteres.']);
+        exit;
+    }
+
+    if ($newPassword !== $confirmPassword) {
+        echo json_encode(['success' => false, 'message' => 'La confirmación de la nueva contraseña no coincide.']);
+        exit;
+    }
+
+    // Verify current password
+    $stmt = $pdo->prepare("SELECT password_hash FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$_SESSION['user']['id']]);
+    $row = $stmt->fetch();
+
+    if (!$row || !password_verify($currentPassword, $row['password_hash'])) {
+        echo json_encode(['success' => false, 'message' => 'La contraseña actual es incorrecta.']);
+        exit;
+    }
+
+    $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+    $stmtUp = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+    $stmtUp->execute([$newHash, $_SESSION['user']['id']]);
+
+    echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente.']);
     exit;
 }
 
 // Logout
 if ($action === 'logout') {
     session_destroy();
-    echo json_encode(['success' => true, 'message' => 'Sesión cerrada.']);
+    echo json_encode(['success' => true, 'message' => 'Sesión cerrada correctamente.']);
     exit;
 }
 
@@ -142,6 +240,17 @@ if ($action === 'user_update' && $method === 'POST') {
     $userId = intval($input['user_id'] ?? 0);
     $role = trim($input['role'] ?? 'viewer');
     $assignedTeamId = !empty($input['assigned_team_id']) ? intval($input['assigned_team_id']) : null;
+
+    $allowedRoles = ['super_admin', 'admin', 'team_admin', 'scorekeeper', 'viewer'];
+    if (!in_array($role, $allowedRoles)) {
+        $role = 'viewer';
+    }
+
+    // Only super_admin can assign super_admin role
+    if ($role === 'super_admin' && $_SESSION['user']['role'] !== 'super_admin') {
+        echo json_encode(['success' => false, 'message' => 'Solo un Super Administrador puede otorgar dicho rol.']);
+        exit;
+    }
 
     if (!$userId) {
         echo json_encode(['success' => false, 'message' => 'ID de usuario requerido.']);
@@ -190,3 +299,4 @@ if ($action === 'settings_update' && $method === 'POST') {
     echo json_encode(['success' => true, 'message' => 'Ajustes del sistema guardados exitosamente.']);
     exit;
 }
+

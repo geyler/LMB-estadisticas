@@ -13,12 +13,79 @@ const App = {
   adminTab: 'categories',
   authTab: 'login',
 
+  deferredPwaPrompt: null,
+
   async init() {
     await this.loadSettings();
     await this.checkAuth();
     await this.loadLeagues();
     this.setupEventListeners();
+    this.initPwaInstaller();
     this.showView('home');
+  },
+
+  initPwaInstaller() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredPwaPrompt = e;
+      this.checkPwaInstallState();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      this.deferredPwaPrompt = null;
+      this.hidePwaBanner();
+      this.showSnackbar('¡App LMB Estadísticas instalada con éxito!');
+    });
+
+    setTimeout(() => this.checkPwaInstallState(), 1000);
+  },
+
+  checkPwaInstallState() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || document.referrer.includes('android-app://');
+    if (isStandalone) {
+      this.hidePwaBanner();
+      return;
+    }
+
+    const dismissedTime = localStorage.getItem('lmb_pwa_dismissed');
+    if (!dismissedTime || (Date.now() - parseInt(dismissedTime)) > (2 * 24 * 60 * 60 * 1000)) {
+      this.showPwaBanner();
+    }
+  },
+
+  showPwaBanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.style.display = 'block';
+  },
+
+  hidePwaBanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.style.display = 'none';
+  },
+
+  dismissPwaBanner() {
+    localStorage.setItem('lmb_pwa_dismissed', Date.now().toString());
+    this.hidePwaBanner();
+  },
+
+  async installPwa() {
+    if (this.deferredPwaPrompt) {
+      this.deferredPwaPrompt.prompt();
+      const choiceResult = await this.deferredPwaPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        this.showSnackbar('Instalando aplicación...');
+      }
+      this.deferredPwaPrompt = null;
+      this.hidePwaBanner();
+    } else {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        alert("📱 Para instalar en iOS (iPhone/iPad):\n1. Toca el botón Compartir en Safari (icono ⎘).\n2. Selecciona 'Agregar a inicio' ( ➕ ).");
+      } else {
+        this.showSnackbar("Presione 'Agregar a pantalla principal' en las opciones de su navegador.");
+      }
+      this.dismissPwaBanner();
+    }
   },
 
   async loadSettings() {
@@ -99,30 +166,41 @@ const App = {
     if (modal) modal.classList.remove('open');
   },
 
-  switchAuthTab(tab) {
+  async switchAuthTab(tab) {
     this.authTab = tab;
     const loginBtn = document.getElementById('auth-tab-login-btn');
     const regBtn = document.getElementById('auth-tab-register-btn');
     const loginForm = document.getElementById('login-form');
     const regForm = document.getElementById('register-form');
+    const banner = document.getElementById('first-user-banner');
 
     if (tab === 'login') {
-      loginBtn.className = 'md-btn md-btn-primary';
-      regBtn.className = 'md-btn md-btn-outlined';
-      loginForm.style.display = 'flex';
-      regForm.style.display = 'none';
+      if (loginBtn) loginBtn.className = 'md-btn md-btn-primary';
+      if (regBtn) regBtn.className = 'md-btn md-btn-outlined';
+      if (loginForm) loginForm.style.display = 'flex';
+      if (regForm) regForm.style.display = 'none';
+      if (banner) banner.style.display = 'none';
+      
+      const input = document.getElementById('login-username');
+      if (input) setTimeout(() => input.focus(), 100);
     } else {
-      loginBtn.className = 'md-btn md-btn-outlined';
-      regBtn.className = 'md-btn md-btn-gold';
-      loginForm.style.display = 'none';
-      regForm.style.display = 'flex';
+      if (loginBtn) loginBtn.className = 'md-btn md-btn-outlined';
+      if (regBtn) regBtn.className = 'md-btn md-btn-gold';
+      if (loginForm) loginForm.style.display = 'none';
+      if (regForm) regForm.style.display = 'flex';
 
-      fetch('api/auth.php?action=users_list').then(r => r.json()).then(data => {
-        const banner = document.getElementById('first-user-banner');
+      try {
+        const res = await fetch('api/auth.php?action=check_first_user');
+        const data = await res.json();
         if (banner) {
-          banner.style.display = (!data.users || data.users.length === 0) ? 'block' : 'none';
+          banner.style.display = (data.success && data.is_first_user) ? 'block' : 'none';
         }
-      });
+      } catch (e) {
+        if (banner) banner.style.display = 'none';
+      }
+
+      const input = document.getElementById('reg-name');
+      if (input) setTimeout(() => input.focus(), 100);
     }
   },
 
@@ -130,6 +208,11 @@ const App = {
     e.preventDefault();
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
+
+    if (!username || !password) {
+      this.showSnackbar('Por favor complete usuario/correo y contraseña.');
+      return;
+    }
 
     try {
       const res = await fetch('api/auth.php?action=login', {
@@ -143,13 +226,13 @@ const App = {
         this.currentUser = data.user;
         this.renderUserBadge();
         this.closeAuthModal();
-        this.showSnackbar(`Bienvenido/a, ${data.user.name}`);
+        this.showSnackbar(data.message || `Bienvenido/a, ${data.user.name}`);
         this.refreshCurrentView();
       } else {
-        alert(data.message || 'Error al iniciar sesión.');
+        this.showSnackbar(data.message || 'Error al iniciar sesión.');
       }
     } catch (err) {
-      alert('Error de conexión.');
+      this.showSnackbar('Error de conexión con el servidor.');
     }
   },
 
@@ -159,12 +242,44 @@ const App = {
     const email = document.getElementById('reg-email').value.trim();
     const username = document.getElementById('reg-username').value.trim();
     const password = document.getElementById('reg-password').value.trim();
+    const confirmPassword = document.getElementById('reg-password-confirm').value.trim();
+
+    if (!name || !email || !username || !password || !confirmPassword) {
+      this.showSnackbar('Por favor complete todos los campos.');
+      return;
+    }
+
+    if (name.length < 3) {
+      this.showSnackbar('El nombre debe tener al menos 3 caracteres.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.showSnackbar('El correo electrónico no es válido.');
+      return;
+    }
+
+    if (username.length < 3) {
+      this.showSnackbar('El usuario debe tener al menos 3 caracteres.');
+      return;
+    }
+
+    if (password.length < 6) {
+      this.showSnackbar('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      this.showSnackbar('Las contraseñas no coinciden.');
+      return;
+    }
 
     try {
       const res = await fetch('api/auth.php?action=register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, username, password })
+        body: JSON.stringify({ name, email, username, password, confirm_password: confirmPassword })
       });
       const data = await res.json();
 
@@ -172,13 +287,13 @@ const App = {
         this.currentUser = data.user;
         this.renderUserBadge();
         this.closeAuthModal();
-        this.showSnackbar(`¡Cuenta registrada! Rol: ${data.user.role.toUpperCase()}`);
+        this.showSnackbar(data.message || `¡Cuenta registrada exitosamente!`);
         this.refreshCurrentView();
       } else {
-        alert(data.message || 'Error al registrar usuario.');
+        this.showSnackbar(data.message || 'Error al registrar la cuenta.');
       }
     } catch (err) {
-      alert('Error de conexión.');
+      this.showSnackbar('Error de conexión al procesar el registro.');
     }
   },
 
@@ -1132,12 +1247,149 @@ const App = {
   },
 
   showUserModal() {
-    if (confirm(`Sesión iniciada como ${this.currentUser.name} (${this.currentUser.role}). ¿Cerrar sesión?`)) {
-      fetch('api/auth.php?action=logout').then(() => {
-        this.currentUser = null;
-        this.renderUserBadge();
-        this.refreshCurrentView();
+    if (!this.currentUser) return;
+    const modal = document.getElementById('user-profile-modal');
+    const container = document.getElementById('user-profile-details');
+    if (!modal || !container) return;
+
+    const u = this.currentUser;
+    const roleLabels = {
+      'super_admin': '👑 Super Administrador',
+      'admin': '🛡️ Administrador Liga',
+      'team_admin': '🧢 Delegado de Club',
+      'scorekeeper': '📊 Planillero Oficial',
+      'viewer': '👁️ Espectador'
+    };
+    const roleTitle = roleLabels[u.role] || u.role.toUpperCase();
+
+    let html = `
+      <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center; padding:16px;">
+        <div style="width:64px; height:64px; border-radius:50%; background:#F59E0B; color:#000; font-size:1.8rem; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 8px auto; border:3px solid #FFFFFF;">
+          ${u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+        </div>
+        <h2 style="font-size:1.2rem; font-weight:800; color:#FFFFFF; margin:0;" class="text-truncate">${u.name}</h2>
+        <div style="font-size:0.8rem; color:#94A3B8; margin-top:2px;">@${u.username} • ${u.email}</div>
+        
+        <div style="margin-top:8px;">
+          <span class="md-chip active" style="font-size:0.75rem; padding:4px 12px;">${roleTitle}</span>
+        </div>
+
+        ${u.assigned_team_name ? `
+          <div style="font-size:0.8rem; color:#F59E0B; font-weight:700; margin-top:8px;" class="text-truncate">
+            🛡️ Club Asignado: ${u.assigned_team_name}
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+        <button class="md-btn md-btn-gold" style="width:100%; justify-content:flex-start;" onclick="App.closeUserProfileModal(); App.installPwa();">
+          <span class="material-icons-round">get_app</span> Instalar App Oficial (PWA)
+        </button>
+
+        <button class="md-btn md-btn-outlined" style="width:100%; justify-content:flex-start;" onclick="App.toggleChangePasswordForm()">
+          <span class="material-icons-round" style="color:#F59E0B;">key</span> Cambiar Mi Contraseña
+        </button>
+
+        <!-- Change Password Form (Accordion) -->
+        <form id="change-pass-form" style="display:none; flex-direction:column; gap:8px; background:rgba(7,13,27,0.6); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.1);" onsubmit="App.handleChangePassword(event)">
+          <div class="form-group">
+            <label>Contraseña Actual</label>
+            <input type="password" id="cp-current" class="form-control" required placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label>Nueva Contraseña</label>
+            <input type="password" id="cp-new" class="form-control" required minlength="6" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label>Confirmar Nueva Contraseña</label>
+            <input type="password" id="cp-confirm" class="form-control" required minlength="6" placeholder="••••••••">
+          </div>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%; margin-top:4px;">Guardar Nueva Contraseña</button>
+        </form>
+
+        ${['super_admin', 'admin'].includes(u.role) ? `
+          <button class="md-btn md-btn-outlined" style="width:100%; justify-content:flex-start;" onclick="App.closeUserProfileModal(); App.showView('admin');">
+            <span class="material-icons-round" style="color:#3B82F6;">admin_panel_settings</span> Ir al Panel de Administración
+          </button>
+        ` : ''}
+
+        <button class="md-btn md-btn-danger" style="width:100%; margin-top:6px;" onclick="App.handleLogout()">
+          <span class="material-icons-round">logout</span> Cerrar Sesión
+        </button>
+      </div>
+    `;
+
+    container.innerHTML = html;
+    modal.classList.add('open');
+  },
+
+  closeUserProfileModal() {
+    const modal = document.getElementById('user-profile-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  toggleChangePasswordForm() {
+    const form = document.getElementById('change-pass-form');
+    if (form) {
+      form.style.display = (form.style.display === 'none' || !form.style.display) ? 'flex' : 'none';
+      if (form.style.display === 'flex') {
+        const input = document.getElementById('cp-current');
+        if (input) input.focus();
+      }
+    }
+  },
+
+  async handleChangePassword(e) {
+    e.preventDefault();
+    const current_password = document.getElementById('cp-current').value.trim();
+    const new_password = document.getElementById('cp-new').value.trim();
+    const confirm_password = document.getElementById('cp-confirm').value.trim();
+
+    if (!current_password || !new_password || !confirm_password) {
+      this.showSnackbar('Complete todos los campos de contraseña.');
+      return;
+    }
+
+    if (new_password.length < 6) {
+      this.showSnackbar('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (new_password !== confirm_password) {
+      this.showSnackbar('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      const res = await fetch('api/auth.php?action=change_password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password, new_password, confirm_password })
       });
+      const data = await res.json();
+
+      if (data.success) {
+        this.showSnackbar(data.message || 'Contraseña actualizada.');
+        this.toggleChangePasswordForm();
+      } else {
+        this.showSnackbar(data.message || 'Error al cambiar contraseña.');
+      }
+    } catch (err) {
+      this.showSnackbar('Error de conexión.');
+    }
+  },
+
+  async handleLogout() {
+    try {
+      await fetch('api/auth.php?action=logout');
+      this.currentUser = null;
+      this.renderUserBadge();
+      this.closeUserProfileModal();
+      this.showSnackbar('Sesión cerrada correctamente.');
+      this.refreshCurrentView();
+    } catch (e) {
+      this.showSnackbar('Error al cerrar sesión.');
     }
   },
 

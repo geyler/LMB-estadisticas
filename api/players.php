@@ -145,6 +145,11 @@ if ($action === 'detail') {
 }
 
 if ($action === 'create' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'team_admin', 'scorekeeper'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado. Se requieren permisos de administración o delegado.']);
+        exit;
+    }
+
     $input = json_decode(file_get_contents('php://input'), true);
     $teamId = intval($input['team_id'] ?? 0);
     $firstName = trim($input['first_name'] ?? '');
@@ -161,10 +166,66 @@ if ($action === 'create' && $method === 'POST') {
         exit;
     }
 
+    // Role team check for team_admin
+    $user = $_SESSION['user'];
+    if ($user['role'] === 'team_admin' && !empty($user['assigned_team_id']) && $user['assigned_team_id'] != $teamId) {
+        echo json_encode(['success' => false, 'message' => 'Solo puedes agregar jugadores a tu club asignado.']);
+        exit;
+    }
+
     $stmt = $pdo->prepare("INSERT INTO players (team_id, first_name, last_name, jersey_number, position_primary, position_secondary, bats, throws, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$teamId, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $photoUrl]);
     $playerId = $pdo->lastInsertId();
 
     echo json_encode(['success' => true, 'player_id' => $playerId, 'message' => 'Jugador registrado exitosamente.']);
+    exit;
+}
+
+if ($action === 'update' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'team_admin', 'scorekeeper'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+    $firstName = trim($input['first_name'] ?? '');
+    $lastName = trim($input['last_name'] ?? '');
+    $jerseyNumber = intval($input['jersey_number'] ?? 0);
+    $positionPrimary = trim($input['position_primary'] ?? 'OF');
+    $positionSecondary = trim($input['position_secondary'] ?? '');
+    $bats = trim($input['bats'] ?? 'R');
+    $throws = trim($input['throws'] ?? 'R');
+
+    if (!$id || empty($firstName) || empty($lastName)) {
+        echo json_encode(['success' => false, 'message' => 'ID, nombre y apellido requeridos.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE players SET first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
+    $stmt->execute([$firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
+
+    echo json_encode(['success' => true, 'message' => 'Datos del jugador actualizados correctamente.']);
+    exit;
+}
+
+if ($action === 'delete' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'team_admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID de jugador requerido.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE players SET is_active = 0 WHERE id = ?");
+    $stmt->execute([$id]);
+
+    echo json_encode(['success' => true, 'message' => 'Jugador dado de baja del plantel.']);
     exit;
 }
