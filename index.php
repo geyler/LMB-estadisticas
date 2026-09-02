@@ -4,6 +4,10 @@
  * Liga Metropolitana de Béisbol (LMB)
  * Responsive PWA & SPA Engine
  */
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
 session_start();
 ?>
 <!DOCTYPE html>
@@ -22,7 +26,7 @@ session_start();
   
   <link rel="manifest" href="assets/manifest.json">
   <link rel="icon" type="image/png" href="assets/images/lmb_logo.png">
-  <link rel="stylesheet" href="assets/css/material-theme.css?v=2.2">
+  <link rel="stylesheet" href="assets/css/material-theme.css?v=3.0">
 </head>
 <body>
 
@@ -207,16 +211,22 @@ session_start();
   </div>
 
   <!-- Scripts -->
-  <script src="assets/js/offline-sync.js?v=2.1"></script>
-  <script src="assets/js/live-scorer.js?v=2.1"></script>
-  <script src="assets/js/app.js?v=2.1"></script>
+  <script src="assets/js/offline-sync.js?v=3.0"></script>
+  <script src="assets/js/live-scorer.js?v=3.0"></script>
+  <script src="assets/js/app.js?v=3.0"></script>
 
   <script>
+    // Enforce 100% Real-Time Database Mode: Purge all local cache storage & unregister stale workers
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=2.1').then(reg => {
-          console.log('ServiceWorker registrado:', reg.scope);
-        }).catch(err => console.error('Error ServiceWorker:', err));
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
       });
     }
   </script>

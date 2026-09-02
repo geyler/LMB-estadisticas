@@ -1,5 +1,9 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
 session_start();
 require_once __DIR__ . '/../db/db.php';
 
@@ -9,12 +13,15 @@ $action = $_GET['action'] ?? ($method === 'POST' ? 'login' : 'me');
 
 // Public Check First User Status
 if ($action === 'check_first_user') {
-    $stmtCount = $pdo->query("SELECT COUNT(*) as total FROM users WHERE role = 'super_admin'");
-    $superAdmins = intval($stmtCount->fetch()['total'] ?? 0);
+    $stmtCount = $pdo->query("SELECT COUNT(*) as total FROM users");
+    $totalUsers = intval($stmtCount->fetch()['total'] ?? 0);
+    $stmtSuper = $pdo->query("SELECT COUNT(*) as total FROM users WHERE role = 'super_admin'");
+    $superAdmins = intval($stmtSuper->fetch()['total'] ?? 0);
     echo json_encode([
         'success' => true,
+        'total_users' => $totalUsers,
         'super_admins' => $superAdmins,
-        'is_first_user' => ($superAdmins === 0)
+        'is_first_user' => ($totalUsers === 0)
     ]);
     exit;
 }
@@ -142,11 +149,11 @@ if ($action === 'register' && $method === 'POST') {
         exit;
     }
 
-    // Count super admins: If 0 super_admins exist, assign super_admin!
-    $stmtCountSuper = $pdo->query("SELECT COUNT(*) as total FROM users WHERE role = 'super_admin'");
-    $superAdminCount = intval($stmtCountSuper->fetch()['total'] ?? 0);
+    // Count total users: If 0 users exist in DB, assign super_admin role to the first registrant!
+    $stmtCountTotal = $pdo->query("SELECT COUNT(*) as total FROM users");
+    $totalUserCount = intval($stmtCountTotal->fetch()['total'] ?? 0);
 
-    $role = ($superAdminCount === 0) ? 'super_admin' : 'viewer';
+    $role = ($totalUserCount === 0) ? 'super_admin' : 'viewer';
 
     $hash = password_hash($password, PASSWORD_BCRYPT);
     $stmtIns = $pdo->prepare("INSERT INTO users (username, password_hash, name, email, role) VALUES (?, ?, ?, ?, ?)");
