@@ -21,12 +21,23 @@ function getDBConnection() {
 
     try {
         if ($driver === 'mysql') {
-            $dsn = "mysql:host={$host};port={$port};dbname={$dbName};charset=utf8mb4";
-            $pdo = new PDO($dsn, $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
+            try {
+                // 1. Primary: Hostinger Credentials
+                $dsn = "mysql:host={$host};port={$port};dbname={$dbName};charset=utf8mb4";
+                $pdo = new PDO($dsn, $user, $pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]);
+            } catch (Exception $me) {
+                // 2. Fallback: Local root MySQL
+                $dsnRoot = "mysql:host={$host};port={$port};dbname={$dbName};charset=utf8mb4";
+                $pdo = new PDO($dsnRoot, 'root', '', [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]);
+            }
         } else {
             throw new Exception("Force SQLite fallback");
         }
@@ -38,7 +49,9 @@ function getDBConnection() {
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $pdo->exec("PRAGMA foreign_keys = ON;");
         } catch (PDOException $se) {
-            die("Error de conexión a la base de datos: " . $se->getMessage());
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Error de conexión a la base de datos: ' . $se->getMessage()]);
+            exit;
         }
     }
 
