@@ -95,14 +95,14 @@ session_start();
         </div>
       </div>
 
-      <div style="display:flex; align-items:center; gap:6px;">
-        <button class="md-btn md-btn-outlined" style="padding: 4px 8px; font-size: 0.78rem;" onclick="App.showView('onboarding')" title="Guía Paso a Paso">
-          📖 Guía
+      <div class="header-actions">
+        <button class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía Paso a Paso">
+          📖 <span class="hide-mobile">Guía</span>
         </button>
-        <button id="theme-toggle-btn" class="md-btn md-btn-outlined" style="padding: 4px 8px; font-size: 0.85rem;" onclick="App.toggleTheme()" title="Cambiar Tema">
+        <button id="theme-toggle-btn" class="md-btn md-btn-outlined header-btn" onclick="App.toggleTheme()" title="Cambiar Tema">
           🌙
         </button>
-        <button id="user-action-btn" class="md-btn md-btn-outlined" style="padding: 4px 10px; font-size: 0.75rem;">
+        <button id="user-action-btn" class="md-btn md-btn-outlined user-badge-btn">
           <span class="material-icons-round" style="font-size: 16px;">login</span> Acceder
         </button>
       </div>
@@ -583,14 +583,17 @@ session_start();
       </div>
     </div>
 
-    <!-- Custom Confirm Dialog Modal -->
-    <div id="custom-confirm-modal" class="md-modal-backdrop">
+    <!-- Custom System Alert & Confirm Dialog Modal -->
+    <div id="custom-alert-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:440px;">
-        <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;" id="confirm-modal-title">Confirmación</div>
-        <p style="font-size:0.85rem; color:#94A3B8; margin:8px 0 16px 0;" id="confirm-modal-msg">¿Deseas realizar esta acción?</p>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span id="custom-alert-icon" class="material-icons-round" style="font-size:28px; color:#F59E0B;">info</span>
+          <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;" id="custom-alert-title">Atención</div>
+        </div>
+        <div style="font-size:0.88rem; color:#94A3B8; margin-bottom:16px; line-height:1.4;" id="custom-alert-message">Mensaje del sistema</div>
         <div style="display:flex; gap:10px;">
-          <button class="md-btn md-btn-outlined" style="flex:1;" id="confirm-modal-cancel">Cancelar</button>
-          <button class="md-btn md-btn-primary" style="flex:1;" id="confirm-modal-ok">Aceptar</button>
+          <button class="md-btn md-btn-outlined" style="flex:1; display:none;" id="custom-alert-cancel-btn">Cancelar</button>
+          <button class="md-btn md-btn-primary" style="flex:1;" id="custom-alert-ok-btn">Aceptar</button>
         </div>
       </div>
     </div>

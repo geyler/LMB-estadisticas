@@ -174,7 +174,7 @@ const App = {
       const cancelBtn = document.getElementById('custom-alert-cancel-btn');
       const okBtn = document.getElementById('custom-alert-ok-btn');
 
-      if (!modal) return resolve(true);
+      if (!modal) { alert(message); resolve(true); return; }
 
       if (titleEl) titleEl.innerText = title;
       if (msgEl) msgEl.innerHTML = message;
@@ -189,12 +189,20 @@ const App = {
         okBtn.innerText = 'Aceptar';
       }
 
-      this.alertResolver = resolve;
       modal.classList.add('open');
+
+      const cleanup = () => {
+        modal.classList.remove('open');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(true);
+      };
+
+      okBtn.onclick = () => cleanup();
     });
   },
 
-  showConfirm(title, message, icon = 'help', iconColor = '#3B82F6') {
+  showConfirm(title, message, icon = 'help', iconColor = '#EF4444') {
     return new Promise((resolve) => {
       const modal = document.getElementById('custom-alert-modal');
       const titleEl = document.getElementById('custom-alert-title');
@@ -203,7 +211,7 @@ const App = {
       const cancelBtn = document.getElementById('custom-alert-cancel-btn');
       const okBtn = document.getElementById('custom-alert-ok-btn');
 
-      if (!modal) return resolve(false);
+      if (!modal) { resolve(confirm(message)); return; }
 
       if (titleEl) titleEl.innerText = title;
       if (msgEl) msgEl.innerHTML = message;
@@ -214,22 +222,22 @@ const App = {
 
       if (cancelBtn) cancelBtn.style.display = 'block';
       if (okBtn) {
-        okBtn.className = 'md-btn md-btn-primary';
+        okBtn.className = 'md-btn md-btn-danger';
         okBtn.innerText = 'Confirmar';
       }
 
-      this.alertResolver = resolve;
       modal.classList.add('open');
-    });
-  },
 
-  closeCustomAlert(result) {
-    const modal = document.getElementById('custom-alert-modal');
-    if (modal) modal.classList.remove('open');
-    if (this.alertResolver) {
-      this.alertResolver(result);
-      this.alertResolver = null;
-    }
+      const cleanup = (result) => {
+        modal.classList.remove('open');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(result);
+      };
+
+      okBtn.onclick = () => cleanup(true);
+      cancelBtn.onclick = () => cleanup(false);
+    });
   },
 
   showAuthError(message) {
@@ -325,11 +333,11 @@ const App = {
     const userBtn = document.getElementById('user-action-btn');
     if (!userBtn) return;
     if (this.currentUser) {
-      const roleTag = this.currentUser.role === 'super_admin' ? 'SUPER ADMIN' : this.currentUser.role.toUpperCase();
-      userBtn.innerHTML = `<span class="material-icons-round">account_circle</span> ${this.currentUser.name} (${roleTag})`;
+      const roleTag = this.currentUser.role === 'super_admin' ? 'ADMIN' : this.currentUser.role.toUpperCase();
+      userBtn.innerHTML = `<span class="material-icons-round" style="color:#F59E0B; font-size:18px;">account_circle</span> <span class="user-badge-name text-truncate">${this.currentUser.name}</span> <span class="user-badge-role">${roleTag}</span>`;
       userBtn.onclick = () => this.showUserModal();
     } else {
-      userBtn.innerHTML = `<span class="material-icons-round">login</span> Acceder`;
+      userBtn.innerHTML = `<span class="material-icons-round" style="font-size:18px;">login</span> Acceder`;
       userBtn.onclick = () => this.openAuthModal('login');
     }
   },
@@ -1467,15 +1475,15 @@ const App = {
         </div>
 
         <!-- Admin Navigation Tabs -->
-        <div class="md-chip-group" style="overflow-x:auto; padding-bottom:6px;">
-          <button class="md-chip ${this.adminTab === 'categories' ? 'active' : ''}" onclick="App.switchAdminTab('categories')">🏆 Ligas y Categorías</button>
-          <button class="md-chip ${this.adminTab === 'stadiums' ? 'active' : ''}" onclick="App.switchAdminTab('stadiums')">📍 Sedes y Campos</button>
-          <button class="md-chip ${this.adminTab === 'teams' ? 'active' : ''}" onclick="App.switchAdminTab('teams')">🛡️ Equipos</button>
-          <button class="md-chip ${this.adminTab === 'unassigned' ? 'active' : ''}" style="border-color:#F59E0B;" onclick="App.switchAdminTab('unassigned')">⚠️ Sin Asignación</button>
-          <button class="md-chip ${this.adminTab === 'stages' ? 'active' : ''}" onclick="App.switchAdminTab('stages')">⚾ Etapas / Tipos Partido</button>
-          <button class="md-chip ${this.adminTab === 'audit' ? 'active' : ''}" onclick="App.switchAdminTab('audit')">📜 Auditoría / Histórico</button>
-          <button class="md-chip ${this.adminTab === 'users' ? 'active' : ''}" onclick="App.switchAdminTab('users')">👥 Usuarios y Roles</button>
-          <button class="md-chip ${this.adminTab === 'branding' ? 'active' : ''}" onclick="App.switchAdminTab('branding')">🎨 Branding Web</button>
+        <div class="admin-tab-bar">
+          <button class="admin-tab-chip ${this.adminTab === 'categories' ? 'active' : ''}" onclick="App.switchAdminTab('categories')">🏆 Ligas y Categorías</button>
+          <button class="admin-tab-chip ${this.adminTab === 'stadiums' ? 'active' : ''}" onclick="App.switchAdminTab('stadiums')">📍 Sedes y Campos</button>
+          <button class="admin-tab-chip ${this.adminTab === 'teams' ? 'active' : ''}" onclick="App.switchAdminTab('teams')">🛡️ Equipos</button>
+          <button class="admin-tab-chip ${this.adminTab === 'unassigned' ? 'active' : ''}" style="${this.adminTab === 'unassigned' ? '' : 'border-color:#F59E0B;'}" onclick="App.switchAdminTab('unassigned')">⚠️ Sin Asignación</button>
+          <button class="admin-tab-chip ${this.adminTab === 'stages' ? 'active' : ''}" onclick="App.switchAdminTab('stages')">⚾ Etapas / Tipos</button>
+          <button class="admin-tab-chip ${this.adminTab === 'audit' ? 'active' : ''}" onclick="App.switchAdminTab('audit')">📜 Auditoría</button>
+          <button class="admin-tab-chip ${this.adminTab === 'users' ? 'active' : ''}" onclick="App.switchAdminTab('users')">👥 Usuarios y Roles</button>
+          <button class="admin-tab-chip ${this.adminTab === 'branding' ? 'active' : ''}" onclick="App.switchAdminTab('branding')">🎨 Branding Web</button>
         </div>
 
         <div id="admin-tab-content">
@@ -1498,9 +1506,9 @@ const App = {
     if (this.adminTab === 'categories') {
       tabContainer.innerHTML = `
         <div class="md-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
-            <div style="display:flex; gap:6px;">
+            <div class="md-card-header-actions">
               <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateCategoryModal()">➕ Nueva Categoría</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
             </div>
@@ -1537,7 +1545,7 @@ const App = {
 
       tabContainer.innerHTML = `
         <div class="md-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Gestor de Sedes y Campos</h3>
             <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStadiumModal()">➕ Nueva Sede / Cancha</button>
           </div>
@@ -1573,7 +1581,7 @@ const App = {
 
       tabContainer.innerHTML = `
         <div class="md-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Equipos de la Liga</h3>
             <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateTeamModal()">➕ Registrar Equipo</button>
           </div>
@@ -1668,7 +1676,7 @@ const App = {
 
       tabContainer.innerHTML = `
         <div class="md-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">🏆 Etapas y Tipos de Partido</h3>
             <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStageModal()">➕ Nueva Etapa / Rol</button>
           </div>
