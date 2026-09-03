@@ -207,6 +207,18 @@ if ($action === 'update' && $method === 'POST') {
         exit;
     }
 
+    // Enforce team ownership for team_admin
+    $user = $_SESSION['user'];
+    if ($user['role'] === 'team_admin' && !empty($user['assigned_team_id'])) {
+        $stmtChk = $pdo->prepare("SELECT team_id FROM players WHERE id = ?");
+        $stmtChk->execute([$id]);
+        $playerTeam = $stmtChk->fetchColumn();
+        if ($playerTeam != $user['assigned_team_id']) {
+            echo json_encode(['success' => false, 'message' => 'Acceso denegado: Solo puedes modificar integrantes de tu propio club.']);
+            exit;
+        }
+    }
+
     $stmt = $pdo->prepare("UPDATE players SET first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
     $stmt->execute([$firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
 
@@ -226,6 +238,18 @@ if ($action === 'delete' && $method === 'POST') {
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'ID de jugador requerido.']);
         exit;
+    }
+
+    // Enforce team ownership for team_admin
+    $user = $_SESSION['user'];
+    if ($user['role'] === 'team_admin' && !empty($user['assigned_team_id'])) {
+        $stmtChk = $pdo->prepare("SELECT team_id FROM players WHERE id = ?");
+        $stmtChk->execute([$id]);
+        $playerTeam = $stmtChk->fetchColumn();
+        if ($playerTeam != $user['assigned_team_id']) {
+            echo json_encode(['success' => false, 'message' => 'Acceso denegado: Solo puedes dar de baja integrantes de tu propio club.']);
+            exit;
+        }
     }
 
     $stmt = $pdo->prepare("UPDATE players SET is_active = 0 WHERE id = ?");

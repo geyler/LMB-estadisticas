@@ -338,9 +338,23 @@ const App = {
     const userBtn = document.getElementById('user-action-btn');
     if (!userBtn) return;
     if (this.currentUser) {
-      const roleTag = this.currentUser.role === 'super_admin' ? 'ADMIN' : this.currentUser.role.toUpperCase();
-      userBtn.innerHTML = `<span class="material-icons-round" style="color:#F59E0B; font-size:18px;">account_circle</span> <span class="user-badge-name text-truncate">${this.currentUser.name}</span> <span class="user-badge-role">${roleTag}</span>`;
-      userBtn.onclick = () => this.showUserModal();
+      const roleTag = this.currentUser.role === 'super_admin' ? 'SUPER' : (this.currentUser.role === 'team_admin' ? 'DELEGADO' : this.currentUser.role.toUpperCase());
+      
+      let teamBtnHtml = '';
+      if (this.currentUser.role === 'team_admin' && this.currentUser.assigned_team_id) {
+        teamBtnHtml = `<button class="md-btn md-btn-gold" style="padding:4px 8px; font-size:0.72rem; margin-right:6px;" onclick="event.stopPropagation(); App.showView('team_detail', ${this.currentUser.assigned_team_id})">🧢 Mi Club</button>`;
+      }
+
+      userBtn.parentElement.innerHTML = `
+        <div style="display:flex; align-items:center;">
+          ${teamBtnHtml}
+          <button id="user-action-btn" class="md-btn md-btn-outlined" style="display:flex; align-items:center; gap:6px; padding:4px 10px; font-size:0.78rem;" onclick="App.showUserModal()">
+            <span class="material-icons-round" style="color:#F59E0B; font-size:18px;">account_circle</span>
+            <span class="user-badge-name text-truncate">${this.currentUser.name}</span>
+            <span class="user-badge-role">${roleTag}</span>
+          </button>
+        </div>
+      `;
     } else {
       userBtn.innerHTML = `<span class="material-icons-round" style="font-size:18px;">login</span> Acceder`;
       userBtn.onclick = () => this.openAuthModal('login');

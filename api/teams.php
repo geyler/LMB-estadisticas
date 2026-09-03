@@ -224,6 +224,14 @@ if ($action === 'update' && $method === 'POST') {
         exit;
     }
 
+    // Enforce team ownership for team_admin
+    $userRole = $_SESSION['user']['role'];
+    $userAssignedTeam = $_SESSION['user']['assigned_team_id'] ?? null;
+    if ($userRole === 'team_admin' && $userAssignedTeam != $id) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado: Solo puedes editar los datos de tu propio equipo asignado.']);
+        exit;
+    }
+
     $stmt = $pdo->prepare("UPDATE teams SET name = ?, short_name = ?, home_stadium_id = ?, category_id = ?, foundation_year = ?, color_primary = ?, color_secondary = ?" . (!empty($logoUrl) ? ", logo_url = ?" : "") . " WHERE id = ?");
     
     $params = [$name, $shortName, $homeStadiumId, $categoryId, $foundationYear, $colorPrimary, $colorSecondary];
