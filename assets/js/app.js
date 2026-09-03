@@ -1077,37 +1077,52 @@ const App = {
         </div>
 
 
-        <!-- Inning Line Score Table -->
-        <div class="view-section">
-          <h3 class="section-title">Anotación por Entradas (Line Score)</h3>
-          <div class="md-table-wrapper">
-            <table class="md-table" style="text-align:center;">
-              <thead>
-                <tr>
-                  <th style="text-align:left;">Equipo</th>
-                  <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th>
-                  <th class="highlight-val">C</th><th>H</th><th>E</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="text-align:left; font-weight:800;">${g.away_short}</td>
-                  ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.away[i] !== undefined ? lines.away[i] : '-'}</td>`).join('')}
-                  <td class="highlight-val">${g.away_score}</td>
-                  <td>${g.away_hits}</td>
-                  <td>${g.away_errors}</td>
-                </tr>
-                <tr>
-                  <td style="text-align:left; font-weight:800;">${g.home_short}</td>
-                  ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.home[i] !== undefined ? lines.home[i] : '-'}</td>`).join('')}
-                  <td class="highlight-val">${g.home_score}</td>
-                  <td>${g.home_hits}</td>
-                  <td>${g.home_errors}</td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- Inning Line Score Table or Score Summary -->
+        ${(lines && (Object.keys(lines.away || {}).length > 0 || Object.keys(lines.home || {}).length > 0)) ? `
+          <div class="view-section">
+            <h3 class="section-title">Anotación por Entradas (Line Score)</h3>
+            <div class="md-table-wrapper">
+              <table class="md-table" style="text-align:center;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left;">Equipo</th>
+                    <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th>
+                    <th class="highlight-val">C</th><th>H</th><th>E</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="text-align:left; font-weight:800;">${g.away_short}</td>
+                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.away[i] !== undefined && lines.away[i] !== null ? lines.away[i] : '<span style="color:#475569;">•</span>'}</td>`).join('')}
+                    <td class="highlight-val">${g.status === 'scheduled' ? '-' : g.away_score}</td>
+                    <td>${g.status === 'scheduled' ? '-' : g.away_hits}</td>
+                    <td>${g.status === 'scheduled' ? '-' : g.away_errors}</td>
+                  </tr>
+                  <tr>
+                    <td style="text-align:left; font-weight:800;">${g.home_short}</td>
+                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.home[i] !== undefined && lines.home[i] !== null ? lines.home[i] : '<span style="color:#475569;">•</span>'}</td>`).join('')}
+                    <td class="highlight-val">${g.status === 'scheduled' ? '-' : g.home_score}</td>
+                    <td>${g.status === 'scheduled' ? '-' : g.home_hits}</td>
+                    <td>${g.status === 'scheduled' ? '-' : g.home_errors}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        ` : `
+          <div class="view-section">
+            <div class="md-card" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); text-align:center; padding:14px; border:1px solid #334155; border-radius:10px;">
+              <h4 style="font-size:0.8rem; font-weight:700; color:#F59E0B; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">📊 Marcador C - H - E</h4>
+              <div style="display:flex; justify-content:space-around; align-items:center; font-size:1.05rem; font-weight:800;">
+                <div style="color:#F8FAFC;">${g.away_short}: <span style="color:#F59E0B;">${g.status === 'scheduled' ? '-' : g.away_score} C</span> | ${g.status === 'scheduled' ? '-' : g.away_hits} H | ${g.status === 'scheduled' ? '-' : g.away_errors} E</div>
+                <div style="color:#F8FAFC;">${g.home_short}: <span style="color:#3B82F6;">${g.status === 'scheduled' ? '-' : g.home_score} C</span> | ${g.status === 'scheduled' ? '-' : g.home_hits} H | ${g.status === 'scheduled' ? '-' : g.home_errors} E</div>
+              </div>
+              <div style="font-size:0.72rem; color:#94A3B8; margin-top:8px;">
+                ${g.status === 'scheduled' ? '📅 Partido programado (Aún no disputado)' : 'Resultado final registrado (Sin anotación jugada por jugada)'}
+              </div>
+            </div>
+          </div>
+        `}
 
         <!-- Batting Box Score -->
         <div class="view-section">

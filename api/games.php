@@ -78,13 +78,15 @@ if ($action === 'detail') {
     $lines = $stmtLine->fetchAll();
 
     $lineScores = [
-        'home' => array_fill(1, 9, 0),
-        'away' => array_fill(1, 9, 0)
+        'home' => [],
+        'away' => []
     ];
 
-    foreach ($lines as $l) {
-        $key = ($l['team_id'] == $game['home_team_id']) ? 'home' : 'away';
-        $lineScores[$key][$l['inning']] = intval($l['runs']);
+    if (!empty($lines)) {
+        foreach ($lines as $l) {
+            $key = ($l['team_id'] == $game['home_team_id']) ? 'home' : 'away';
+            $lineScores[$key][intval($l['inning'])] = intval($l['runs']);
+        }
     }
 
     // Batting Box Scores
@@ -296,6 +298,33 @@ if ($action === 'update_result' && $method === 'POST') {
         $mvpPlayerId, 
         $gameId
     ]);
+
+    // Save line_scores if provided
+    if (isset($input['line_scores_away']) || isset($input['line_scores_home'])) {
+        try {
+            $stmtG = $pdo->prepare("SELECT home_team_id, away_team_id FROM games WHERE id = ?");
+            $stmtG->execute([$gameId]);
+            $gData = $stmtG->fetch();
+            if ($gData) {
+                $pdo->prepare("DELETE FROM game_line_scores WHERE game_id = ?")->execute([$gameId]);
+                $stmtLS = $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, ?)");
+                if (!empty($input['line_scores_away']) && is_array($input['line_scores_away'])) {
+                    foreach ($input['line_scores_away'] as $inn => $runs) {
+                        if ($runs !== '' && $runs !== null) {
+                            $stmtLS->execute([$gameId, $gData['away_team_id'], (int)$inn, (int)$runs]);
+                        }
+                    }
+                }
+                if (!empty($input['line_scores_home']) && is_array($input['line_scores_home'])) {
+                    foreach ($input['line_scores_home'] as $inn => $runs) {
+                        if ($runs !== '' && $runs !== null) {
+                            $stmtLS->execute([$gameId, $gData['home_team_id'], (int)$inn, (int)$runs]);
+                        }
+                    }
+                }
+            }
+        } catch(Exception $e){}
+    }
 
     // Auto-crown champion if game_stage contains "Final" and status is "finished"
     if ($status === 'finished') {
