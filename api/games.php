@@ -175,6 +175,7 @@ if ($action === 'create' && $method === 'POST') {
     $awayTeamId = intval($input['away_team_id'] ?? 0);
     $stadiumId = !empty($input['stadium_id']) ? intval($input['stadium_id']) : null;
     $gameDate = trim($input['game_date'] ?? date('Y-m-d H:i:s'));
+    $gameStage = trim($input['game_stage'] ?? 'Temporada Regular');
 
     if (!$categoryId || !$homeTeamId || !$awayTeamId) {
         echo json_encode(['success' => false, 'message' => 'Categoría, equipo local y visitante requeridos.']);
@@ -191,15 +192,17 @@ if ($action === 'create' && $method === 'POST') {
     $stInfo = $stmtSt->fetch();
     $fieldLocation = $stInfo ? "{$stInfo['name']} ({$stInfo['field_name']})" : 'Sede Principal LMB';
 
-    $stmt = $pdo->prepare("INSERT INTO games (season_id, category_id, home_team_id, away_team_id, stadium_id, game_date, field_location, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')");
-    $stmt->execute([$seasonId, $categoryId, $homeTeamId, $awayTeamId, $stadiumId, $gameDate, $fieldLocation]);
+    $stmt = $pdo->prepare("INSERT INTO games (season_id, category_id, home_team_id, away_team_id, stadium_id, game_date, field_location, status, game_stage) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)");
+    $stmt->execute([$seasonId, $categoryId, $homeTeamId, $awayTeamId, $stadiumId, $gameDate, $fieldLocation, $gameStage]);
     $gameId = $pdo->lastInsertId();
+
+    logAuditAction($pdo, 'CREATE_GAME', "Programó un nuevo partido ({$gameStage}) para la fecha {$gameDate}.");
 
     echo json_encode(['success' => true, 'game_id' => $gameId, 'message' => 'Partido programado en el calendario.']);
     exit;
 }
 
-// Update Game (Reschedule / Edit Date / Change Venue / Edit Status)
+// Update Game (Reschedule / Edit Date / Change Venue / Edit Status / Stage)
 if ($action === 'update' && $method === 'POST') {
     if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'scorekeeper'])) {
         echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
@@ -211,6 +214,7 @@ if ($action === 'update' && $method === 'POST') {
     $stadiumId = !empty($input['stadium_id']) ? intval($input['stadium_id']) : null;
     $gameDate = trim($input['game_date'] ?? '');
     $status = trim($input['status'] ?? 'scheduled');
+    $gameStage = trim($input['game_stage'] ?? 'Temporada Regular');
 
     if (!$gameId) {
         echo json_encode(['success' => false, 'message' => 'ID de partido requerido.']);
@@ -222,8 +226,10 @@ if ($action === 'update' && $method === 'POST') {
     $stInfo = $stmtSt->fetch();
     $fieldLocation = $stInfo ? "{$stInfo['name']} ({$stInfo['field_name']})" : 'Sede LMB';
 
-    $stmt = $pdo->prepare("UPDATE games SET stadium_id = ?, game_date = ?, field_location = ?, status = ? WHERE id = ?");
-    $stmt->execute([$stadiumId, $gameDate, $fieldLocation, $status, $gameId]);
+    $stmt = $pdo->prepare("UPDATE games SET stadium_id = ?, game_date = ?, field_location = ?, status = ?, game_stage = ? WHERE id = ?");
+    $stmt->execute([$stadiumId, $gameDate, $fieldLocation, $status, $gameStage, $gameId]);
+
+    logAuditAction($pdo, 'UPDATE_GAME', "Actualizó los datos del partido ID {$gameId} (Etapa: {$gameStage}, Estado: {$status}).");
 
     echo json_encode(['success' => true, 'message' => 'Datos del partido actualizados exitosamente.']);
     exit;

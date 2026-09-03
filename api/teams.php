@@ -241,9 +241,18 @@ if ($action === 'delete' && $method === 'POST') {
         exit;
     }
 
+    $stmtTeam = $pdo->prepare("SELECT name FROM teams WHERE id = ?");
+    $stmtTeam->execute([$id]);
+    $teamName = $stmtTeam->fetchColumn() ?: "Equipo #{$id}";
+
+    // Move players to unassigned (team_id = 0)
+    $pdo->prepare("UPDATE players SET team_id = 0 WHERE team_id = ?")->execute([$id]);
+
     $stmt = $pdo->prepare("DELETE FROM teams WHERE id = ?");
     $stmt->execute([$id]);
 
-    echo json_encode(['success' => true, 'message' => 'Equipo eliminado exitosamente.']);
+    logAuditAction($pdo, 'DELETE_TEAM', "Eliminó el equipo '{$teamName}'. Sus jugadores integran ahora la lista de 'Sin Asignación'.");
+
+    echo json_encode(['success' => true, 'message' => 'Equipo eliminado. Sus jugadores pasaron a "Sin Asignación".']);
     exit;
 }

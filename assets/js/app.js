@@ -918,7 +918,10 @@ const App = {
         ${games.length ? games.map(g => `
           <div class="md-card md-card-interactive">
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-              <span class="text-truncate">${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')} ${new Date(g.game_date).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})} hs</span>
+              <div style="display:flex; gap:6px; align-items:center;" class="text-truncate">
+                <span class="md-chip" style="font-size:0.65rem; background:rgba(245, 158, 11, 0.15); color:#F59E0B; border:none; padding:1px 6px;">⚾ ${g.game_stage || 'Temporada Regular'}</span>
+                <span class="text-truncate">${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')}</span>
+              </div>
               ${App.getStatusBadge(g.status)}
             </div>
 
@@ -980,7 +983,7 @@ const App = {
       <div class="view-content">
         <!-- Match Header Box -->
         <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
-          <div style="font-size:0.75rem; color:#F59E0B; font-weight:700;" class="text-truncate">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+          <div style="font-size:0.75rem; color:#F59E0B; font-weight:700;" class="text-truncate">🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
             <div style="text-align:center;" onclick="App.showView('team_detail', ${g.away_team_id})">
@@ -1464,10 +1467,13 @@ const App = {
         </div>
 
         <!-- Admin Navigation Tabs -->
-        <div class="md-chip-group">
+        <div class="md-chip-group" style="overflow-x:auto; padding-bottom:6px;">
           <button class="md-chip ${this.adminTab === 'categories' ? 'active' : ''}" onclick="App.switchAdminTab('categories')">🏆 Ligas y Categorías</button>
           <button class="md-chip ${this.adminTab === 'stadiums' ? 'active' : ''}" onclick="App.switchAdminTab('stadiums')">📍 Sedes y Campos</button>
           <button class="md-chip ${this.adminTab === 'teams' ? 'active' : ''}" onclick="App.switchAdminTab('teams')">🛡️ Equipos</button>
+          <button class="md-chip ${this.adminTab === 'unassigned' ? 'active' : ''}" style="border-color:#F59E0B;" onclick="App.switchAdminTab('unassigned')">⚠️ Sin Asignación</button>
+          <button class="md-chip ${this.adminTab === 'stages' ? 'active' : ''}" onclick="App.switchAdminTab('stages')">⚾ Etapas / Tipos Partido</button>
+          <button class="md-chip ${this.adminTab === 'audit' ? 'active' : ''}" onclick="App.switchAdminTab('audit')">📜 Auditoría / Histórico</button>
           <button class="md-chip ${this.adminTab === 'users' ? 'active' : ''}" onclick="App.switchAdminTab('users')">👥 Usuarios y Roles</button>
           <button class="md-chip ${this.adminTab === 'branding' ? 'active' : ''}" onclick="App.switchAdminTab('branding')">🎨 Branding Web</button>
         </div>
@@ -1592,6 +1598,127 @@ const App = {
                   </td>
                 </tr>
               `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin equipos registrados.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (this.adminTab === 'unassigned') {
+      const res = await fetch('api/leagues.php?action=unassigned');
+      const data = await res.json();
+      const uTeams = data.unassigned_teams || [];
+      const uPlayers = data.unassigned_players || [];
+
+      tabContainer.innerHTML = `
+        <div class="md-card" style="border:1px solid #F59E0B;">
+          <h3 style="font-size:1rem; font-weight:800; color:#F59E0B;">⚠️ Listado de Elementos Sin Asignación</h3>
+          <p style="font-size:0.8rem; color:#94A3B8;">Aquí convergen automáticamente los equipos cuya categoría fue eliminada o los jugadores que quedaron huérfanos al borrar un equipo. Puedes reasignarlos fácilmente.</p>
+        </div>
+
+        <!-- Equipos Sin Categoría -->
+        <div class="view-section" style="margin-top:12px;">
+          <h4 style="font-size:0.9rem; font-weight:800; color:#FFFFFF; margin-bottom:6px;">🛡️ Equipos Sin Categoría / División (${uTeams.length})</h4>
+          <div class="md-table-wrapper">
+            <table class="md-table">
+              <thead>
+                <tr><th>Equipo</th><th>Abreviatura</th><th>Acción</th></tr>
+              </thead>
+              <tbody>
+                ${uTeams.length ? uTeams.map(t => `
+                  <tr>
+                    <td style="font-weight:800;">${t.name}</td>
+                    <td><span class="md-chip">${t.short_name}</span></td>
+                    <td>
+                      <button class="md-btn md-btn-gold" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignTeamModal(${t.id}, '${t.name}')">🔄 Asignar Categoría</button>
+                    </td>
+                  </tr>
+                `).join('') : '<tr><td colspan="3" style="text-align:center; padding:12px; color:#10B981;">✅ Todos los equipos están asignados a una categoría.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Jugadores Sin Equipo (Agentes Libres) -->
+        <div class="view-section" style="margin-top:16px;">
+          <h4 style="font-size:0.9rem; font-weight:800; color:#FFFFFF; margin-bottom:6px;">🧢 Jugadores Sin Equipo / Agentes Libres (${uPlayers.length})</h4>
+          <div class="md-table-wrapper">
+            <table class="md-table">
+              <thead>
+                <tr><th>#</th><th>Jugador</th><th>Posición</th><th>Acción</th></tr>
+              </thead>
+              <tbody>
+                ${uPlayers.length ? uPlayers.map(p => `
+                  <tr>
+                    <td style="font-weight:800; color:#F59E0B;">#${p.jersey_number}</td>
+                    <td style="font-weight:700;">${p.first_name} ${p.last_name}</td>
+                    <td><span class="md-chip" style="padding:2px 6px;">${p.position_primary}</span></td>
+                    <td>
+                      <button class="md-btn md-btn-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignPlayerModal(${p.id}, '${p.first_name} ${p.last_name}')">🧢 Asignar a Equipo</button>
+                    </td>
+                  </tr>
+                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px; color:#10B981;">✅ Todos los jugadores activos están integrados en un equipo.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } else if (this.adminTab === 'stages') {
+      const res = await fetch('api/leagues.php?action=stages');
+      const data = await res.json();
+      const stages = data.stages || [];
+
+      tabContainer.innerHTML = `
+        <div class="md-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:1rem; font-weight:800;">🏆 Etapas y Tipos de Partido</h3>
+            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStageModal()">➕ Nueva Etapa / Rol</button>
+          </div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Crea etiquetas personalizadas para el calendario de partidos (ej. 8vos de final, Comodín, Amistoso Internacional, Juego de Exhibición).</p>
+        </div>
+
+        <div class="md-table-wrapper" style="margin-top:12px;">
+          <table class="md-table">
+            <thead>
+              <tr><th>Etapa / Tipo</th><th>Código</th><th>Acción</th></tr>
+            </thead>
+            <tbody>
+              ${stages.length ? stages.map(s => `
+                <tr>
+                  <td style="font-weight:800; color:#F59E0B;">⚾ ${s.name}</td>
+                  <td><span class="md-chip">${s.code}</span></td>
+                  <td>
+                    <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteStage(${s.id}, '${s.name}')">🗑️ Eliminar</button>
+                  </td>
+                </tr>
+              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin etapas registradas.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (this.adminTab === 'audit') {
+      const res = await fetch('api/leagues.php?action=audit_logs');
+      const data = await res.json();
+      const logs = data.logs || [];
+
+      tabContainer.innerHTML = `
+        <div class="md-card">
+          <h3 style="font-size:1rem; font-weight:800; color:#3B82F6;">📜 Histórico de Cambios y Auditoría</h3>
+          <p style="font-size:0.8rem; color:#94A3B8;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
+        </div>
+
+        <div class="md-table-wrapper" style="margin-top:12px;">
+          <table class="md-table" style="font-size:0.8rem;">
+            <thead>
+              <tr><th>Fecha</th><th>Acción</th><th>Detalle / Descripción</th><th>Usuario</th></tr>
+            </thead>
+            <tbody>
+              ${logs.length ? logs.map(l => `
+                <tr>
+                  <td style="white-space:nowrap; color:#94A3B8;">${l.created_at}</td>
+                  <td><span class="md-chip" style="font-size:0.65rem;">${l.action}</span></td>
+                  <td style="font-weight:600;">${l.description}</td>
+                  <td style="color:#F59E0B;">${l.user_name || 'Admin'}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin registros en la auditoría.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -1963,15 +2090,18 @@ const App = {
 
   async showCreateGameModal() {
     const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
-    const [resTeams, resStadia] = await Promise.all([
+    const [resTeams, resStadia, resStages] = await Promise.all([
       fetch(`api/teams.php?action=list&category_id=${catId}`),
-      fetch(`api/leagues.php?action=stadiums`)
+      fetch(`api/leagues.php?action=stadiums`),
+      fetch(`api/leagues.php?action=stages`)
     ]);
     const dataTeams = await resTeams.json();
     const dataStadia = await resStadia.json();
+    const dataStages = await resStages.json();
 
     const teams = dataTeams.teams || [];
     const stadia = dataStadia.stadiums || [];
+    const stages = dataStages.stages || [];
 
     if (teams.length < 2) {
       const go = await this.showConfirm("Configuración Requerida", "Para programar un partido se necesitan al menos 2 equipos en la categoría.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
@@ -1987,10 +2117,15 @@ const App = {
 
     let teamListText = teams.map(t => `${t.id}: ${t.name}`).join('\n');
     const awayId = await this.showPrompt("Equipo Visitante", `Selecciona ID de Equipo Visitante:\n${teamListText}`, teams[0].id.toString());
+    if (!awayId) return;
     const homeId = await this.showPrompt("Equipo Local", `Selecciona ID de Equipo Local:\n${teamListText}`, teams[1] ? teams[1].id.toString() : teams[0].id.toString());
+    if (!homeId) return;
     
     let stadiumListText = stadia.map(s => `${s.id}: ${s.name} (${s.field_name || 'Principal'})`).join('\n');
     const stadiumId = await this.showPrompt("Sede y Cancha", `Selecciona ID de la Sede Deportiva:\n${stadiumListText}`, stadia[0] ? stadia[0].id.toString() : "1");
+
+    let stageListText = stages.map(s => `• ${s.name}`).join('\n');
+    const gameStage = await this.showPrompt("Etapa / Tipo de Partido", `Escribe el tipo de encuentro (ej: Temporada Regular, 8vos de Final, Comodín, Amistoso Internacional):\n\nOpciones disponibles:\n${stageListText}`, "Temporada Regular");
 
     if (homeId && awayId) {
       fetch('api/games.php?action=create', {
@@ -2001,6 +2136,7 @@ const App = {
           home_team_id: parseInt(homeId),
           away_team_id: parseInt(awayId),
           stadium_id: parseInt(stadiumId || 1),
+          game_stage: gameStage || "Temporada Regular",
           game_date: new Date().toISOString().slice(0, 19).replace('T', ' ')
         })
       }).then(res => res.json()).then(resData => {
@@ -2766,6 +2902,95 @@ const App = {
         const data = await res.json();
         if (data.success) {
           this.showSnackbar('Jugador dado de baja.');
+          this.refreshCurrentView();
+        }
+  async reassignTeamModal(teamId, teamName) {
+    if (!this.categories.length) {
+      this.showAlert('Atención', 'Primero debes crear al menos una categoría.', 'warning', '#F59E0B');
+      return;
+    }
+    const catOptions = this.categories.map(c => `${c.id}: ${c.name}`).join('\n');
+    const input = await this.showPrompt("Asignar Categoría a " + teamName, "Ingresa el ID de la Categoría:\n" + catOptions);
+    if (!input) return;
+    const categoryId = parseInt(input);
+
+    try {
+      const res = await fetch('api/leagues.php?action=reassign_team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: teamId, category_id: categoryId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Equipo reasignado exitosamente.');
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo reasignar.', 'error', '#EF4444');
+      }
+    } catch(e) {}
+  },
+
+  async reassignPlayerModal(playerId, playerName) {
+    const res = await fetch('api/teams.php?action=list');
+    const data = await res.json();
+    const teams = data.teams || [];
+    if (!teams.length) {
+      this.showAlert('Atención', 'Primero debes registrar al menos un equipo.', 'warning', '#F59E0B');
+      return;
+    }
+    const teamOptions = teams.map(t => `${t.id}: ${t.name} (${t.category_name})`).join('\n');
+    const input = await this.showPrompt("Asignar Equipo a " + playerName, "Ingresa el ID del Equipo:\n" + teamOptions);
+    if (!input) return;
+    const teamId = parseInt(input);
+
+    try {
+      const res = await fetch('api/leagues.php?action=reassign_player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: playerId, team_id: teamId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Jugador asignado al equipo.');
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo asignar.', 'error', '#EF4444');
+      }
+    } catch(e) {}
+  },
+
+  async showCreateStageModal() {
+    const name = await this.showPrompt("Nueva Etapa / Tipo de Partido", "Nombre de la etapa (Ej. 8vos de Final, Comodín, Amistoso Internacional):");
+    if (!name) return;
+
+    try {
+      const res = await fetch('api/leagues.php?action=create_stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar('Etapa creada exitosamente.');
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo crear.', 'error', '#EF4444');
+      }
+    } catch(e) {}
+  },
+
+  async deleteStage(stageId, stageName) {
+    const confirmDelete = await this.showConfirm("Eliminar Etapa", `¿Deseas eliminar la etapa "${stageName}"?`, "delete", "#EF4444");
+    if (confirmDelete) {
+      try {
+        const res = await fetch('api/leagues.php?action=delete_stage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: stageId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar('Etapa eliminada.');
           this.refreshCurrentView();
         }
       } catch(e) {}

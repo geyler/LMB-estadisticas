@@ -263,6 +263,22 @@ function initDatabaseSchemaAndSeed($pdo) {
             image_url VARCHAR(255) NOT NULL,
             caption VARCHAR(255) DEFAULT '',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+
+        "CREATE TABLE IF NOT EXISTS audit_logs (
+            id {$autoInc},
+            action VARCHAR(100) NOT NULL,
+            description TEXT NOT NULL,
+            user_id INT DEFAULT NULL,
+            user_name VARCHAR(100) DEFAULT 'Sistema',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+
+        "CREATE TABLE IF NOT EXISTS game_stages (
+            id {$autoInc},
+            name VARCHAR(100) NOT NULL,
+            code VARCHAR(30) NOT NULL UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );"
     ];
 
@@ -275,7 +291,20 @@ function initDatabaseSchemaAndSeed($pdo) {
         $pdo->exec("ALTER TABLE players ADD COLUMN role_type VARCHAR(20) DEFAULT 'player';");
     } catch (Exception $ex) {}
 
+    try {
+        $pdo->exec("ALTER TABLE games ADD COLUMN game_stage VARCHAR(100) DEFAULT 'Temporada Regular';");
+    } catch (Exception $ex) {}
+
     seedProductionBase($pdo);
+}
+
+function logAuditAction($pdo, $action, $description) {
+    try {
+        $userId = $_SESSION['user']['id'] ?? null;
+        $userName = $_SESSION['user']['name'] ?? ($_SESSION['user']['username'] ?? 'Sistema/Admin');
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (action, description, user_id, user_name) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$action, $description, $userId, $userName]);
+    } catch (Exception $e) {}
 }
 
 function seedProductionBase($pdo) {
@@ -297,6 +326,26 @@ function seedProductionBase($pdo) {
         if ($stmtCatCheck->fetchColumn() == 0) {
             $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)")
                 ->execute([$seasonId, 'Primera División', 'DIV1', 1]);
+        }
+    }
+
+    // 3. Initial Game Stages / Roles if empty
+    $stmtStageCheck = $pdo->query("SELECT COUNT(*) FROM game_stages");
+    if ($stmtStageCheck->fetchColumn() == 0) {
+        $defaultStages = [
+            ['name' => 'Temporada Regular', 'code' => 'REGULAR'],
+            ['name' => 'Comodín (Wild Card)', 'code' => 'WILDCARD'],
+            ['name' => 'Octavos de Final', 'code' => 'OCTAVOS'],
+            ['name' => 'Cuartos de Final', 'code' => 'CUARTOS'],
+            ['name' => 'Semifinal', 'code' => 'SEMIFINAL'],
+            ['name' => 'Serie Final / Campeonato', 'code' => 'FINAL'],
+            ['name' => 'Juego de Exhibición', 'code' => 'EXHIBICION'],
+            ['name' => 'Amistoso', 'code' => 'AMISTOSO'],
+            ['name' => 'Amistoso Internacional', 'code' => 'INTERNACIONAL']
+        ];
+        $stmtStg = $pdo->prepare("{$insertCmd} INTO game_stages (name, code) VALUES (?, ?)");
+        foreach ($defaultStages as $ds) {
+            $stmtStg->execute([$ds['name'], $ds['code']]);
         }
     }
 }

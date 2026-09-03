@@ -210,11 +210,174 @@ if ($action === 'delete_category' && $method === 'POST') {
         exit;
     }
 
+    // Fetch category info for audit log
+    $stmtCat = $pdo->prepare("SELECT name FROM categories WHERE id = ?");
+    $stmtCat->execute([$id]);
+    $catName = $stmtCat->fetchColumn() ?: "Categoría #{$id}";
+
+    // Move teams in this category to unassigned (category_id = 0)
+    $pdo->prepare("UPDATE teams SET category_id = 0 WHERE category_id = ?")->execute([$id]);
+
     // Delete category
     $stmt = $pdo->prepare("DELETE FROM categories WHERE id = ?");
     $stmt->execute([$id]);
 
-    echo json_encode(['success' => true, 'message' => 'Categoría / División eliminada.']);
+    logAuditAction($pdo, 'DELETE_CATEGORY', "Eliminó la categoría '{$catName}'. Los equipos asociados pasaron al listado 'Sin Asignación'.");
+
+    echo json_encode(['success' => true, 'message' => 'Categoría eliminada. Los equipos asociados pasaron a "Sin Asignación".']);
+    exit;
+}
+
+// ----------------------------------------------------
+// GAME STAGES / ROLES ENDPOINTS
+// ----------------------------------------------------
+if ($action === 'stages') {
+    $stmt = $pdo->query("SELECT * FROM game_stages ORDER BY id ASC");
+    $stages = $stmt->fetchAll();
+    echo json_encode(['success' => true, 'stages' => $stages]);
+    exit;
+}
+
+if ($action === 'create_stage' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $name = trim($input['name'] ?? '');
+    $code = strtoupper(trim($input['code'] ?? preg_replace('/[^A-Z0-9]/', '', strtoupper($name))));
+
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Nombre de etapa o rol de partido requerido.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO game_stages (name, code) VALUES (?, ?)");
+    $stmt->execute([$name, $code]);
+
+    logAuditAction($pdo, 'CREATE_GAME_STAGE', "Creó la nueva etapa de partido: '{$name}' ({$code})");
+
+    echo json_encode(['success' => true, 'message' => 'Etapa / Tipo de partido creado exitosamente.']);
+    exit;
+}
+
+if ($action === 'delete_stage' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = intval($input['id'] ?? 0);
+
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID de etapa requerido.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM game_stages WHERE id = ?");
+    $stmt->execute([$id]);
+
+    logAuditAction($pdo, 'DELETE_GAME_STAGE', "Eliminó la etapa de partido ID: {$id}");
+
+    echo json_encode(['success' => true, 'message' => 'Etapa de partido eliminada.']);
+    exit;
+}
+
+// ----------------------------------------------------
+// UNASSIGNED ITEMS (SIN ASIGNACIÓN) & REASSIGNMENT HUB
+// ----------------------------------------------------
+if ($action === 'unassigned') {
+    // 1. Teams without valid category
+    $stmtTeams = $pdo->query("
+        SELECT t.* 
+        FROM teams t 
+        LEFT JOIN categories c ON t.category_id = c.id 
+        WHERE t.category_id = 0 OR t.category_id IS NULL OR c.id IS NULL
+        ORDER BY t.name ASC
+    ");
+    $unassignedTeams = $stmtTeams->fetchAll();
+
+    // 2. Players without valid team
+    $stmtPlayers = $pdo->query("
+        SELECT p.* 
+        FROM players p 
+        LEFT JOIN teams t ON p.team_id = t.id 
+        WHERE (p.team_id = 0 OR p.team_id IS NULL OR t.id IS NULL) AND p.is_active = 1
+        ORDER BY p.last_name ASC, p.first_name ASC
+    ");
+    $unassignedPlayers = $stmtPlayers->fetchAll();
+
+    echo json_encode([
+        'success' => true,
+        'unassigned_teams' => $unassignedTeams,
+        'unassigned_players' => $unassignedPlayers
+    ]);
+    exit;
+}
+
+if ($action === 'reassign_team' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $teamId = intval($input['team_id'] ?? 0);
+    $categoryId = intval($input['category_id'] ?? 0);
+
+    if (!$teamId || !$categoryId) {
+        echo json_encode(['success' => false, 'message' => 'Equipo y Categoría destino requeridos.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE teams SET category_id = ? WHERE id = ?");
+    $stmt->execute([$categoryId, $teamId]);
+
+    logAuditAction($pdo, 'REASSIGN_TEAM', "Reasignó el equipo ID {$teamId} a la categoría ID {$categoryId}.");
+
+    echo json_encode(['success' => true, 'message' => 'Equipo reasignado exitosamente a la categoría.']);
+    exit;
+}
+
+if ($action === 'reassign_player' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin', 'team_admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $playerId = intval($input['player_id'] ?? 0);
+    $teamId = intval($input['team_id'] ?? 0);
+
+    if (!$playerId || !$teamId) {
+        echo json_encode(['success' => false, 'message' => 'Jugador y Equipo destino requeridos.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE players SET team_id = ? WHERE id = ?");
+    $stmt->execute([$teamId, $playerId]);
+
+    logAuditAction($pdo, 'REASSIGN_PLAYER', "Reasignó el jugador ID {$playerId} al equipo ID {$teamId}.");
+
+    echo json_encode(['success' => true, 'message' => 'Jugador asignado al equipo exitosamente.']);
+    exit;
+}
+
+// ----------------------------------------------------
+// AUDIT LOGS / HISTÓRICO DE AUDITORÍA
+// ----------------------------------------------------
+if ($action === 'audit_logs') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $stmt = $pdo->query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100");
+    $logs = $stmt->fetchAll();
+
+    echo json_encode(['success' => true, 'logs' => $logs]);
     exit;
 }
 
