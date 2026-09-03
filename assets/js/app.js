@@ -2904,6 +2904,10 @@ const App = {
           this.showSnackbar('Jugador dado de baja.');
           this.refreshCurrentView();
         }
+      } catch(e) {}
+    }
+  },
+
   async reassignTeamModal(teamId, teamName) {
     if (!this.categories.length) {
       this.showAlert('Atención', 'Primero debes crear al menos una categoría.', 'warning', '#F59E0B');
