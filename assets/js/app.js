@@ -1551,6 +1551,7 @@ const App = {
           <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
             <div class="md-card-header-actions">
+              <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.runSeedDemo()">⚡ Cargar Demo LMB</button>
               <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateCategoryModal()">➕ Nueva Categoría</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
             </div>
@@ -2932,6 +2933,25 @@ const App = {
           this.showAlert('Error', data.message || 'No se pudo eliminar la categoría.', 'warning', '#F59E0B');
         }
       } catch(e) {}
+    }
+  },
+
+  async runSeedDemo() {
+    const confirmSeed = await this.showConfirm("Cargar Demostración", "¿Deseas cargar la demostración completa con las Temporadas 2025 y 2026, 7 equipos, 73 jugadores y estadísticas reales?", "bolt", "#F59E0B");
+    if (!confirmSeed) return;
+
+    try {
+      this.showSnackbar("Cargando datos de demostración...");
+      const res = await fetch('api/seed_demo.php?key=lmb2026');
+      const data = await res.json();
+      if (data.success) {
+        this.showAlert("¡Demostración Cargada!", data.message, "success", "#10B981");
+        window.location.reload();
+      } else {
+        this.showAlert("Atención", data.message, "error", "#EF4444");
+      }
+    } catch(e) {
+      console.error("Error al activar demo", e);
     }
   },
 
