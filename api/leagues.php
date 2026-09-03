@@ -43,6 +43,22 @@ if ($action === 'list') {
     exit;
 }
 
+if ($action === 'categories') {
+    $seasonId = intval($_GET['season_id'] ?? 0);
+    if ($seasonId > 0) {
+        $stmt = $pdo->prepare("SELECT c.*, s.name as season_name FROM categories c JOIN seasons s ON c.season_id = s.id WHERE c.season_id = ? ORDER BY c.level ASC, c.id ASC");
+        $stmt->execute([$seasonId]);
+    } else {
+        $stmt = $pdo->query("SELECT c.*, s.name as season_name, s.is_active as season_is_active 
+                              FROM categories c 
+                              LEFT JOIN seasons s ON c.season_id = s.id 
+                              ORDER BY s.is_active DESC, c.season_id DESC, c.level ASC, c.id ASC");
+    }
+    $categories = $stmt->fetchAll();
+    echo json_encode(['success' => true, 'categories' => $categories]);
+    exit;
+}
+
 // Stadiums / Sedes API
 if ($action === 'stadiums') {
     $stmt = $pdo->query("SELECT * FROM stadiums ORDER BY name ASC");

@@ -2950,22 +2950,48 @@ const App = {
   },
 
   // TEAM CRUD & MODALS
-  async showEditTeamModal(teamId, currentName, currentShort, currentStadiumId, currentCategoryId) {
+  async showEditTeamModal(teamId, currentName = '', currentShort = '', currentStadiumId = 0, currentCategoryId = 0) {
     try {
-      const [resCat, resStadia, resDetail] = await Promise.all([
-        fetch('api/leagues.php?action=categories'),
-        fetch('api/leagues.php?action=stadiums'),
-        fetch(`api/teams.php?action=detail&id=${teamId}`)
-      ]);
-      const dataCat = await resCat.json();
-      const dataStadia = await resStadia.json();
-      const dataDetail = await resDetail.json();
-
-      const team = dataDetail.team || {};
-      const categories = dataCat.categories || [];
-      const stadia = dataStadia.stadiums || [];
-
       document.getElementById('edit-team-id').value = teamId;
+      document.getElementById('edit-team-name').value = currentName || '';
+      document.getElementById('edit-team-short').value = currentShort || '';
+
+      let categories = [];
+      let stadia = [];
+      let team = { name: currentName, short_name: currentShort, category_id: currentCategoryId, home_stadium_id: currentStadiumId };
+
+      try {
+        const resCat = await fetch('api/leagues.php?action=categories');
+        if (resCat.ok) {
+          const dataCat = await resCat.json();
+          categories = dataCat.categories || [];
+        }
+      } catch (e) {
+        console.warn("Could not fetch categories list", e);
+      }
+
+      try {
+        const resStadia = await fetch('api/leagues.php?action=stadiums');
+        if (resStadia.ok) {
+          const dataStadia = await resStadia.json();
+          stadia = dataStadia.stadiums || [];
+        }
+      } catch (e) {
+        console.warn("Could not fetch stadiums list", e);
+      }
+
+      try {
+        const resDetail = await fetch(`api/teams.php?action=detail&id=${teamId}`);
+        if (resDetail.ok) {
+          const dataDetail = await resDetail.json();
+          if (dataDetail.success && dataDetail.team) {
+            team = dataDetail.team;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch team detail", e);
+      }
+
       document.getElementById('edit-team-name').value = team.name || currentName || '';
       document.getElementById('edit-team-short').value = team.short_name || currentShort || '';
       document.getElementById('edit-team-color1').value = team.color_primary || '#0A192F';
@@ -2974,7 +3000,7 @@ const App = {
       const catSelect = document.getElementById('edit-team-category');
       if (catSelect) {
         catSelect.innerHTML = `<option value="0">Sin Asignación (Orfano)</option>` + 
-          categories.map(c => `<option value="${c.id}" ${c.id == (team.category_id || currentCategoryId) ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('');
+          categories.map(c => `<option value="${c.id}" ${c.id == (team.category_id || currentCategoryId) ? 'selected' : ''}>${c.name} (${c.code || ''})</option>`).join('');
       }
 
       const stadSelect = document.getElementById('edit-team-stadium');
@@ -2987,6 +3013,7 @@ const App = {
       if (modal) modal.classList.add('open');
     } catch(e) {
       console.error("Error al abrir modal de edición de equipo", e);
+      this.showAlert("Atención", "Ocurrió un inconveniente al cargar el equipo.", "warning", "#F59E0B");
     }
   },
 

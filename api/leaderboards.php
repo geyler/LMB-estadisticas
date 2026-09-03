@@ -12,10 +12,16 @@ $pdo = getDBConnection();
 $type = trim($_GET['type'] ?? 'batting'); // 'batting' or 'pitching'
 $stat = trim($_GET['stat'] ?? ($type === 'batting' ? 'avg' : 'era'));
 $categoryId = intval($_GET['category_id'] ?? 0);
+$seasonId = intval($_GET['season_id'] ?? 0);
 $limit = intval($_GET['limit'] ?? 10);
 
 if ($type === 'batting') {
-    $whereCat = ($categoryId > 0) ? " AND t.category_id = {$categoryId} " : "";
+    $whereCond = " WHERE p.is_active = 1 ";
+    if ($categoryId > 0) {
+        $whereCond .= " AND t.category_id = {$categoryId} ";
+    } elseif ($seasonId > 0) {
+        $whereCond .= " AND c.season_id = {$seasonId} ";
+    }
 
     $sql = "
         SELECT 
@@ -28,7 +34,8 @@ if ($type === 'batting') {
         FROM game_batting_stats bs
         JOIN players p ON bs.player_id = p.id
         JOIN teams t ON p.team_id = t.id
-        WHERE p.is_active = 1 {$whereCat}
+        LEFT JOIN categories c ON t.category_id = c.id
+        {$whereCond}
         GROUP BY p.id
         HAVING SUM(bs.ab) >= 1
     ";
@@ -81,7 +88,12 @@ if ($type === 'batting') {
 
 } else {
     // Pitching Leaders
-    $whereCat = ($categoryId > 0) ? " AND t.category_id = {$categoryId} " : "";
+    $whereCond = " WHERE p.is_active = 1 ";
+    if ($categoryId > 0) {
+        $whereCond .= " AND t.category_id = {$categoryId} ";
+    } elseif ($seasonId > 0) {
+        $whereCond .= " AND c.season_id = {$seasonId} ";
+    }
 
     $sql = "
         SELECT 
@@ -97,7 +109,8 @@ if ($type === 'batting') {
         FROM game_pitching_stats ps
         JOIN players p ON ps.player_id = p.id
         JOIN teams t ON p.team_id = t.id
-        WHERE p.is_active = 1 {$whereCat}
+        LEFT JOIN categories c ON t.category_id = c.id
+        {$whereCond}
         GROUP BY p.id
         HAVING SUM(ps.ip_outs) >= 1
     ";

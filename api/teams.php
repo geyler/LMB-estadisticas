@@ -14,13 +14,20 @@ $action = $_GET['action'] ?? 'list';
 // 1. Standings Table Calculation per Category
 if ($action === 'standings') {
     $categoryId = intval($_GET['category_id'] ?? 0);
+    $seasonId = intval($_GET['season_id'] ?? 0);
 
     $sqlTeams = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
                  FROM teams t 
                  LEFT JOIN categories c ON t.category_id = c.id
                  LEFT JOIN stadiums s ON t.home_stadium_id = s.id";
+    $where = [];
     if ($categoryId > 0) {
-        $sqlTeams .= " WHERE t.category_id = {$categoryId}";
+        $where[] = "t.category_id = {$categoryId}";
+    } elseif ($seasonId > 0) {
+        $where[] = "c.season_id = {$seasonId}";
+    }
+    if (!empty($where)) {
+        $sqlTeams .= " WHERE " . implode(' AND ', $where);
     }
     $sqlTeams .= " ORDER BY t.name ASC";
 
