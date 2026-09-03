@@ -292,8 +292,13 @@ const App = {
   applyBranding() {
     const titleEl = document.getElementById('brand-site-title');
     const logoEl = document.getElementById('brand-site-logo');
+    const subtitleEl = document.querySelector('.brand-title span');
     if (titleEl && this.settings.site_name) {
       titleEl.innerText = this.settings.site_name;
+      document.title = `${this.settings.site_name} | LMB`;
+    }
+    if (subtitleEl && this.settings.site_subtitle) {
+      subtitleEl.innerText = this.settings.site_subtitle;
     }
     if (logoEl && this.settings.site_logo) {
       logoEl.src = this.settings.site_logo;
@@ -1736,12 +1741,40 @@ const App = {
     } else if (this.adminTab === 'branding') {
       tabContainer.innerHTML = `
         <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800;">🎨 Personalización de Marca y Nombre</h3>
-          <div class="form-group" style="margin-top:8px;">
-            <label>Nombre de la Liga / Sitio Web</label>
-            <input type="text" id="setting-site-name" class="form-control" value="${this.settings.site_name || 'Liga Metropolitana de Béisbol'}">
+          <h3 style="font-size:1rem; font-weight:800; color:#3B82F6; margin-bottom:8px;">🎨 Personalización Total de Marca y Branding</h3>
+          <p style="font-size:0.8rem; color:#94A3B8; margin-bottom:12px;">Modifica el nombre de la liga, eslogan visual, logotipo oficial, esquema de colores y descripción SEO.</p>
+          
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="form-group">
+              <label style="font-size:0.78rem; font-weight:700;">Nombre Principal de la Liga / Sitio Web</label>
+              <input type="text" id="setting-site-name" class="form-control" value="${this.settings.site_name || 'Liga Metropolitana de Béisbol'}">
+            </div>
+
+            <div class="form-group">
+              <label style="font-size:0.78rem; font-weight:700;">Eslogan / Subtítulo Visual</label>
+              <input type="text" id="setting-site-subtitle" class="form-control" value="${this.settings.site_subtitle || 'Buenos Aires'}" placeholder="ej. Buenos Aires">
+            </div>
+
+            <div class="form-group">
+              <label style="font-size:0.78rem; font-weight:700;">Ruta o URL del Logotipo Oficial</label>
+              <input type="text" id="setting-site-logo" class="form-control" value="${this.settings.site_logo || 'assets/images/lmb_logo.png'}">
+            </div>
+
+            <div class="form-group">
+              <label style="font-size:0.78rem; font-weight:700;">Color Primario de la Marca (Hex / RGB)</label>
+              <div style="display:flex; gap:8px;">
+                <input type="color" id="setting-site-color-picker" value="${this.settings.site_primary_color || '#3B82F6'}" style="width:40px; height:38px; padding:2px; border-radius:6px;" onchange="document.getElementById('setting-site-color').value=this.value">
+                <input type="text" id="setting-site-color" class="form-control" value="${this.settings.site_primary_color || '#3B82F6'}">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label style="font-size:0.78rem; font-weight:700;">Descripción Meta para Motores de Búsqueda (SEO)</label>
+              <textarea id="setting-site-desc" class="form-control" rows="2">${this.settings.site_description || 'Plataforma oficial de la Liga Metropolitana de Béisbol de Buenos Aires.'}</textarea>
+            </div>
+
+            <button class="md-btn md-btn-primary" style="margin-top:6px;" onclick="App.updateSettings()">💾 Guardar Ajustes de Branding</button>
           </div>
-          <button class="md-btn md-btn-primary" style="margin-top:8px;" onclick="App.updateSettings()">Guardar Ajustes Web</button>
         </div>
       `;
     }
@@ -2097,60 +2130,120 @@ const App = {
   },
 
   async showCreateGameModal() {
-    const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
-    const [resTeams, resStadia, resStages] = await Promise.all([
-      fetch(`api/teams.php?action=list&category_id=${catId}`),
-      fetch(`api/leagues.php?action=stadiums`),
-      fetch(`api/leagues.php?action=stages`)
-    ]);
+    try {
+      const [resCat, resStadia, resStages] = await Promise.all([
+        fetch('api/leagues.php?action=categories'),
+        fetch('api/leagues.php?action=stadiums'),
+        fetch('api/leagues.php?action=stages')
+      ]);
+      const dataCat = await resCat.json();
+      const dataStadia = await resStadia.json();
+      const dataStages = await resStages.json();
+
+      const categories = dataCat.categories || [];
+      const stadia = dataStadia.stadiums || [];
+      const stages = dataStages.stages || [];
+
+      if (!stadia.length) {
+        const go = await this.showConfirm("Sedes Requeridas", "No hay sedes deportivas registradas. ¿Ir a configurarlas?", "help", "#F59E0B");
+        if (go) this.showView('admin');
+        return;
+      }
+
+      const catSelect = document.getElementById('schedule-game-category');
+      if (catSelect) {
+        catSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name} (${c.code})</option>`).join('');
+      }
+
+      const stadSelect = document.getElementById('schedule-game-stadium');
+      if (stadSelect) {
+        stadSelect.innerHTML = stadia.map(s => `<option value="${s.id}">📍 ${s.name} (${s.field_name || 'Principal'})</option>`).join('');
+      }
+
+      const stageSelect = document.getElementById('schedule-game-stage');
+      if (stageSelect) {
+        stageSelect.innerHTML = stages.length 
+          ? stages.map(s => `<option value="${s.name}">🏆 ${s.name}</option>`).join('')
+          : `<option value="Temporada Regular">🏆 Temporada Regular</option><option value="Amistoso">🏆 Amistoso</option>`;
+      }
+
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      const dateInput = document.getElementById('schedule-game-date');
+      if (dateInput) {
+        dateInput.value = now.toISOString().slice(0, 16);
+      }
+
+      await this.onGameCategoryChange();
+      const modal = document.getElementById('create-game-modal');
+      if (modal) modal.classList.add('open');
+    } catch(e) {
+      console.error("Error al abrir modal de programar partido", e);
+    }
+  },
+
+  async onGameCategoryChange() {
+    const catSelect = document.getElementById('schedule-game-category');
+    const catId = catSelect ? catSelect.value : 0;
+    const resTeams = await fetch(`api/teams.php?action=list${catId ? `&category_id=${catId}` : ''}`);
     const dataTeams = await resTeams.json();
-    const dataStadia = await resStadia.json();
-    const dataStages = await resStages.json();
-
     const teams = dataTeams.teams || [];
-    const stadia = dataStadia.stadiums || [];
-    const stages = dataStages.stages || [];
 
-    if (teams.length < 2) {
-      const go = await this.showConfirm("Configuración Requerida", "Para programar un partido se necesitan al menos 2 equipos en la categoría.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
-      if (go) this.showView('onboarding');
+    const homeSelect = document.getElementById('schedule-game-home');
+    const awaySelect = document.getElementById('schedule-game-away');
+
+    if (!teams.length) {
+      if (homeSelect) homeSelect.innerHTML = `<option value="">Sin equipos en esta categoría</option>`;
+      if (awaySelect) awaySelect.innerHTML = `<option value="">Sin equipos en esta categoría</option>`;
       return;
     }
 
-    if (!stadia.length) {
-      const go = await this.showConfirm("Configuración Requerida", "No hay sedes deportivas registradas. Se necesita al menos 1 sede o campo.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
-      if (go) this.showView('onboarding');
+    if (homeSelect) homeSelect.innerHTML = teams.map(t => `<option value="${t.id}">🏠 ${t.name} (${t.short_name})</option>`).join('');
+    if (awaySelect) awaySelect.innerHTML = teams.map((t, idx) => `<option value="${t.id}" ${idx === 1 ? 'selected' : ''}>✈️ ${t.name} (${t.short_name})</option>`).join('');
+  },
+
+  closeCreateGameModal() {
+    const modal = document.getElementById('create-game-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveNewGame(e) {
+    e.preventDefault();
+    const catId = document.getElementById('schedule-game-category').value;
+    const homeId = document.getElementById('schedule-game-home').value;
+    const awayId = document.getElementById('schedule-game-away').value;
+    const stadiumId = document.getElementById('schedule-game-stadium').value;
+    const gameStage = document.getElementById('schedule-game-stage').value;
+    const gameDate = document.getElementById('schedule-game-date').value;
+
+    if (!homeId || !awayId || homeId === awayId) {
+      this.showAlert("Atención", "Debes seleccionar 2 equipos distintos para programar el partido.", "warning", "#F59E0B");
       return;
     }
 
-    let teamListText = teams.map(t => `${t.id}: ${t.name}`).join('\n');
-    const awayId = await this.showPrompt("Equipo Visitante", `Selecciona ID de Equipo Visitante:\n${teamListText}`, teams[0].id.toString());
-    if (!awayId) return;
-    const homeId = await this.showPrompt("Equipo Local", `Selecciona ID de Equipo Local:\n${teamListText}`, teams[1] ? teams[1].id.toString() : teams[0].id.toString());
-    if (!homeId) return;
-    
-    let stadiumListText = stadia.map(s => `${s.id}: ${s.name} (${s.field_name || 'Principal'})`).join('\n');
-    const stadiumId = await this.showPrompt("Sede y Cancha", `Selecciona ID de la Sede Deportiva:\n${stadiumListText}`, stadia[0] ? stadia[0].id.toString() : "1");
-
-    let stageListText = stages.map(s => `• ${s.name}`).join('\n');
-    const gameStage = await this.showPrompt("Etapa / Tipo de Partido", `Escribe el tipo de encuentro (ej: Temporada Regular, 8vos de Final, Comodín, Amistoso Internacional):\n\nOpciones disponibles:\n${stageListText}`, "Temporada Regular");
-
-    if (homeId && awayId) {
-      fetch('api/games.php?action=create', {
+    try {
+      const res = await fetch('api/games.php?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          category_id: catId,
+          category_id: parseInt(catId),
           home_team_id: parseInt(homeId),
           away_team_id: parseInt(awayId),
           stadium_id: parseInt(stadiumId || 1),
           game_stage: gameStage || "Temporada Regular",
-          game_date: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          game_date: gameDate.replace('T', ' ') + ':00'
         })
-      }).then(res => res.json()).then(resData => {
-        this.showSnackbar(resData.message || 'Partido programado exitosamente.');
-        this.showView('calendar');
       });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || 'Partido programado exitosamente.');
+        this.closeCreateGameModal();
+        this.showView('calendar');
+      } else {
+        this.showAlert("Error", data.message || 'Error al programar el partido.', "error", "#EF4444");
+      }
+    } catch(e) {
+      console.error("Error al programar partido", e);
     }
   },
 
@@ -2375,12 +2468,23 @@ const App = {
 
   updateSettings() {
     const siteName = document.getElementById('setting-site-name')?.value;
+    const siteSubtitle = document.getElementById('setting-site-subtitle')?.value;
+    const siteLogo = document.getElementById('setting-site-logo')?.value;
+    const sitePrimaryColor = document.getElementById('setting-site-color')?.value;
+    const siteDescription = document.getElementById('setting-site-desc')?.value;
+
     fetch('api/auth.php?action=settings_update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site_name: siteName })
+      body: JSON.stringify({
+        site_name: siteName,
+        site_subtitle: siteSubtitle,
+        site_logo: siteLogo,
+        site_primary_color: sitePrimaryColor,
+        site_description: siteDescription
+      })
     }).then(res => res.json()).then(data => {
-      this.showAlert("Ajustes de Plataforma", data.message, "settings", "#3B82F6");
+      this.showAlert("Ajustes de Marca", data.message || 'Branding actualizado.', "palette", "#3B82F6");
       this.loadSettings();
     });
   },
@@ -2831,25 +2935,79 @@ const App = {
     }
   },
 
-  // TEAM CRUD
-  async showEditTeamModal(teamId, currentName, currentShort, currentStadiumId) {
-    const name = await this.showPrompt("Editar Equipo", "Nombre del equipo:", currentName);
-    if (!name) return;
-    const shortName = await this.showPrompt("Editar Abreviatura", "Identificador corto:", currentShort);
-    if (!shortName) return;
+  // TEAM CRUD & MODALS
+  async showEditTeamModal(teamId, currentName, currentShort, currentStadiumId, currentCategoryId) {
+    try {
+      const [resCat, resStadia, resDetail] = await Promise.all([
+        fetch('api/leagues.php?action=categories'),
+        fetch('api/leagues.php?action=stadiums'),
+        fetch(`api/teams.php?action=detail&id=${teamId}`)
+      ]);
+      const dataCat = await resCat.json();
+      const dataStadia = await resStadia.json();
+      const dataDetail = await resDetail.json();
+
+      const team = dataDetail.team || {};
+      const categories = dataCat.categories || [];
+      const stadia = dataStadia.stadiums || [];
+
+      document.getElementById('edit-team-id').value = teamId;
+      document.getElementById('edit-team-name').value = team.name || currentName || '';
+      document.getElementById('edit-team-short').value = team.short_name || currentShort || '';
+      document.getElementById('edit-team-color1').value = team.color_primary || '#0A192F';
+      document.getElementById('edit-team-color2').value = team.color_secondary || '#D32F2F';
+
+      const catSelect = document.getElementById('edit-team-category');
+      if (catSelect) {
+        catSelect.innerHTML = `<option value="0">Sin Asignación (Orfano)</option>` + 
+          categories.map(c => `<option value="${c.id}" ${c.id == (team.category_id || currentCategoryId) ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('');
+      }
+
+      const stadSelect = document.getElementById('edit-team-stadium');
+      if (stadSelect) {
+        stadSelect.innerHTML = `<option value="0">Sin Sede Fija (Neutral)</option>` + 
+          stadia.map(s => `<option value="${s.id}" ${s.id == (team.home_stadium_id || currentStadiumId) ? 'selected' : ''}>${s.name} (${s.field_name || 'Principal'})</option>`).join('');
+      }
+
+      const modal = document.getElementById('edit-team-modal');
+      if (modal) modal.classList.add('open');
+    } catch(e) {
+      console.error("Error al abrir modal de edición de equipo", e);
+    }
+  },
+
+  closeEditTeamModal() {
+    const modal = document.getElementById('edit-team-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveTeamEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-team-id').value;
+    const name = document.getElementById('edit-team-name').value;
+    const short_name = document.getElementById('edit-team-short').value;
+    const category_id = document.getElementById('edit-team-category').value;
+    const home_stadium_id = document.getElementById('edit-team-stadium').value;
+    const color_primary = document.getElementById('edit-team-color1').value;
+    const color_secondary = document.getElementById('edit-team-color2').value;
 
     try {
       const res = await fetch('api/teams.php?action=update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: teamId, name, short_name: shortName, home_stadium_id: currentStadiumId })
+        body: JSON.stringify({ id, name, short_name, category_id, home_stadium_id, color_primary, color_secondary })
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar('Equipo actualizado.');
+        this.showSnackbar(data.message || 'Equipo actualizado.');
+        this.closeEditTeamModal();
         this.refreshCurrentView();
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo actualizar.', "error", "#EF4444");
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error("Error al guardar edición de equipo", e);
+    }
   },
 
   async deleteTeam(teamId, teamName) {

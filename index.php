@@ -88,7 +88,7 @@ session_start();
     <!-- Top Sticky Header -->
     <header class="md-top-app-bar">
       <div class="brand-wrapper" onclick="App.showView('home')">
-        <img id="brand-site-logo" src="assets/images/lmb_logo.png" alt="LMB Logo" class="brand-logo">
+        <img id="brand-site-logo" src="assets/images/lmb_logo.png" alt="LMB Logo" class="brand-logo" onerror="this.src='assets/images/lmb_logo.png'">
         <div class="brand-title">
           <h1 id="brand-site-title" class="text-truncate">LMB</h1>
           <span>BS. AS.</span>
@@ -608,6 +608,89 @@ session_start();
           <button class="md-btn md-btn-outlined" style="flex:1;" id="prompt-modal-cancel">Cancelar</button>
           <button class="md-btn md-btn-gold" style="flex:1;" id="prompt-modal-ok">Aceptar</button>
         </div>
+      </div>
+    <!-- Full Edit Team Modal -->
+    <div id="edit-team-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#FFFFFF;">✏️ Editar Equipo Completo</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeEditTeamModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveTeamEdit(event);">
+          <input type="hidden" id="edit-team-id">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre del Equipo</label>
+            <input type="text" id="edit-team-name" class="form-control" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Abreviatura (3 letras)</label>
+            <input type="text" id="edit-team-short" class="form-control" maxlength="10" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Categoría / División</label>
+            <select id="edit-team-category" class="form-control" style="background:#0F172A;"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">📍 Sede Deportiva / Campo Local</label>
+            <select id="edit-team-stadium" class="form-control" style="background:#0F172A;"></select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.75rem;">Color Primario</label>
+              <input type="color" id="edit-team-color1" class="form-control" style="height:38px; padding:2px;">
+            </div>
+            <div>
+              <label style="font-size:0.75rem;">Color Secundario</label>
+              <input type="color" id="edit-team-color2" class="form-control" style="height:38px; padding:2px;">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditTeamModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Datos</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Full Schedule Game Modal -->
+    <div id="create-game-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#FFFFFF;">⚾ Programar Partido</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateGameModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveNewGame(event);">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Categoría / División</label>
+            <select id="schedule-game-category" class="form-control" style="background:#0F172A;" onchange="App.onGameCategoryChange()"></select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+              <label style="font-size:0.75rem; font-weight:700;">Equipo Local</label>
+              <select id="schedule-game-home" class="form-control" style="background:#0F172A;"></select>
+            </div>
+            <div>
+              <label style="font-size:0.75rem; font-weight:700;">Equipo Visitante</label>
+              <select id="schedule-game-away" class="form-control" style="background:#0F172A;"></select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">📍 Sede / Campo Deportivo</label>
+            <select id="schedule-game-stadium" class="form-control" style="background:#0F172A;"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">🏆 Etapa / Rol de Partido</label>
+            <select id="schedule-game-stage" class="form-control" style="background:#0F172A;"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">📅 Fecha y Hora del Encuentro</label>
+            <input type="datetime-local" id="schedule-game-date" class="form-control" required style="background:#0F172A; color:#FFFFFF;">
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateGameModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-gold" style="flex:1;">🗓️ Programar Partido</button>
+          </div>
+        </form>
       </div>
     </div>
 

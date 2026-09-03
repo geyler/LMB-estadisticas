@@ -15,9 +15,9 @@ $action = $_GET['action'] ?? 'list';
 if ($action === 'standings') {
     $categoryId = intval($_GET['category_id'] ?? 0);
 
-    $sqlTeams = "SELECT t.*, c.name as category_name, s.name as home_stadium_name 
+    $sqlTeams = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
                  FROM teams t 
-                 JOIN categories c ON t.category_id = c.id
+                 LEFT JOIN categories c ON t.category_id = c.id
                  LEFT JOIN stadiums s ON t.home_stadium_id = s.id";
     if ($categoryId > 0) {
         $sqlTeams .= " WHERE t.category_id = {$categoryId}";
@@ -102,9 +102,9 @@ if ($action === 'standings') {
 if ($action === 'list') {
     $categoryId = intval($_GET['category_id'] ?? 0);
 
-    $sql = "SELECT t.*, c.name as category_name, c.code as category_code, s.name as home_stadium_name
+    $sql = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
             FROM teams t
-            JOIN categories c ON t.category_id = c.id
+            LEFT JOIN categories c ON t.category_id = c.id
             LEFT JOIN stadiums s ON t.home_stadium_id = s.id";
     if ($categoryId > 0) {
         $sql .= " WHERE t.category_id = {$categoryId}";
@@ -127,9 +127,9 @@ if ($action === 'detail') {
     }
 
     $stmt = $pdo->prepare("
-        SELECT t.*, c.name as category_name, c.code as category_code, s.name as home_stadium_name
+        SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
         FROM teams t
-        JOIN categories c ON t.category_id = c.id
+        LEFT JOIN categories c ON t.category_id = c.id
         LEFT JOIN stadiums s ON t.home_stadium_id = s.id
         WHERE t.id = ?
     ");
@@ -212,17 +212,29 @@ if ($action === 'update' && $method === 'POST') {
     $id = intval($input['id'] ?? 0);
     $name = trim($input['name'] ?? '');
     $shortName = trim($input['short_name'] ?? '');
-    $homeStadiumId = !empty($input['home_stadium_id']) ? intval($input['home_stadium_id']) : null;
+    $homeStadiumId = isset($input['home_stadium_id']) ? intval($input['home_stadium_id']) : null;
+    $categoryId = isset($input['category_id']) ? intval($input['category_id']) : null;
+    $foundationYear = intval($input['foundation_year'] ?? 1950);
+    $colorPrimary = trim($input['color_primary'] ?? '#0A192F');
+    $colorSecondary = trim($input['color_secondary'] ?? '#D32F2F');
+    $logoUrl = trim($input['logo_url'] ?? '');
 
     if (!$id || empty($name)) {
         echo json_encode(['success' => false, 'message' => 'ID y nombre de equipo requeridos.']);
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE teams SET name = ?, short_name = ?, home_stadium_id = ? WHERE id = ?");
-    $stmt->execute([$name, $shortName, $homeStadiumId, $id]);
+    $stmt = $pdo->prepare("UPDATE teams SET name = ?, short_name = ?, home_stadium_id = ?, category_id = ?, foundation_year = ?, color_primary = ?, color_secondary = ?" . (!empty($logoUrl) ? ", logo_url = ?" : "") . " WHERE id = ?");
+    
+    $params = [$name, $shortName, $homeStadiumId, $categoryId, $foundationYear, $colorPrimary, $colorSecondary];
+    if (!empty($logoUrl)) {
+        $params[] = $logoUrl;
+    }
+    $params[] = $id;
 
-    echo json_encode(['success' => true, 'message' => 'Datos del equipo actualizados.']);
+    $stmt->execute($params);
+
+    echo json_encode(['success' => true, 'message' => 'Datos del equipo actualizados correctamente.']);
     exit;
 }
 

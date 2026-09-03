@@ -63,6 +63,8 @@ function getDBConnection() {
 function autoInitTables($pdo) {
     try {
         $pdo->query("SELECT 1 FROM site_settings LIMIT 1");
+        $pdo->query("SELECT 1 FROM game_stages LIMIT 1");
+        $pdo->query("SELECT 1 FROM audit_logs LIMIT 1");
     } catch (Exception $e) {
         initDatabaseSchemaAndSeed($pdo);
     }

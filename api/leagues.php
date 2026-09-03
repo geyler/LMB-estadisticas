@@ -232,8 +232,14 @@ if ($action === 'delete_category' && $method === 'POST') {
 // GAME STAGES / ROLES ENDPOINTS
 // ----------------------------------------------------
 if ($action === 'stages') {
-    $stmt = $pdo->query("SELECT * FROM game_stages ORDER BY id ASC");
-    $stages = $stmt->fetchAll();
+    try {
+        $stmt = $pdo->query("SELECT * FROM game_stages ORDER BY id ASC");
+        $stages = $stmt->fetchAll();
+    } catch (Exception $e) {
+        initDatabaseSchemaAndSeed($pdo);
+        $stmt = $pdo->query("SELECT * FROM game_stages ORDER BY id ASC");
+        $stages = $stmt->fetchAll();
+    }
     echo json_encode(['success' => true, 'stages' => $stages]);
     exit;
 }
@@ -374,8 +380,14 @@ if ($action === 'audit_logs') {
         exit;
     }
 
-    $stmt = $pdo->query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100");
-    $logs = $stmt->fetchAll();
+    try {
+        $stmt = $pdo->query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100");
+        $logs = $stmt->fetchAll();
+    } catch (Exception $e) {
+        initDatabaseSchemaAndSeed($pdo);
+        $stmt = $pdo->query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100");
+        $logs = $stmt->fetchAll();
+    }
 
     echo json_encode(['success' => true, 'logs' => $logs]);
     exit;

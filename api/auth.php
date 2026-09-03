@@ -309,20 +309,26 @@ if ($action === 'settings_update' && $method === 'POST') {
     }
 
     $input = json_decode(file_get_contents('php://input'), true);
-    $siteName = trim($input['site_name'] ?? 'Liga Metropolitana de Béisbol');
-    $siteLogo = trim($input['site_logo'] ?? 'assets/images/lmb_logo.png');
+    
+    $settingsMap = [
+        'site_name' => trim($input['site_name'] ?? 'Liga Metropolitana de Béisbol'),
+        'site_subtitle' => trim($input['site_subtitle'] ?? 'Buenos Aires'),
+        'site_logo' => trim($input['site_logo'] ?? 'assets/images/lmb_logo.png'),
+        'site_primary_color' => trim($input['site_primary_color'] ?? '#3B82F6'),
+        'site_description' => trim($input['site_description'] ?? 'Estadísticas oficiales de la Liga Metropolitana de Béisbol')
+    ];
 
-    $stmt = $pdo->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-    try {
-        $stmt->execute(['site_name', $siteName, $siteName]);
-        $stmt->execute(['site_logo', $siteLogo, $siteLogo]);
-    } catch (Exception $e) {
-        // SQLite fallback
-        $pdo->prepare("UPDATE site_settings SET setting_value = ? WHERE setting_key = ?")->execute([$siteName, 'site_name']);
-        $pdo->prepare("UPDATE site_settings SET setting_value = ? WHERE setting_key = ?")->execute([$siteLogo, 'site_logo']);
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    
+    foreach ($settingsMap as $key => $val) {
+        if ($driver === 'sqlite') {
+            $pdo->prepare("INSERT OR REPLACE INTO site_settings (setting_key, setting_value) VALUES (?, ?)")->execute([$key, $val]);
+        } else {
+            $pdo->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?")->execute([$key, $val, $val]);
+        }
     }
 
-    echo json_encode(['success' => true, 'message' => 'Ajustes del sistema guardados exitosamente.']);
+    echo json_encode(['success' => true, 'message' => 'Ajustes de marca y branding guardados exitosamente.']);
     exit;
 }
 
