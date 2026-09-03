@@ -691,12 +691,13 @@ const App = {
         }
       };
 
-      const [dataGames, dataBatLeaders, dataPitchLeaders, dataStandings, dataStadia] = await Promise.all([
+      const [dataGames, dataBatLeaders, dataPitchLeaders, dataStandings, dataStadia, dataChamps] = await Promise.all([
         safeFetch(`api/games.php?action=list&category_id=${this.currentCategory}`),
         safeFetch(`api/leaderboards.php?type=batting&stat=avg&category_id=${this.currentCategory}&limit=3`),
         safeFetch(`api/leaderboards.php?type=pitching&stat=era&category_id=${this.currentCategory}&limit=3`),
         safeFetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`),
-        safeFetch(`api/leagues.php?action=stadiums`)
+        safeFetch(`api/leagues.php?action=stadiums`),
+        safeFetch(`api/leagues.php?action=champions`)
       ]);
 
       const games = dataGames.games || [];
@@ -704,6 +705,7 @@ const App = {
       const pitchLeaders = dataPitchLeaders.leaders || [];
       const standings = dataStandings.standings || [];
       const stadia = dataStadia.stadiums || [];
+      const champions = dataChamps.champions || [];
 
       this.renderScorebugCarousel(games);
 
@@ -721,6 +723,27 @@ const App = {
               </div>
             ` : ''}
           </div>
+
+          ${champions.length ? `
+            <!-- Section: Reigning Champions -->
+            <div class="view-section" style="margin-top:12px;">
+              <div class="section-header">
+                <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">workspace_premium</span> Campeones Vigentes LMB</h3>
+              </div>
+              <div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;">
+                ${champions.map(c => `
+                  <div class="md-card" style="min-width:210px; padding:12px; background:linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border:1px solid #F59E0B40; border-radius:10px;">
+                    <div style="font-size:0.68rem; font-weight:800; color:#F59E0B; text-transform:uppercase;">🏆 ${c.category_name} (${c.season_name})</div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                      <img src="${c.team_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; object-fit:contain;" onerror="this.src='assets/images/lmb_logo.png'">
+                      <div style="font-size:0.9rem; font-weight:800; color:#F8FAFC;" class="text-truncate">${c.team_name}</div>
+                    </div>
+                    <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;">👑 ${c.title_name || 'Campeón Oficial'}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
 
           <!-- Section: Live / Simultaneous Matches -->
           <div class="view-section">
@@ -1547,6 +1570,7 @@ const App = {
                   <td><span class="md-chip" style="padding:2px 6px;">${c.code}</span></td>
                   <td>
                     <div style="display:flex; gap:4px;">
+                      <button class="md-btn md-btn-gold" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showCrownChampionModal(${c.id}, '${c.name}')">👑 Coronar</button>
                       <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditCategoryModal(${c.id}, '${c.name}', '${c.code}')">✏️ Editar</button>
                       <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteCategory(${c.id}, '${c.name}')">🗑️ Borrar</button>
                     </div>
@@ -2908,6 +2932,52 @@ const App = {
           this.showAlert('Error', data.message || 'No se pudo eliminar la categoría.', 'warning', '#F59E0B');
         }
       } catch(e) {}
+    }
+  },
+
+  async showCrownChampionModal(categoryId, categoryName) {
+    try {
+      const resTeams = await fetch(`api/teams.php?action=list&category_id=${categoryId}`);
+      const dataTeams = await resTeams.json();
+      const teams = dataTeams.teams || [];
+
+      if (!teams.length) {
+        this.showAlert("Atención", "No hay equipos registrados en esta categoría.", "warning", "#F59E0B");
+        return;
+      }
+
+      let teamOptionsText = teams.map(t => `[ID ${t.id}]: ${t.name} (${t.short_name})`).join('\n');
+      const teamIdInput = await this.showPrompt(`Coronar Campeón - ${categoryName}`, `Ingresa el ID del equipo Campeón:\n\n${teamOptionsText}`, teams[0].id.toString());
+      if (!teamIdInput) return;
+
+      const teamId = parseInt(teamIdInput);
+      if (!teamId) return;
+
+      const titleName = await this.showPrompt("Título del Campeón", "Nombre del título honorífico:", "Campeón Oficial");
+      if (!titleName) return;
+
+      const seasonId = this.activeSeason ? this.activeSeason.id : 1;
+
+      const res = await fetch('api/leagues.php?action=set_champion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season_id: seasonId,
+          category_id: categoryId,
+          team_id: teamId,
+          title_name: titleName,
+          notes: 'Coronación manual en panel administrativo'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || '¡Campeón registrado exitosamente!');
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo registrar el campeón.', 'error', '#EF4444');
+      }
+    } catch(e) {
+      console.error("Error al coronar campeón", e);
     }
   },
 

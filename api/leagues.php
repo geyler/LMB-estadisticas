@@ -440,3 +440,63 @@ if ($action === 'move_team' && $method === 'POST') {
     echo json_encode(['success' => true, 'message' => 'Categoría de equipo actualizada (Ascenso/Descenso registrado).']);
     exit;
 }
+
+// ----------------------------------------------------
+// CHAMPIONS / REGISTRO DE CAMPEONES
+// ----------------------------------------------------
+if ($action === 'champions') {
+    $seasonId = intval($_GET['season_id'] ?? 0);
+    try {
+        $sql = "SELECT sc.*, t.name as team_name, t.short_name as team_short, t.logo_url as team_logo,
+                       c.name as category_name, c.code as category_code, s.name as season_name, s.year as season_year
+                FROM season_champions sc
+                JOIN teams t ON sc.team_id = t.id
+                JOIN categories c ON sc.category_id = c.id
+                JOIN seasons s ON sc.season_id = s.id";
+        if ($seasonId > 0) {
+            $sql .= " WHERE sc.season_id = {$seasonId}";
+        }
+        $sql .= " ORDER BY s.year DESC, c.level ASC";
+        $stmt = $pdo->query($sql);
+        $champions = $stmt->fetchAll();
+    } catch (Exception $e) {
+        initDatabaseSchemaAndSeed($pdo);
+        $champions = [];
+    }
+
+    echo json_encode(['success' => true, 'champions' => $champions]);
+    exit;
+}
+
+if ($action === 'set_champion' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $seasonId = intval($input['season_id'] ?? 0);
+    $categoryId = intval($input['category_id'] ?? 0);
+    $teamId = intval($input['team_id'] ?? 0);
+    $titleName = trim($input['title_name'] ?? 'Campeón Oficial');
+    $notes = trim($input['notes'] ?? '');
+
+    if (!$seasonId || !$categoryId || !$teamId) {
+        echo json_encode(['success' => false, 'message' => 'Temporada, categoría y equipo ganador requeridos.']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM season_champions WHERE season_id = ? AND category_id = ?");
+        $stmt->execute([$seasonId, $categoryId]);
+
+        $stmtIns = $pdo->prepare("INSERT INTO season_champions (season_id, category_id, team_id, title_name, notes) VALUES (?, ?, ?, ?, ?)");
+        $stmtIns->execute([$seasonId, $categoryId, $teamId, $titleName, $notes]);
+
+        logAuditAction($pdo, 'SET_CHAMPION', "Coronó al equipo ID {$teamId} como {$titleName} de la categoría ID {$categoryId} (Temporada ID {$seasonId}).");
+        echo json_encode(['success' => true, 'message' => '¡Campeón registrado exitosamente en el Histórico de la LMB!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al registrar el campeón: ' . $e->getMessage()]);
+    }
+    exit;
+}

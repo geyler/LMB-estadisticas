@@ -281,6 +281,16 @@ function initDatabaseSchemaAndSeed($pdo) {
             name VARCHAR(100) NOT NULL,
             code VARCHAR(30) NOT NULL UNIQUE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+
+        "CREATE TABLE IF NOT EXISTS season_champions (
+            id {$autoInc},
+            season_id INT NOT NULL,
+            category_id INT NOT NULL,
+            team_id INT NOT NULL,
+            title_name VARCHAR(100) DEFAULT 'Campeón Oficial',
+            notes VARCHAR(255) DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );"
     ];
 
