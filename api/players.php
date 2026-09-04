@@ -36,10 +36,10 @@ if ($action === 'detail') {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT p.*, t.name as team_name, t.short_name as team_short, t.logo_url as team_logo, c.name as category_name 
+    $stmt = $pdo->prepare("SELECT p.*, COALESCE(t.name, 'Sin Equipo') as team_name, COALESCE(t.short_name, 'S/E') as team_short, t.logo_url as team_logo, COALESCE(c.name, 'Sin Categoría') as category_name 
                            FROM players p 
-                           JOIN teams t ON p.team_id = t.id 
-                           JOIN categories c ON t.category_id = c.id 
+                           LEFT JOIN teams t ON p.team_id = t.id 
+                           LEFT JOIN categories c ON t.category_id = c.id 
                            WHERE p.id = ?");
     $stmt->execute([$id]);
     $player = $stmt->fetch();
@@ -52,12 +52,13 @@ if ($action === 'detail') {
     // Calculate Batting Aggregates
     $stmtBat = $pdo->prepare("
         SELECT 
-            COUNT(DISTINCT game_id) as gp,
-            SUM(ab) as ab, SUM(r) as r, SUM(h) as h,
-            SUM(singles) as singles, SUM(doubles) as doubles, SUM(triples) as triples, SUM(hr) as hr,
-            SUM(rbi) as rbi, SUM(bb) as bb, SUM(so) as so, SUM(sb) as sb, SUM(hbp) as hbp, SUM(sf) as sf
-        FROM game_batting_stats
-        WHERE player_id = ?
+            COUNT(DISTINCT bs.game_id) as gp,
+            SUM(bs.ab) as ab, SUM(bs.r) as r, SUM(bs.h) as h,
+            SUM(bs.singles) as singles, SUM(bs.doubles) as doubles, SUM(bs.triples) as triples, SUM(bs.hr) as hr,
+            SUM(bs.rbi) as rbi, SUM(bs.bb) as bb, SUM(bs.so) as so, SUM(bs.sb) as sb, SUM(bs.hbp) as hbp, SUM(bs.sf) as sf
+        FROM game_batting_stats bs
+        JOIN games g ON bs.game_id = g.id
+        WHERE bs.player_id = ? AND g.status = 'finished' AND bs.ab > 0
     ");
     $stmtBat->execute([$id]);
     $bat = $stmtBat->fetch() ?: [];
@@ -100,16 +101,17 @@ if ($action === 'detail') {
     // Calculate Pitching Aggregates
     $stmtPitch = $pdo->prepare("
         SELECT 
-            COUNT(DISTINCT game_id) as gp,
-            SUM(ip_outs) as ip_outs,
-            SUM(h) as h, SUM(r) as r, SUM(er) as er,
-            SUM(bb) as bb, SUM(so) as so, SUM(hr) as hr,
-            SUM(pitches_count) as pitches,
-            SUM(CASE WHEN decision = 'W' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN decision = 'L' THEN 1 ELSE 0 END) as losses,
-            SUM(CASE WHEN decision = 'SV' THEN 1 ELSE 0 END) as saves
-        FROM game_pitching_stats
-        WHERE player_id = ?
+            COUNT(DISTINCT ps.game_id) as gp,
+            SUM(ps.ip_outs) as ip_outs,
+            SUM(ps.h) as h, SUM(ps.r) as r, SUM(ps.er) as er,
+            SUM(ps.bb) as bb, SUM(ps.so) as so, SUM(ps.hr) as hr,
+            SUM(ps.pitches_count) as pitches,
+            SUM(CASE WHEN ps.decision = 'W' THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN ps.decision = 'L' THEN 1 ELSE 0 END) as losses,
+            SUM(CASE WHEN ps.decision = 'SV' THEN 1 ELSE 0 END) as saves
+        FROM game_pitching_stats ps
+        JOIN games g ON ps.game_id = g.id
+        WHERE ps.player_id = ? AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0)
     ");
     $stmtPitch->execute([$id]);
     $pitch = $stmtPitch->fetch() ?: [];
@@ -222,13 +224,8 @@ if ($action === 'update' && $method === 'POST') {
         $teamId = $user['assigned_team_id'];
     }
 
-    if ($teamId > 0) {
-        $stmt = $pdo->prepare("UPDATE players SET team_id = ?, role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
-        $stmt->execute([$teamId, $roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
-    } else {
-        $stmt = $pdo->prepare("UPDATE players SET role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
-        $stmt->execute([$roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
-    }
+    $stmt = $pdo->prepare("UPDATE players SET team_id = ?, role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
+    $stmt->execute([$teamId, $roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
 
     echo json_encode(['success' => true, 'message' => 'Datos del integrante y asignación de equipo actualizados correctamente.']);
     exit;

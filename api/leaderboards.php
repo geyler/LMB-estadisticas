@@ -16,7 +16,7 @@ $seasonId = intval($_GET['season_id'] ?? 0);
 $limit = intval($_GET['limit'] ?? 10);
 
 if ($type === 'batting') {
-    $whereCond = " WHERE p.is_active = 1 ";
+    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND bs.ab > 0 ";
     if ($categoryId > 0) {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
@@ -32,6 +32,7 @@ if ($type === 'batting') {
             SUM(bs.doubles) as doubles, SUM(bs.triples) as triples, SUM(bs.hr) as hr,
             SUM(bs.rbi) as rbi, SUM(bs.bb) as bb, SUM(bs.so) as so, SUM(bs.sb) as sb, SUM(bs.hbp) as hbp, SUM(bs.sf) as sf
         FROM game_batting_stats bs
+        JOIN games g ON bs.game_id = g.id
         JOIN players p ON bs.player_id = p.id
         JOIN teams t ON p.team_id = t.id
         LEFT JOIN categories c ON t.category_id = c.id
@@ -88,7 +89,7 @@ if ($type === 'batting') {
 
 } else {
     // Pitching Leaders
-    $whereCond = " WHERE p.is_active = 1 ";
+    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0) ";
     if ($categoryId > 0) {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
@@ -107,6 +108,7 @@ if ($type === 'batting') {
             SUM(CASE WHEN ps.decision = 'L' THEN 1 ELSE 0 END) as losses,
             SUM(CASE WHEN ps.decision = 'SV' THEN 1 ELSE 0 END) as saves
         FROM game_pitching_stats ps
+        JOIN games g ON ps.game_id = g.id
         JOIN players p ON ps.player_id = p.id
         JOIN teams t ON p.team_id = t.id
         LEFT JOIN categories c ON t.category_id = c.id

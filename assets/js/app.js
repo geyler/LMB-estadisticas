@@ -512,19 +512,29 @@ const App = {
     }
   },
 
+  formatDateTime(dateStr) {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr.replace(' ', 'T'));
+      if (isNaN(d.getTime())) return dateStr;
+      const datePart = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timePart = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return `📅 ${datePart} • 🕒 ${timePart} HS`;
+    } catch(e) {
+      return dateStr;
+    }
+  },
+
   renderCategoryChips() {
     const chipContainer = document.getElementById('global-category-chips');
     if (!chipContainer) return;
 
-    if (!this.categories.length) {
-      chipContainer.innerHTML = `<span style="font-size:0.75rem; color:#94A3B8;">Sin divisiones registradas</span>`;
-      return;
+    let html = `<button class="md-chip active" onclick="App.setCategory(0)">🏆 Liga Metropolitana (LMB)</button>`;
+    if (this.categories.length > 1) {
+      this.categories.forEach(c => {
+        html += `<button class="md-chip ${this.currentCategory === c.id ? 'active' : ''}" onclick="App.setCategory(${c.id})">${c.name}</button>`;
+      });
     }
-
-    let html = `<button class="md-chip ${this.currentCategory === 0 ? 'active' : ''}" onclick="App.setCategory(0)">Todas las Ligas</button>`;
-    this.categories.forEach(c => {
-      html += `<button class="md-chip ${this.currentCategory === c.id ? 'active' : ''}" onclick="App.setCategory(${c.id})">${c.name}</button>`;
-    });
     chipContainer.innerHTML = html;
   },
 
@@ -755,7 +765,7 @@ const App = {
             ${games.length ? games.slice(0, 3).map(g => `
               <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-                  <span class="text-truncate">${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
+                  <span class="text-truncate">${g.category_name} • ${App.formatDateTime(g.game_date)} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
                   ${App.getStatusBadge(g.status)}
                 </div>
 
@@ -970,7 +980,7 @@ const App = {
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
               <div style="display:flex; gap:6px; align-items:center;" class="text-truncate">
                 <span class="md-chip" style="font-size:0.65rem; background:rgba(245, 158, 11, 0.15); color:#F59E0B; border:none; padding:1px 6px;">⚾ ${g.game_stage || 'Temporada Regular'}</span>
-                <span class="text-truncate">${g.category_name} • ${new Date(g.game_date).toLocaleDateString('es-AR')}</span>
+                <span class="text-truncate">${g.category_name} • ${App.formatDateTime(g.game_date)}</span>
               </div>
               ${App.getStatusBadge(g.status)}
             </div>
@@ -1612,7 +1622,6 @@ const App = {
           <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
             <div class="md-card-header-actions">
-              <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.runSeedDemo()">⚡ Cargar Demo LMB</button>
               <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateCategoryModal()">➕ Nueva Categoría</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
             </div>
@@ -2997,25 +3006,6 @@ const App = {
     }
   },
 
-  async runSeedDemo() {
-    const confirmSeed = await this.showConfirm("Cargar Demostración", "¿Deseas cargar la demostración completa con las Temporadas 2025 y 2026, 7 equipos, 73 jugadores y estadísticas reales?", "bolt", "#F59E0B");
-    if (!confirmSeed) return;
-
-    try {
-      this.showSnackbar("Cargando datos de demostración...");
-      const res = await fetch('api/seed_demo.php?key=lmb2026');
-      const data = await res.json();
-      if (data.success) {
-        this.showAlert("¡Demostración Cargada!", data.message, "success", "#10B981");
-        window.location.reload();
-      } else {
-        this.showAlert("Atención", data.message, "error", "#EF4444");
-      }
-    } catch(e) {
-      console.error("Error al activar demo", e);
-    }
-  },
-
   async showCrownChampionModal(categoryId, categoryName) {
     try {
       const resTeams = await fetch(`api/teams.php?action=list&category_id=${categoryId}`);
@@ -3253,9 +3243,13 @@ const App = {
       // Populate teams dropdown
       const teamSelect = document.getElementById('ep-team-id');
       if (teamSelect) {
-        teamSelect.innerHTML = teams.length ? teams.map(t => `
-          <option value="${t.id}" ${t.id == p.team_id ? 'selected' : ''}>${t.name} (${t.short_name} - ${t.category_name || 'Sin Categoría'})</option>
-        `).join('') : '<option value="0">Sin equipos disponibles</option>';
+        let opts = `<option value="0" ${!p.team_id || p.team_id == 0 ? 'selected' : ''}>-- Sin Equipo (Sin Asignar) --</option>`;
+        if (teams.length) {
+          opts += teams.map(t => `
+            <option value="${t.id}" ${t.id == p.team_id ? 'selected' : ''}>${t.name} (${t.short_name})</option>
+          `).join('');
+        }
+        teamSelect.innerHTML = opts;
       }
 
       modal.classList.add('open');
