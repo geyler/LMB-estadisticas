@@ -425,6 +425,117 @@ session_start();
       </div>
     </div>
 
+    <!-- Edit Player / Staff & Team Reassignment Modal -->
+    <div id="edit-player-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+        <div class="sheet-handle" onclick="App.closeEditPlayerModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">person_edit</span> Editar Integrante del Plantel
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeEditPlayerModal()">✕</button>
+        </div>
+        <form id="edit-player-form" onsubmit="App.handleSavePlayerEdit(event)" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+          <input type="hidden" id="ep-player-id">
+
+          <div class="form-group">
+            <label style="color:#F59E0B; font-weight:800;">⚾ Equipo Asignado (Mover a)</label>
+            <select id="ep-team-id" class="form-control" style="background:#0F172A; font-weight:700; color:#FFF;"></select>
+          </div>
+
+          <div class="form-group">
+            <label style="color:#3B82F6; font-weight:800;">Tipo de Integrante / Rol</label>
+            <select id="ep-role-type" class="form-control" style="background:#0F172A; font-weight:700;">
+              <option value="player">⚾ Jugador Activo</option>
+              <option value="manager">🧢 Manager / Mánager Principal</option>
+              <option value="pitching_coach">⚾ Coach de Pitcheo</option>
+              <option value="batting_coach">🏏 Coach de Bateo</option>
+              <option value="delegado">📋 Delegado / Representante de Club</option>
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Nombre</label>
+              <input type="text" id="ep-first-name" class="form-control" required placeholder="Ej. Juan">
+            </div>
+            <div class="form-group">
+              <label>Apellido</label>
+              <input type="text" id="ep-last-name" class="form-control" required placeholder="Ej. Pérez">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Nº de Camiseta (#)</label>
+              <input type="number" id="ep-jersey" class="form-control" required min="0" max="99" value="10">
+            </div>
+            <div class="form-group">
+              <label>Posición Principal</label>
+              <select id="ep-position-primary" class="form-control" style="background:#0F172A;">
+                <option value="P">P - Lanzador / Pitcher</option>
+                <option value="C">C - Receptor / Catcher</option>
+                <option value="1B">1B - Primera Base</option>
+                <option value="2B">2B - Segunda Base</option>
+                <option value="3B">3B - Tercera Base</option>
+                <option value="SS">SS - Torpedero / Shortstop</option>
+                <option value="LF">LF - Jardinero Izquierdo</option>
+                <option value="CF">CF - Jardinero Central</option>
+                <option value="RF">RF - Jardinero Derecho</option>
+                <option value="OF">OF - Jardinero General</option>
+                <option value="DH">DH - Bateador Designado</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label>Batea</label>
+              <select id="ep-bats" class="form-control" style="background:#0F172A;">
+                <option value="R">Derecho (R)</option>
+                <option value="L">Zurdo (L)</option>
+                <option value="S">Ambidextro (S)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Lanza</label>
+              <select id="ep-throws" class="form-control" style="background:#0F172A;">
+                <option value="R">Derecho (R)</option>
+                <option value="L">Zurdo (L)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:6px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditPlayerModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-gold" style="flex:1;">💾 Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Match Roster & Lineup Selection Modal -->
+    <div id="game-lineup-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:540px; max-height:92vh; overflow-y:auto;">
+        <div class="sheet-handle" onclick="App.closeGameLineupModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#F59E0B;">checklist</span> Configurar Lineup de Partido
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeGameLineupModal()">✕</button>
+        </div>
+
+        <div style="display:flex; gap:8px; margin:10px 0 6px 0;">
+          <button id="gl-tab-away" class="md-btn md-btn-primary" style="flex:1; font-size:0.8rem;" onclick="App.switchGameLineupTeam('away')">Visitante</button>
+          <button id="gl-tab-home" class="md-btn md-btn-outlined" style="flex:1; font-size:0.8rem;" onclick="App.switchGameLineupTeam('home')">Local</button>
+        </div>
+
+        <div id="game-lineup-body" style="display:flex; flex-direction:column; gap:12px;">
+          <!-- Dynamically rendered -->
+        </div>
+      </div>
+    </div>
+
     <!-- Single File / Photo Upload Modal -->
     <div id="file-upload-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:480px;">

@@ -21,26 +21,76 @@ const LiveScorer = {
 
   init(gameDetailData) {
     this.game = gameDetailData.game;
-    this.homeBatters = gameDetailData.home_batters || [];
-    this.awayBatters = gameDetailData.away_batters || [];
-    this.homePitchers = gameDetailData.home_pitchers || [];
-    this.awayPitchers = gameDetailData.away_pitchers || [];
+    this.homeRoster = gameDetailData.home_roster || [];
+    this.awayRoster = gameDetailData.away_roster || [];
 
-    // Enforce Minimum Roster Size (7 players per team)
-    if (this.homeBatters.length < 7 || this.awayBatters.length < 7) {
+    const homeActive = this.homeRoster.filter(p => !p.role_type || p.role_type === 'player');
+    const awayActive = this.awayRoster.filter(p => !p.role_type || p.role_type === 'player');
+
+    // If homeBatters / awayBatters from game_batting_stats are empty, populate from team rosters
+    if (!gameDetailData.home_batters || gameDetailData.home_batters.length === 0) {
+      this.homeBatters = homeActive.map((p, idx) => ({
+        player_id: p.player_id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        jersey_number: p.jersey_number,
+        bats: p.bats,
+        batting_order: idx + 1
+      }));
+    } else {
+      this.homeBatters = gameDetailData.home_batters;
+    }
+
+    if (!gameDetailData.away_batters || gameDetailData.away_batters.length === 0) {
+      this.awayBatters = awayActive.map((p, idx) => ({
+        player_id: p.player_id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        jersey_number: p.jersey_number,
+        bats: p.bats,
+        batting_order: idx + 1
+      }));
+    } else {
+      this.awayBatters = gameDetailData.away_batters;
+    }
+
+    if (!gameDetailData.home_pitchers || gameDetailData.home_pitchers.length === 0) {
+      this.homePitchers = homeActive.map(p => ({
+        player_id: p.player_id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        jersey_number: p.jersey_number
+      }));
+    } else {
+      this.homePitchers = gameDetailData.home_pitchers;
+    }
+
+    if (!gameDetailData.away_pitchers || gameDetailData.away_pitchers.length === 0) {
+      this.awayPitchers = awayActive.map(p => ({
+        player_id: p.player_id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        jersey_number: p.jersey_number
+      }));
+    } else {
+      this.awayPitchers = gameDetailData.away_pitchers;
+    }
+
+    // Check if either team has ZERO players in roster
+    if (this.homeBatters.length === 0 || this.awayBatters.length === 0) {
       const container = document.getElementById('view-container');
       if (container) {
         container.innerHTML = `
           <div class="view-content">
             <div class="md-card" style="background: linear-gradient(135deg, #7F1D1D 0%, #070D1B 100%); text-align:center;">
               <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
-              <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;">Nómina Incompleta para Partido</h2>
+              <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;">Plantel Sin Jugadores Registrados</h2>
               <p style="font-size:0.85rem; color:#94A3B8; margin-top:8px;">
-                Para poder iniciar la consola de anotación en vivo, se exige un mínimo de <strong>7 jugadores activos</strong> en el plantel de cada equipo.<br><br>
+                Para poder iniciar la consola de anotación en vivo, debes registrar al menos un jugador activo en el plantel de cada club.<br><br>
                 • <strong>${this.game.away_short}</strong>: ${this.awayBatters.length} jugadores<br>
                 • <strong>${this.game.home_short}</strong>: ${this.homeBatters.length} jugadores
               </p>
-              <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+              <div style="display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
                 <button class="md-btn md-btn-gold" onclick="App.showView('team_detail', ${this.game.away_team_id})">👥 Plantel ${this.game.away_short}</button>
                 <button class="md-btn md-btn-gold" onclick="App.showView('team_detail', ${this.game.home_team_id})">👥 Plantel ${this.game.home_short}</button>
                 <button class="md-btn md-btn-outlined" onclick="App.showView('onboarding')">📖 Guía de Inicio</button>
@@ -113,7 +163,10 @@ const LiveScorer = {
         <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span class="md-chip active">🔴 ANOTADOR EN VIVO</span>
-            <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
+            <div style="display:flex; gap:6px;">
+              <button class="md-btn md-btn-gold" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup de Partido</button>
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
+            </div>
           </div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:14px 0;">

@@ -194,6 +194,8 @@ if ($action === 'update' && $method === 'POST') {
 
     $input = json_decode(file_get_contents('php://input'), true);
     $id = intval($input['id'] ?? 0);
+    $teamId = intval($input['team_id'] ?? 0);
+    $roleType = trim($input['role_type'] ?? 'player');
     $firstName = trim($input['first_name'] ?? '');
     $lastName = trim($input['last_name'] ?? '');
     $jerseyNumber = intval($input['jersey_number'] ?? 0);
@@ -217,12 +219,18 @@ if ($action === 'update' && $method === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Acceso denegado: Solo puedes modificar integrantes de tu propio club.']);
             exit;
         }
+        $teamId = $user['assigned_team_id'];
     }
 
-    $stmt = $pdo->prepare("UPDATE players SET first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
-    $stmt->execute([$firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
+    if ($teamId > 0) {
+        $stmt = $pdo->prepare("UPDATE players SET team_id = ?, role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
+        $stmt->execute([$teamId, $roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE players SET role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
+        $stmt->execute([$roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
+    }
 
-    echo json_encode(['success' => true, 'message' => 'Datos del jugador actualizados correctamente.']);
+    echo json_encode(['success' => true, 'message' => 'Datos del integrante y asignación de equipo actualizados correctamente.']);
     exit;
 }
 

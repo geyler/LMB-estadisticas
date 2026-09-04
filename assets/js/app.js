@@ -1010,15 +1010,42 @@ const App = {
 
   // 3. GAME DETAIL VIEW
   async renderGameDetailView(container, gameId) {
-    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando resumen del partido...</div></div>`;
-
-    const res = await fetch(`api/games.php?action=detail&id=${gameId}`);
-    const data = await res.json();
-
-    if (!data.success) {
-      container.innerHTML = `<div class="view-content">Partido no encontrado.</div>`;
+    if (!gameId) {
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:24px;">
+            <div style="font-size:2.5rem; margin-bottom:8px;">⚾</div>
+            <h3 style="font-size:1.15rem; font-weight:800; color:#FFFFFF;">Selecciona un Partido</h3>
+            <p style="font-size:0.85rem; color:#94A3B8; margin-top:6px;">Por favor, elige un encuentro desde la barra superior o desde el calendario de partidos.</p>
+            <button class="md-btn md-btn-primary" style="margin-top:14px; font-size:0.8rem;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+          </div>
+        </div>
+      `;
       return;
     }
+
+    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando resumen del partido...</div></div>`;
+
+    try {
+      const res = await fetch(`api/games.php?action=detail&id=${gameId}`);
+      const data = await res.json();
+
+      if (!data.success || !data.game) {
+        container.innerHTML = `
+          <div class="view-content">
+            <div class="md-card" style="text-align:center; padding:24px; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">
+              <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
+              <h3 style="font-size:1.15rem; font-weight:800; color:#FFFFFF;">Partido No Encontrado</h3>
+              <p style="font-size:0.85rem; color:#94A3B8; margin-top:6px;">El partido solicitado (ID: ${gameId}) no se encuentra registrado o ha sido removido.</p>
+              <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
+                <button class="md-btn md-btn-gold" style="font-size:0.8rem;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+                <button class="md-btn md-btn-outlined" style="font-size:0.8rem;" onclick="App.showView('home')">🏠 Inicio</button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
 
     const g = data.game;
     const lines = data.line_scores;
@@ -1198,6 +1225,19 @@ const App = {
       </div>
     `;
     container.innerHTML = html;
+    } catch(err) {
+      console.error("Error al renderizar el partido", err);
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:24px;">
+            <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
+            <h3 style="font-size:1.15rem; font-weight:800; color:#FFFFFF;">Error al Cargar Partido</h3>
+            <p style="font-size:0.85rem; color:#94A3B8; margin-top:6px;">No se pudo procesar la información del partido.</p>
+            <button class="md-btn md-btn-gold" style="margin-top:14px; font-size:0.8rem;" onclick="App.showView('calendar')">📅 Regresar al Calendario</button>
+          </div>
+        </div>
+      `;
+    }
   },
 
   // 4. TEAMS VIEW
@@ -1294,6 +1334,12 @@ const App = {
                 <div class="md-card" style="padding:8px; text-align:center;">
                   <div style="font-size:0.75rem; color:#F59E0B; font-weight:800;">${roleLabels[c.role_type] || c.role_type}</div>
                   <div style="font-weight:700; font-size:0.85rem; color:#FFF;" class="text-truncate">${c.first_name} ${c.last_name}</div>
+                  ${isAuthorizedForTeam ? `
+                    <div style="display:flex; gap:4px; justify-content:center; margin-top:4px;">
+                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.65rem;" onclick="App.showEditPlayerModal(${c.id})">✏️ Editar</button>
+                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.65rem;" onclick="App.deletePlayer(${c.id}, '${c.first_name} ${c.last_name}')">🗑️</button>
+                    </div>
+                  ` : ''}
                 </div>
               `).join('')}
             </div>
@@ -1330,7 +1376,7 @@ const App = {
                     ${isAuthorizedForTeam ? `
                       <td>
                         <div style="display:flex; gap:4px;">
-                          <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditPlayerModal(${p.id}, '${p.first_name}', '${p.last_name}', ${p.jersey_number}, '${p.position_primary}')">✏️ Editar</button>
+                          <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditPlayerModal(${p.id})">✏️ Editar / Mover</button>
                           <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deletePlayer(${p.id}, '${p.first_name} ${p.last_name}')">🗑️ Baja</button>
                         </div>
                       </td>
@@ -1382,7 +1428,7 @@ const App = {
 
           <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
             ${isAuthorized ? `
-              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEditPlayerModal(${p.id}, '${p.first_name}', '${p.last_name}', ${p.jersey_number}, '${p.position_primary}')">✏️ Editar Perfil</button>
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEditPlayerModal(${p.id})">✏️ Editar Perfil / Reasignar</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showFileUploadModal('player', ${p.id}, 'Subir Foto de ${p.first_name}')">📷 Cambiar Foto</button>
               <button class="md-btn md-btn-danger" style="padding:4px 10px; font-size:0.75rem;" onclick="App.deletePlayer(${p.id}, '${p.first_name} ${p.last_name}')">🗑️ Dar de Baja</button>
             ` : ''}
@@ -3174,32 +3220,95 @@ const App = {
     }
   },
 
-  // PLAYER CRUD
-  async showEditPlayerModal(playerId, currentFirst, currentLast, currentJersey, currentPos) {
-    const firstName = await this.showPrompt("Editar Jugador", "Nombre:", currentFirst);
-    if (!firstName) return;
-    const lastName = await this.showPrompt("Editar Apellido", "Apellido:", currentLast);
-    if (!lastName) return;
-    const jersey = await this.showPrompt("Número de Camiseta", "Número (#):", (currentJersey || 10).toString());
+  // PLAYER CRUD & EDIT MODAL
+  async showEditPlayerModal(playerId) {
+    try {
+      const [resPlayer, resTeams] = await Promise.all([
+        fetch(`api/players.php?action=detail&id=${playerId}`),
+        fetch('api/teams.php?action=list')
+      ]);
+      const dataPlayer = await resPlayer.json();
+      const dataTeams = await resTeams.json();
+
+      if (!dataPlayer.success || !dataPlayer.player) {
+        this.showAlert("Error", "No se encontró la información del integrante.", "error", "#EF4444");
+        return;
+      }
+
+      const p = dataPlayer.player;
+      const teams = dataTeams.teams || [];
+
+      const modal = document.getElementById('edit-player-modal');
+      if (!modal) return;
+
+      document.getElementById('ep-player-id').value = p.id;
+      document.getElementById('ep-first-name').value = p.first_name || '';
+      document.getElementById('ep-last-name').value = p.last_name || '';
+      document.getElementById('ep-jersey').value = p.jersey_number !== undefined ? p.jersey_number : 10;
+      document.getElementById('ep-position-primary').value = p.position_primary || 'OF';
+      document.getElementById('ep-role-type').value = p.role_type || 'player';
+      document.getElementById('ep-bats').value = p.bats || 'R';
+      document.getElementById('ep-throws').value = p.throws || 'R';
+
+      // Populate teams dropdown
+      const teamSelect = document.getElementById('ep-team-id');
+      if (teamSelect) {
+        teamSelect.innerHTML = teams.length ? teams.map(t => `
+          <option value="${t.id}" ${t.id == p.team_id ? 'selected' : ''}>${t.name} (${t.short_name} - ${t.category_name || 'Sin Categoría'})</option>
+        `).join('') : '<option value="0">Sin equipos disponibles</option>';
+      }
+
+      modal.classList.add('open');
+    } catch(e) {
+      console.error("Error al cargar modal de edición de jugador", e);
+      this.showAlert("Error", "Error al obtener datos del jugador.", "error", "#EF4444");
+    }
+  },
+
+  closeEditPlayerModal() {
+    const modal = document.getElementById('edit-player-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSavePlayerEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('ep-player-id').value;
+    const teamId = document.getElementById('ep-team-id').value;
+    const roleType = document.getElementById('ep-role-type').value;
+    const firstName = document.getElementById('ep-first-name').value.trim();
+    const lastName = document.getElementById('ep-last-name').value.trim();
+    const jersey = document.getElementById('ep-jersey').value;
+    const posPrimary = document.getElementById('ep-position-primary').value;
+    const bats = document.getElementById('ep-bats').value;
+    const throws = document.getElementById('ep-throws').value;
 
     try {
       const res = await fetch('api/players.php?action=update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: playerId,
+          id: parseInt(id),
+          team_id: parseInt(teamId),
+          role_type: roleType,
           first_name: firstName,
           last_name: lastName,
-          jersey_number: parseInt(jersey || currentJersey),
-          position_primary: currentPos || 'OF'
+          jersey_number: parseInt(jersey),
+          position_primary: posPrimary,
+          bats: bats,
+          throws: throws
         })
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar('Jugador actualizado.');
+        this.showSnackbar(data.message || '✅ Integrante actualizado correctamente.');
+        this.closeEditPlayerModal();
         this.refreshCurrentView();
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo actualizar.', "error", "#EF4444");
       }
-    } catch(e) {}
+    } catch(err) {
+      this.showAlert("Error", "Error de conexión al guardar cambios.", "wifi_off", "#EF4444");
+    }
   },
 
   async deletePlayer(playerId, playerName) {
@@ -3247,32 +3356,164 @@ const App = {
   },
 
   async reassignPlayerModal(playerId, playerName) {
-    const res = await fetch('api/teams.php?action=list');
-    const data = await res.json();
-    const teams = data.teams || [];
-    if (!teams.length) {
-      this.showAlert('Atención', 'Primero debes registrar al menos un equipo.', 'warning', '#F59E0B');
+    await this.showEditPlayerModal(playerId);
+  },
+
+  // MATCH LINEUP SELECTION MODAL
+  showGameLineupModal() {
+    if (!LiveScorer.game) {
+      this.showAlert('Atención', 'No hay un partido activo cargado en el anotador.', 'warning', '#F59E0B');
       return;
     }
-    const teamOptions = teams.map(t => `${t.id}: ${t.name} (${t.category_name})`).join('\n');
-    const input = await this.showPrompt("Asignar Equipo a " + playerName, "Ingresa el ID del Equipo:\n" + teamOptions);
-    if (!input) return;
-    const teamId = parseInt(input);
+    const modal = document.getElementById('game-lineup-modal');
+    if (!modal) return;
+    this.currentLineupTeamKey = 'away';
+    modal.classList.add('open');
+    this.switchGameLineupTeam('away');
+  },
 
-    try {
-      const res = await fetch('api/leagues.php?action=reassign_player', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: playerId, team_id: teamId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.showSnackbar('Jugador asignado al equipo.');
-        this.refreshCurrentView();
-      } else {
-        this.showAlert('Error', data.message || 'No se pudo asignar.', 'error', '#EF4444');
+  closeGameLineupModal() {
+    const modal = document.getElementById('game-lineup-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  switchGameLineupTeam(teamKey) {
+    this.currentLineupTeamKey = teamKey;
+    const tabAway = document.getElementById('gl-tab-away');
+    const tabHome = document.getElementById('gl-tab-home');
+
+    if (teamKey === 'away') {
+      if (tabAway) { tabAway.className = 'md-btn md-btn-primary'; tabAway.innerText = `Visitante: ${LiveScorer.game.away_short}`; }
+      if (tabHome) { tabHome.className = 'md-btn md-btn-outlined'; tabHome.innerText = `Local: ${LiveScorer.game.home_short}`; }
+    } else {
+      if (tabAway) { tabAway.className = 'md-btn md-btn-outlined'; tabAway.innerText = `Visitante: ${LiveScorer.game.away_short}`; }
+      if (tabHome) { tabHome.className = 'md-btn md-btn-primary'; tabHome.innerText = `Local: ${LiveScorer.game.home_short}`; }
+    }
+
+    this.renderGameLineupContent();
+  },
+
+  renderGameLineupContent() {
+    const body = document.getElementById('game-lineup-body');
+    if (!body || !LiveScorer.game) return;
+
+    const isAway = (this.currentLineupTeamKey === 'away');
+    const teamName = isAway ? LiveScorer.game.away_team_name : LiveScorer.game.home_team_name;
+    const roster = isAway ? (LiveScorer.awayRoster || []) : (LiveScorer.homeRoster || []);
+    const currentBatters = isAway ? (LiveScorer.awayBatters || []) : (LiveScorer.homeBatters || []);
+
+    const activePlayers = roster.filter(p => !p.role_type || p.role_type === 'player');
+
+    if (!activePlayers.length) {
+      body.innerHTML = `
+        <div class="md-card" style="text-align:center; padding:16px;">
+          <div style="font-weight:700;">No hay jugadores registrados en el plantel de ${teamName}</div>
+          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Agrega jugadores al equipo desde el Plantel para seleccionarlos en este partido.</p>
+        </div>
+      `;
+      return;
+    }
+
+    body.innerHTML = `
+      <div style="font-size:0.85rem; font-weight:800; color:#F59E0B;" class="text-truncate">
+        Selecciona los jugadores activos para ${teamName} (${activePlayers.length} en plantel)
+      </div>
+
+      <div class="md-table-wrapper" style="border:none; max-height:50vh; overflow-y:auto;">
+        <table class="md-table">
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">Activo</th>
+              <th style="width:50px; text-align:center;">Orden</th>
+              <th>Jugador</th>
+              <th>Posición</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${activePlayers.map((p, i) => {
+              const inLineup = currentBatters.some(b => b.player_id == p.player_id);
+              const orderVal = currentBatters.findIndex(b => b.player_id == p.player_id);
+              const orderDisplay = orderVal >= 0 ? orderVal + 1 : (i + 1);
+
+              return `
+                <tr>
+                  <td style="text-align:center;">
+                    <input type="checkbox" class="gl-player-active" value="${p.player_id}" ${inLineup ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+                  </td>
+                  <td style="text-align:center;">
+                    <input type="number" min="1" max="20" class="form-control gl-player-order" value="${orderDisplay}" style="padding:2px; width:44px; text-align:center;">
+                  </td>
+                  <td style="font-weight:700;" class="text-truncate">
+                    #${p.jersey_number} ${p.first_name} ${p.last_name}
+                    <input type="hidden" class="gl-player-id" value="${p.player_id}">
+                    <input type="hidden" class="gl-player-first" value="${p.first_name}">
+                    <input type="hidden" class="gl-player-last" value="${p.last_name}">
+                    <input type="hidden" class="gl-player-jersey" value="${p.jersey_number}">
+                    <input type="hidden" class="gl-player-bats" value="${p.bats || 'R'}">
+                  </td>
+                  <td>
+                    <span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position}</span>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <button class="md-btn md-btn-gold" style="width:100%; margin-top:8px;" onclick="App.handleSaveGameLineup()">
+        ✅ Aplicar Lineup de ${teamName}
+      </button>
+    `;
+  },
+
+  handleSaveGameLineup() {
+    if (!LiveScorer.game) return;
+
+    const isAway = (this.currentLineupTeamKey === 'away');
+    const selectedBatters = [];
+
+    document.querySelectorAll('.gl-player-id').forEach(el => {
+      const row = el.closest('tr');
+      const activeChk = row.querySelector('.gl-player-active');
+      if (activeChk && activeChk.checked) {
+        const playerId = el.value;
+        const orderNum = parseInt(row.querySelector('.gl-player-order')?.value || 1);
+        const firstName = row.querySelector('.gl-player-first')?.value || '';
+        const lastName = row.querySelector('.gl-player-last')?.value || '';
+        const jersey = row.querySelector('.gl-player-jersey')?.value || '0';
+        const bats = row.querySelector('.gl-player-bats')?.value || 'R';
+
+        selectedBatters.push({
+          player_id: playerId,
+          first_name: firstName,
+          last_name: lastName,
+          jersey_number: jersey,
+          bats: bats,
+          batting_order: orderNum
+        });
       }
-    } catch(e) {}
+    });
+
+    selectedBatters.sort((a, b) => a.batting_order - b.batting_order);
+
+    if (!selectedBatters.length) {
+      this.showAlert("Atención", "Debes seleccionar al menos un jugador activo para la nómina.", "warning", "#F59E0B");
+      return;
+    }
+
+    if (isAway) {
+      LiveScorer.awayBatters = selectedBatters;
+      LiveScorer.awayPitchers = selectedBatters;
+    } else {
+      LiveScorer.homeBatters = selectedBatters;
+      LiveScorer.homePitchers = selectedBatters;
+    }
+
+    LiveScorer.autoSelectActivePlayers();
+    LiveScorer.renderScorerInterface();
+    this.closeGameLineupModal();
+    this.showSnackbar("✅ Lineup actualizado con éxito.");
   },
 
   async showCreateStageModal() {

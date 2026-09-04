@@ -16,14 +16,14 @@ if ($action === 'list') {
     $status = trim($_GET['status'] ?? '');
 
     $sql = "SELECT g.*, 
-                   ht.name as home_team_name, ht.short_name as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
-                   at.name as away_team_name, at.short_name as away_short, at.logo_url as away_logo, at.color_primary as away_color,
-                   c.name as category_name, c.code as category_code,
+                   COALESCE(ht.name, 'Equipo Local') as home_team_name, COALESCE(ht.short_name, 'LOC') as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
+                   COALESCE(at.name, 'Equipo Visitante') as away_team_name, COALESCE(at.short_name, 'VIS') as away_short, at.logo_url as away_logo, at.color_primary as away_color,
+                   COALESCE(c.name, 'Sin Categoría') as category_name, COALESCE(c.code, 'GEN') as category_code,
                    s.name as stadium_name, s.field_name as stadium_field, s.address as stadium_address
             FROM games g
-            JOIN teams ht ON g.home_team_id = ht.id
-            JOIN teams at ON g.away_team_id = at.id
-            JOIN categories c ON g.category_id = c.id
+            LEFT JOIN teams ht ON g.home_team_id = ht.id
+            LEFT JOIN teams at ON g.away_team_id = at.id
+            LEFT JOIN categories c ON g.category_id = c.id
             LEFT JOIN stadiums s ON g.stadium_id = s.id";
 
     $where = [];
@@ -51,15 +51,15 @@ if ($action === 'detail') {
 
     $stmt = $pdo->prepare("
         SELECT g.*, 
-               ht.name as home_team_name, ht.short_name as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
-               at.name as away_team_name, at.short_name as away_short, at.logo_url as away_logo, at.color_primary as away_color,
-               c.name as category_name,
+               COALESCE(ht.name, 'Equipo Local') as home_team_name, COALESCE(ht.short_name, 'LOC') as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
+               COALESCE(at.name, 'Equipo Visitante') as away_team_name, COALESCE(at.short_name, 'VIS') as away_short, at.logo_url as away_logo, at.color_primary as away_color,
+               COALESCE(c.name, 'Sin Categoría') as category_name,
                s.name as stadium_name, s.field_name as stadium_field, s.address as stadium_address, s.maps_url as stadium_maps,
                u.name as lock_user_name
         FROM games g
-        JOIN teams ht ON g.home_team_id = ht.id
-        JOIN teams at ON g.away_team_id = at.id
-        JOIN categories c ON g.category_id = c.id
+        LEFT JOIN teams ht ON g.home_team_id = ht.id
+        LEFT JOIN teams at ON g.away_team_id = at.id
+        LEFT JOIN categories c ON g.category_id = c.id
         LEFT JOIN stadiums s ON g.stadium_id = s.id
         LEFT JOIN users u ON g.lock_user_id = u.id
         WHERE g.id = ?
@@ -150,6 +150,15 @@ if ($action === 'detail') {
     $stmtPhotos->execute([$id]);
     $photos = $stmtPhotos->fetchAll();
 
+    // Active Team Rosters from players table
+    $stmtRosterHome = $pdo->prepare("SELECT id as player_id, team_id, first_name, last_name, jersey_number, position_primary as position, bats, throws, role_type FROM players WHERE team_id = ? AND is_active = 1 ORDER BY jersey_number ASC");
+    $stmtRosterHome->execute([$game['home_team_id']]);
+    $homeRoster = $stmtRosterHome->fetchAll();
+
+    $stmtRosterAway = $pdo->prepare("SELECT id as player_id, team_id, first_name, last_name, jersey_number, position_primary as position, bats, throws, role_type FROM players WHERE team_id = ? AND is_active = 1 ORDER BY jersey_number ASC");
+    $stmtRosterAway->execute([$game['away_team_id']]);
+    $awayRoster = $stmtRosterAway->fetchAll();
+
     echo json_encode([
         'success' => true,
         'game' => $game,
@@ -158,6 +167,8 @@ if ($action === 'detail') {
         'away_batters' => $awayBatters,
         'home_pitchers' => $homePitchers,
         'away_pitchers' => $awayPitchers,
+        'home_roster' => $homeRoster,
+        'away_roster' => $awayRoster,
         'play_by_play' => $playByPlay,
         'photos' => $photos
     ]);
