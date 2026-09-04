@@ -217,7 +217,7 @@ if ($action === 'update' && $method === 'POST') {
         $stmtChk = $pdo->prepare("SELECT team_id FROM players WHERE id = ?");
         $stmtChk->execute([$id]);
         $playerTeam = $stmtChk->fetchColumn();
-        if ($playerTeam != $user['assigned_team_id']) {
+        if ($playerTeam && $playerTeam != $user['assigned_team_id']) {
             echo json_encode(['success' => false, 'message' => 'Acceso denegado: Solo puedes modificar integrantes de tu propio club.']);
             exit;
         }

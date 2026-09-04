@@ -719,6 +719,8 @@ const App = {
 
       this.renderScorebugCarousel(games);
 
+      const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+
       let html = `
         <div class="view-content">
           <!-- Hero Header -->
@@ -784,6 +786,12 @@ const App = {
                   </div>
                   <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
                 </div>
+
+                ${canEdit ? `
+                  <div style="display:flex; gap:6px; margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px;">
+                    <button class="md-btn md-btn-gold" style="flex:1; padding:5px 8px; font-size:0.75rem; font-weight:800;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">📊 Actualizar Stats Jugadores</button>
+                  </div>
+                ` : ''}
               </div>
             `).join('') : `
               <div class="md-card" style="text-align:center; padding:24px;">
@@ -1003,8 +1011,8 @@ const App = {
 
             ${canEdit ? `
               <div style="display:flex; gap:6px; margin-top:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
-                <button class="md-btn md-btn-outlined" style="flex:1; padding:4px 8px; font-size:0.72rem;" onclick="event.stopPropagation(); App.openGameResultModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️ Cargar Resultado / Estado</button>
-                <button class="md-btn md-btn-outlined" style="flex:1; padding:4px 8px; font-size:0.72rem;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">🧢 Estadísticas Jugadores</button>
+                <button class="md-btn md-btn-gold" style="flex:1; padding:6px 8px; font-size:0.75rem; font-weight:800;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">📊 Actualizar Stats Jugadores</button>
+                <button class="md-btn md-btn-outlined" style="flex:1; padding:6px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); App.openGameResultModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️ Cargar Resultado</button>
               </div>
             ` : ''}
           </div>
@@ -1097,18 +1105,18 @@ const App = {
           ` : ''}
 
           ${canEdit ? `
-            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+              <button class="md-btn md-btn-gold" style="width:100%; font-size:0.85rem; font-weight:800; padding:8px 12px; background:linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color:#000000;" onclick="App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
+                📊 Actualizar Estadísticas Jugador por Jugador
+              </button>
               <div style="display:flex; gap:6px;">
                 <button class="md-btn md-btn-outlined" style="flex:1; font-size:0.75rem;" onclick="App.openGameResultModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
                   ✏️ Editar Resultado y Estado
                 </button>
-                <button class="md-btn md-btn-outlined" style="flex:1; font-size:0.75rem;" onclick="App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
-                  🧢 Cargar Stats Jugadores
+                <button class="md-btn md-btn-primary" style="flex:1; font-size:0.75rem;" onclick="LiveScorer.init(${JSON.stringify(data).replace(/"/g, '&quot;')})">
+                  ⚾ Anotador en Vivo (Jugada a Jugada)
                 </button>
               </div>
-              <button class="md-btn md-btn-gold" style="width:100%; font-size:0.8rem;" onclick="LiveScorer.init(${JSON.stringify(data).replace(/"/g, '&quot;')})">
-                ⚾ Abrir Anotador en Vivo (Jugada por Jugada)
-              </button>
             </div>
           ` : ''}
         </div>
@@ -3105,10 +3113,10 @@ const App = {
         const resCat = await fetch('api/leagues.php?action=categories');
         if (resCat.ok) {
           const dataCat = await resCat.json();
-          categories = dataCat.categories || [];
+          categories = (dataCat.categories && dataCat.categories.length) ? dataCat.categories : (this.categories || []);
         }
       } catch (e) {
-        console.warn("Could not fetch categories list", e);
+        categories = this.categories || [];
       }
 
       try {
@@ -3138,16 +3146,18 @@ const App = {
       document.getElementById('edit-team-color1').value = team.color_primary || '#0A192F';
       document.getElementById('edit-team-color2').value = team.color_secondary || '#D32F2F';
 
+      const selCatId = team.category_id !== undefined && team.category_id !== null ? team.category_id : currentCategoryId;
       const catSelect = document.getElementById('edit-team-category');
       if (catSelect) {
-        catSelect.innerHTML = `<option value="0">Sin Asignación (Orfano)</option>` + 
-          categories.map(c => `<option value="${c.id}" ${c.id == (team.category_id || currentCategoryId) ? 'selected' : ''}>${c.name} (${c.code || ''})</option>`).join('');
+        catSelect.innerHTML = `<option value="0" ${selCatId == 0 ? 'selected' : ''}>Sin Asignación (Orfano)</option>` + 
+          categories.map(c => `<option value="${c.id}" ${c.id == selCatId ? 'selected' : ''}>${c.name} (${c.code || ''})</option>`).join('');
       }
 
+      const selStadId = team.home_stadium_id !== undefined && team.home_stadium_id !== null ? team.home_stadium_id : currentStadiumId;
       const stadSelect = document.getElementById('edit-team-stadium');
       if (stadSelect) {
-        stadSelect.innerHTML = `<option value="0">Sin Sede Fija (Neutral)</option>` + 
-          stadia.map(s => `<option value="${s.id}" ${s.id == (team.home_stadium_id || currentStadiumId) ? 'selected' : ''}>${s.name} (${s.field_name || 'Principal'})</option>`).join('');
+        stadSelect.innerHTML = `<option value="0" ${selStadId == 0 ? 'selected' : ''}>Sin Sede Fija (Neutral)</option>` + 
+          stadia.map(s => `<option value="${s.id}" ${s.id == selStadId ? 'selected' : ''}>${s.name} (${s.field_name || 'Principal'})</option>`).join('');
       }
 
       const modal = document.getElementById('edit-team-modal');
@@ -3334,7 +3344,7 @@ const App = {
     const categoryId = parseInt(input);
 
     try {
-      const res = await fetch('api/leagues.php?action=reassign_team', {
+      const res = await fetch('api/teams.php?action=reassign_team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_id: teamId, category_id: categoryId })

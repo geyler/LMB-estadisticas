@@ -443,7 +443,10 @@ if ($action === 'save_manual_stats' && $method === 'POST') {
         }
     }
 
-    echo json_encode(['success' => true, 'message' => 'Estadísticas de jugadores cargadas correctamente.']);
+    // Auto-update game status to finished if stats were entered for a scheduled or awaiting game
+    $pdo->prepare("UPDATE games SET status = 'finished' WHERE id = ? AND status IN ('scheduled', 'awaiting_data')")->execute([$gameId]);
+
+    echo json_encode(['success' => true, 'message' => 'Estadísticas de jugadores guardadas correctamente.']);
     exit;
 }
 
