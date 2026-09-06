@@ -156,7 +156,19 @@ if ($action === 'create_season' && $method === 'POST') {
     $stmt->execute([$name, $year]);
     $seasonId = $pdo->lastInsertId();
 
-    echo json_encode(['success' => true, 'season_id' => $seasonId, 'message' => 'Temporada creada exitosamente.']);
+    // Auto-provision default categories for the new season
+    $stmtCat = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)");
+    $stmtCat->execute([$seasonId, 'Primera División A1', 'A1', 1]);
+    $newA1Id = $pdo->lastInsertId();
+    $stmtCat->execute([$seasonId, 'Segunda División A2', 'A2', 2]);
+    $newA2Id = $pdo->lastInsertId();
+
+    // Move any unassigned or existing teams to the new season's main category
+    $pdo->prepare("UPDATE teams SET category_id = ? WHERE category_id = 0 OR category_id IS NULL")->execute([$newA1Id]);
+
+    logAuditAction($pdo, 'CREATE_SEASON', "Inició la nueva temporada '{$name}' ({$year}) con categorías A1 y A2 pre-cargadas.");
+
+    echo json_encode(['success' => true, 'season_id' => $seasonId, 'category_id' => $newA1Id, 'message' => "Temporada '{$name}' creada e iniciada exitosamente con divisiones A1 y A2."]);
     exit;
 }
 

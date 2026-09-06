@@ -24,8 +24,11 @@ const LiveScorer = {
     this.homeRoster = gameDetailData.home_roster || [];
     this.awayRoster = gameDetailData.away_roster || [];
 
-    const homeActive = this.homeRoster.filter(p => !p.role_type || p.role_type === 'player');
-    const awayActive = this.awayRoster.filter(p => !p.role_type || p.role_type === 'player');
+    let homeActive = this.homeRoster.filter(p => !p.role_type || p.role_type === 'player' || p.role_type === 'jugador');
+    if (!homeActive.length && this.homeRoster.length) homeActive = this.homeRoster;
+
+    let awayActive = this.awayRoster.filter(p => !p.role_type || p.role_type === 'player' || p.role_type === 'jugador');
+    if (!awayActive.length && this.awayRoster.length) awayActive = this.awayRoster;
 
     // If homeBatters / awayBatters from game_batting_stats are empty, populate from team rosters
     if (!gameDetailData.home_batters || gameDetailData.home_batters.length === 0) {

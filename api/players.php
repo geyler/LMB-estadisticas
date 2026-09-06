@@ -49,102 +49,114 @@ if ($action === 'detail') {
         exit;
     }
 
-    // Calculate Batting Aggregates
-    $stmtBat = $pdo->prepare("
-        SELECT 
-            COUNT(DISTINCT bs.game_id) as gp,
-            SUM(bs.ab) as ab, SUM(bs.r) as r, SUM(bs.h) as h,
-            SUM(bs.singles) as singles, SUM(bs.doubles) as doubles, SUM(bs.triples) as triples, SUM(bs.hr) as hr,
-            SUM(bs.rbi) as rbi, SUM(bs.bb) as bb, SUM(bs.so) as so, SUM(bs.sb) as sb, SUM(bs.hbp) as hbp, SUM(bs.sf) as sf
-        FROM game_batting_stats bs
-        JOIN games g ON bs.game_id = g.id
-        WHERE bs.player_id = ? AND g.status = 'finished' AND bs.ab > 0
-    ");
-    $stmtBat->execute([$id]);
-    $bat = $stmtBat->fetch() ?: [];
+    // Helper function for batting stats
+    $calcBatting = function($whereExtra = '') use ($pdo, $id) {
+        $stmtBat = $pdo->prepare("
+            SELECT 
+                COUNT(DISTINCT bs.game_id) as gp,
+                SUM(bs.ab) as ab, SUM(bs.r) as r, SUM(bs.h) as h,
+                SUM(bs.singles) as singles, SUM(bs.doubles) as doubles, SUM(bs.triples) as triples, SUM(bs.hr) as hr,
+                SUM(bs.rbi) as rbi, SUM(bs.bb) as bb, SUM(bs.so) as so, SUM(bs.sb) as sb, SUM(bs.hbp) as hbp, SUM(bs.sf) as sf
+            FROM game_batting_stats bs
+            JOIN games g ON bs.game_id = g.id
+            WHERE bs.player_id = ? AND g.status = 'finished' AND bs.ab > 0 {$whereExtra}
+        ");
+        $stmtBat->execute([$id]);
+        $bat = $stmtBat->fetch() ?: [];
 
-    $ab = intval($bat['ab'] ?? 0);
-    $h = intval($bat['h'] ?? 0);
-    $bb = intval($bat['bb'] ?? 0);
-    $hbp = intval($bat['hbp'] ?? 0);
-    $sf = intval($bat['sf'] ?? 0);
-    $d2 = intval($bat['doubles'] ?? 0);
-    $d3 = intval($bat['triples'] ?? 0);
-    $hr = intval($bat['hr'] ?? 0);
+        $ab = intval($bat['ab'] ?? 0);
+        $h = intval($bat['h'] ?? 0);
+        $bb = intval($bat['bb'] ?? 0);
+        $hbp = intval($bat['hbp'] ?? 0);
+        $sf = intval($bat['sf'] ?? 0);
+        $d2 = intval($bat['doubles'] ?? 0);
+        $d3 = intval($bat['triples'] ?? 0);
+        $hr = intval($bat['hr'] ?? 0);
 
-    $avg = ($ab > 0) ? number_format($h / $ab, 3) : '.000';
-    $obpDenominator = ($ab + $bb + $hbp + $sf);
-    $obp = ($obpDenominator > 0) ? number_format(($h + $bb + $hbp) / $obpDenominator, 3) : '.000';
-    
-    $totalBases = ($h - $d2 - $d3 - $hr) + ($d2 * 2) + ($d3 * 3) + ($hr * 4);
-    $slg = ($ab > 0) ? number_format($totalBases / $ab, 3) : '.000';
-    $ops = number_format(floatval($obp) + floatval($slg), 3);
+        $avg = ($ab > 0) ? number_format($h / $ab, 3) : '.000';
+        $obpDenominator = ($ab + $bb + $hbp + $sf);
+        $obp = ($obpDenominator > 0) ? number_format(($h + $bb + $hbp) / $obpDenominator, 3) : '.000';
+        $totalBases = ($h - $d2 - $d3 - $hr) + ($d2 * 2) + ($d3 * 3) + ($hr * 4);
+        $slg = ($ab > 0) ? number_format($totalBases / $ab, 3) : '.000';
+        $ops = number_format(floatval($obp) + floatval($slg), 3);
 
-    $player['batting_stats'] = [
-        'gp' => intval($bat['gp'] ?? 0),
-        'ab' => $ab,
-        'r' => intval($bat['r'] ?? 0),
-        'h' => $h,
-        'doubles' => $d2,
-        'triples' => $d3,
-        'hr' => $hr,
-        'rbi' => intval($bat['rbi'] ?? 0),
-        'bb' => $bb,
-        'so' => intval($bat['so'] ?? 0),
-        'sb' => intval($bat['sb'] ?? 0),
-        'avg' => $avg,
-        'obp' => $obp,
-        'slg' => $slg,
-        'ops' => $ops
-    ];
+        return [
+            'gp' => intval($bat['gp'] ?? 0),
+            'ab' => $ab,
+            'r' => intval($bat['r'] ?? 0),
+            'h' => $h,
+            'doubles' => $d2,
+            'triples' => $d3,
+            'hr' => $hr,
+            'rbi' => intval($bat['rbi'] ?? 0),
+            'bb' => $bb,
+            'so' => intval($bat['so'] ?? 0),
+            'sb' => intval($bat['sb'] ?? 0),
+            'avg' => $avg,
+            'obp' => $obp,
+            'slg' => $slg,
+            'ops' => $ops
+        ];
+    };
 
-    // Calculate Pitching Aggregates
-    $stmtPitch = $pdo->prepare("
-        SELECT 
-            COUNT(DISTINCT ps.game_id) as gp,
-            SUM(ps.ip_outs) as ip_outs,
-            SUM(ps.h) as h, SUM(ps.r) as r, SUM(ps.er) as er,
-            SUM(ps.bb) as bb, SUM(ps.so) as so, SUM(ps.hr) as hr,
-            SUM(ps.pitches_count) as pitches,
-            SUM(CASE WHEN ps.decision = 'W' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN ps.decision = 'L' THEN 1 ELSE 0 END) as losses,
-            SUM(CASE WHEN ps.decision = 'SV' THEN 1 ELSE 0 END) as saves
-        FROM game_pitching_stats ps
-        JOIN games g ON ps.game_id = g.id
-        WHERE ps.player_id = ? AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0)
-    ");
-    $stmtPitch->execute([$id]);
-    $pitch = $stmtPitch->fetch() ?: [];
+    // Helper function for pitching stats
+    $calcPitching = function($whereExtra = '') use ($pdo, $id) {
+        $stmtPitch = $pdo->prepare("
+            SELECT 
+                COUNT(DISTINCT ps.game_id) as gp,
+                SUM(ps.ip_outs) as ip_outs,
+                SUM(ps.h) as h, SUM(ps.r) as r, SUM(ps.er) as er,
+                SUM(ps.bb) as bb, SUM(ps.so) as so, SUM(ps.hr) as hr,
+                SUM(ps.pitches_count) as pitches,
+                SUM(CASE WHEN ps.decision = 'W' THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN ps.decision = 'L' THEN 1 ELSE 0 END) as losses,
+                SUM(CASE WHEN ps.decision = 'SV' THEN 1 ELSE 0 END) as saves
+            FROM game_pitching_stats ps
+            JOIN games g ON ps.game_id = g.id
+            WHERE ps.player_id = ? AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0) {$whereExtra}
+        ");
+        $stmtPitch->execute([$id]);
+        $pitch = $stmtPitch->fetch() ?: [];
 
-    $ipOuts = intval($pitch['ip_outs'] ?? 0);
-    $ipFull = floor($ipOuts / 3);
-    $ipRem = $ipOuts % 3;
-    $ipDisplay = $ipFull . '.' . $ipRem;
-    $ipFloat = $ipFull + ($ipRem / 3);
+        $ipOuts = intval($pitch['ip_outs'] ?? 0);
+        $ipFull = floor($ipOuts / 3);
+        $ipRem = $ipOuts % 3;
+        $ipDisplay = $ipFull . '.' . $ipRem;
+        $ipFloat = $ipFull + ($ipRem / 3);
 
-    $er = intval($pitch['er'] ?? 0);
-    $pHits = intval($pitch['h'] ?? 0);
-    $pBB = intval($pitch['bb'] ?? 0);
+        $er = intval($pitch['er'] ?? 0);
+        $pHits = intval($pitch['h'] ?? 0);
+        $pBB = intval($pitch['bb'] ?? 0);
 
-    $era = ($ipFloat > 0) ? number_format(($er * 9) / $ipFloat, 2) : '0.00';
-    $whip = ($ipFloat > 0) ? number_format(($pHits + $pBB) / $ipFloat, 2) : '0.00';
+        $era = ($ipFloat > 0) ? number_format(($er * 9) / $ipFloat, 2) : '0.00';
+        $whip = ($ipFloat > 0) ? number_format(($pHits + $pBB) / $ipFloat, 2) : '0.00';
 
-    $player['pitching_stats'] = [
-        'gp' => intval($pitch['gp'] ?? 0),
-        'wins' => intval($pitch['wins'] ?? 0),
-        'losses' => intval($pitch['losses'] ?? 0),
-        'saves' => intval($pitch['saves'] ?? 0),
-        'ip' => $ipDisplay,
-        'h' => $pHits,
-        'r' => intval($pitch['r'] ?? 0),
-        'er' => $er,
-        'bb' => $pBB,
-        'so' => intval($pitch['so'] ?? 0),
-        'hr' => intval($pitch['hr'] ?? 0),
-        'era' => $era,
-        'whip' => $whip,
-        'pitches' => intval($pitch['pitches'] ?? 0)
-    ];
+        return [
+            'gp' => intval($pitch['gp'] ?? 0),
+            'wins' => intval($pitch['wins'] ?? 0),
+            'losses' => intval($pitch['losses'] ?? 0),
+            'saves' => intval($pitch['saves'] ?? 0),
+            'ip' => $ipDisplay,
+            'h' => $pHits,
+            'r' => intval($pitch['r'] ?? 0),
+            'er' => $er,
+            'bb' => $pBB,
+            'so' => intval($pitch['so'] ?? 0),
+            'hr' => intval($pitch['hr'] ?? 0),
+            'era' => $era,
+            'whip' => $whip,
+            'pitches' => intval($pitch['pitches'] ?? 0)
+        ];
+    };
+
+    // Official Season Stats (excludes friendly/exhibitions)
+    $officialWhere = " AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
+    $player['batting_stats'] = $calcBatting($officialWhere);
+    $player['pitching_stats'] = $calcPitching($officialWhere);
+
+    // Lifetime / De Por Vida Stats (includes all games: regular + friendly + exhibitions + playoffs)
+    $player['lifetime_batting_stats'] = $calcBatting('');
+    $player['lifetime_pitching_stats'] = $calcPitching('');
 
     echo json_encode(['success' => true, 'player' => $player]);
     exit;
@@ -168,8 +180,8 @@ if ($action === 'create' && $method === 'POST') {
     $throws = trim($input['throws'] ?? 'R');
     $photoUrl = trim($input['photo_url'] ?? '');
 
-    if (!$teamId || empty($firstName) || empty($lastName)) {
-        echo json_encode(['success' => false, 'message' => 'Equipo, nombre y apellido requeridos.']);
+    if (empty($firstName) || empty($lastName)) {
+        echo json_encode(['success' => false, 'message' => 'Nombre y apellido requeridos.']);
         exit;
     }
 

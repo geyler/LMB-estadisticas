@@ -16,7 +16,13 @@ $seasonId = intval($_GET['season_id'] ?? 0);
 $limit = intval($_GET['limit'] ?? 10);
 
 if ($type === 'batting') {
-    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND bs.ab > 0 ";
+    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND bs.ab > 0 
+                   AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
+                   AND (
+                       (bs.team_id = g.home_team_id AND g.home_hits = (SELECT COALESCE(SUM(h),0) FROM game_batting_stats WHERE game_id = g.id AND team_id = g.home_team_id))
+                       OR
+                       (bs.team_id = g.away_team_id AND g.away_hits = (SELECT COALESCE(SUM(h),0) FROM game_batting_stats WHERE game_id = g.id AND team_id = g.away_team_id))
+                   ) ";
     if ($categoryId > 0) {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
@@ -89,7 +95,8 @@ if ($type === 'batting') {
 
 } else {
     // Pitching Leaders
-    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0) ";
+    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0)
+                   AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
     if ($categoryId > 0) {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {

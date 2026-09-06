@@ -3406,7 +3406,8 @@ const App = {
     const roster = isAway ? (LiveScorer.awayRoster || []) : (LiveScorer.homeRoster || []);
     const currentBatters = isAway ? (LiveScorer.awayBatters || []) : (LiveScorer.homeBatters || []);
 
-    const activePlayers = roster.filter(p => !p.role_type || p.role_type === 'player');
+    let activePlayers = roster.filter(p => !p.role_type || p.role_type === 'player' || p.role_type === 'jugador');
+    if (!activePlayers.length && roster.length) activePlayers = roster;
 
     if (!activePlayers.length) {
       body.innerHTML = `

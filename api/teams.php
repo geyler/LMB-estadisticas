@@ -47,6 +47,7 @@ if ($action === 'standings') {
                 SUM(CASE WHEN home_team_id = ? THEN away_score ELSE home_score END) as cc
             FROM games
             WHERE (home_team_id = ? OR away_team_id = ?) AND status = 'finished'
+            AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
         ");
         $stmtGames->execute([$tId, $tId, $tId, $tId, $tId, $tId, $tId, $tId]);
         $res = $stmtGames->fetch();
@@ -195,8 +196,8 @@ if ($action === 'create' && $method === 'POST') {
     $homeStadiumId = !empty($input['home_stadium_id']) ? intval($input['home_stadium_id']) : null;
     $colorPrimary = trim($input['color_primary'] ?? '#0A192F');
 
-    if (!$categoryId || empty($name)) {
-        echo json_encode(['success' => false, 'message' => 'Categoría y nombre de equipo requeridos.']);
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Nombre de equipo requerido.']);
         exit;
     }
 
