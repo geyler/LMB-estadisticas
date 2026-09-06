@@ -113,6 +113,15 @@ session_start();
       <!-- Dynamic ticker cards inserted by App.renderScorebugCarousel -->
     </div>
 
+    <!-- Google Sports Main Sub-Navigation Pills -->
+    <div id="google-main-pills" class="google-nav-pills">
+      <button id="pill-home" class="google-pill active" onclick="App.showView('home')">Información general</button>
+      <button id="pill-calendar" class="google-pill" onclick="App.showView('calendar')">Partidos</button>
+      <button id="pill-standings" class="google-pill" onclick="App.showView('standings')">Posiciones</button>
+      <button id="pill-leaders" class="google-pill" onclick="App.showView('leaders')">Estadísticas</button>
+      <button id="pill-teams" class="google-pill" onclick="App.showView('teams')">Jugadores y Equipos</button>
+    </div>
+
     <!-- Category Filter Chips -->
     <div id="global-category-chips" class="md-chip-group">
       <!-- Dynamic chips loaded by App.loadLeagues -->
@@ -745,7 +754,7 @@ session_start();
             <label style="font-size:0.78rem; font-weight:700;">📍 Sede Deportiva / Campo Local</label>
             <select id="edit-team-stadium" class="form-control" style="background:#0F172A;"></select>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
               <label style="font-size:0.75rem;">Color Primario</label>
               <input type="color" id="edit-team-color1" class="form-control" style="height:38px; padding:2px;">
@@ -755,9 +764,19 @@ session_start();
               <input type="color" id="edit-team-color2" class="form-control" style="height:38px; padding:2px;">
             </div>
           </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.75rem;">Año de Fundación</label>
+              <input type="number" id="edit-team-foundation" class="form-control" placeholder="1950">
+            </div>
+            <div>
+              <label style="font-size:0.75rem;">URL del Logo (Opcional)</label>
+              <input type="text" id="edit-team-logo" class="form-control" placeholder="assets/images/logo.png">
+            </div>
+          </div>
           <div style="display:flex; gap:10px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditTeamModal()">Cancelar</button>
-            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Datos</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Todos los Cambios</button>
           </div>
         </form>
       </div>

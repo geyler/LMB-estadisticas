@@ -555,6 +555,10 @@ const App = {
     const activeNav = document.getElementById(`nav-${viewName}`);
     if (activeNav) activeNav.classList.add('active');
 
+    document.querySelectorAll('.google-pill').forEach(el => el.classList.remove('active'));
+    const activePill = document.getElementById(`pill-${viewName}`);
+    if (activePill) activePill.classList.add('active');
+
     const container = document.getElementById('view-container');
     if (!container) return;
 
@@ -567,6 +571,9 @@ const App = {
         break;
       case 'calendar':
         this.renderCalendarView(container);
+        break;
+      case 'standings':
+        this.renderStandingsView(container);
         break;
       case 'teams':
         this.renderTeamsView(container);
@@ -844,7 +851,7 @@ const App = {
             </div>
           </div>
 
-          <!-- Section: Leaders Showcase (Bateo y Pitcheo) -->
+          <!-- Section: Leaders Showcase (Google Sports Rank Style) -->
           <div class="view-section">
             <div class="section-header">
               <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">military_tech</span> Líderes de la Liga</h3>
@@ -853,39 +860,47 @@ const App = {
 
             <!-- Bateo Top 3 -->
             <div class="md-card">
-              <div style="font-weight:800; font-size:0.85rem; color:#F59E0B; text-transform:uppercase;">🥇 Top Bateadores (AVG)</div>
-              <div class="md-table-wrapper" style="border:none;">
-                <table class="md-table">
-                  <tbody>
-                    ${batLeaders.length ? batLeaders.map((p, idx) => `
-                      <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
-                        <td style="font-weight:800; color:#F59E0B;">#${idx + 1}</td>
-                        <td style="font-weight:700;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
-                        <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.team_short}</span></td>
-                        <td class="highlight-val">${p.avg}</td>
-                      </tr>
-                    `).join('') : '<tr><td colspan="4" style="text-align:center; padding:8px;">Sin estadísticas registradas.</td></tr>'}
-                  </tbody>
-                </table>
+              <div style="font-weight:800; font-size:0.85rem; color:#F59E0B; text-transform:uppercase; margin-bottom:8px;">🥇 Líderes de Bateo (AVG)</div>
+              <div class="google-rank-list">
+                ${batLeaders.length ? batLeaders.map((p, idx) => `
+                  <div class="google-rank-item" onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                    <div class="google-rank-number">${idx + 1}</div>
+                    <div class="google-rank-player">
+                      <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" class="google-player-avatar" onerror="this.src='assets/images/lmb_logo.png'">
+                      <div class="google-player-details">
+                        <div class="google-player-name">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
+                        <div class="google-player-sub">
+                          <img src="${p.team_logo || 'assets/images/lmb_logo.png'}" style="width:14px; height:14px; border-radius:50%;" onerror="this.src='assets/images/lmb_logo.png'">
+                          <span>${p.team_name}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="google-rank-value">${p.avg}</div>
+                  </div>
+                `).join('') : '<div style="font-size:0.8rem; color:#94A3B8; padding:8px; text-align:center;">Sin estadísticas registradas.</div>'}
               </div>
             </div>
 
             <!-- Pitcheo Top 3 -->
-            <div class="md-card">
-              <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; text-transform:uppercase;">⚾ Top Lanzadores / Pitchers (ERA)</div>
-              <div class="md-table-wrapper" style="border:none;">
-                <table class="md-table">
-                  <tbody>
-                    ${pitchLeaders.length ? pitchLeaders.map((p, idx) => `
-                      <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
-                        <td style="font-weight:800; color:#3B82F6;">#${idx + 1}</td>
-                        <td style="font-weight:700;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
-                        <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.team_short}</span></td>
-                        <td class="highlight-val">${p.era} ERA</td>
-                      </tr>
-                    `).join('') : '<tr><td colspan="4" style="text-align:center; padding:8px;">Sin estadísticas de pitcheo registradas.</td></tr>'}
-                  </tbody>
-                </table>
+            <div class="md-card" style="margin-top:10px;">
+              <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; text-transform:uppercase; margin-bottom:8px;">⚾ Líderes de Pitcheo (ERA)</div>
+              <div class="google-rank-list">
+                ${pitchLeaders.length ? pitchLeaders.map((p, idx) => `
+                  <div class="google-rank-item" onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                    <div class="google-rank-number" style="color:#3B82F6;">${idx + 1}</div>
+                    <div class="google-rank-player">
+                      <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" class="google-player-avatar" style="border-color:#3B82F6;" onerror="this.src='assets/images/lmb_logo.png'">
+                      <div class="google-player-details">
+                        <div class="google-player-name">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
+                        <div class="google-player-sub">
+                          <img src="${p.team_logo || 'assets/images/lmb_logo.png'}" style="width:14px; height:14px; border-radius:50%;" onerror="this.src='assets/images/lmb_logo.png'">
+                          <span>${p.team_name}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="google-rank-value" style="color:#3B82F6;">${p.era}</div>
+                  </div>
+                `).join('') : '<div style="font-size:0.8rem; color:#94A3B8; padding:8px; text-align:center;">Sin estadísticas de pitcheo registradas.</div>'}
               </div>
             </div>
           </div>
@@ -966,7 +981,63 @@ const App = {
     `).join('');
   },
 
-  // 2. CALENDAR & SCHEDULE VIEW
+  // 2. DEDICATED STANDINGS VIEW (GOOGLE SPORTS FORMAT)
+  async renderStandingsView(container) {
+    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tabla de posiciones...</div></div>`;
+
+    const res = await fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`);
+    const data = await res.json();
+    const standings = data.standings || [];
+
+    let html = `
+      <div class="view-content">
+        <div class="section-header">
+          <h2 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">format_list_numbered</span> Tabla de Posiciones Oficial</h2>
+        </div>
+
+        <div class="md-card" style="padding:0; overflow:hidden;">
+          <div class="md-table-wrapper" style="border:none;">
+            <table class="md-table" style="text-align:center;">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">Club</th>
+                  <th>PJ</th>
+                  <th>PG</th>
+                  <th>PP</th>
+                  <th>PCT</th>
+                  <th>DIF</th>
+                  <th class="highlight-val">CF</th>
+                  <th>CC</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${standings.length ? standings.map((s, idx) => `
+                  <tr onclick="App.showView('team_detail', ${s.team_id})" style="cursor:pointer;">
+                    <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:8px;" class="text-truncate">
+                      <span style="color:#94A3B8; font-size:0.8rem; font-weight:800; width:16px;">${idx + 1}</span>
+                      <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
+                      <span class="text-truncate">${s.name}</span>
+                    </td>
+                    <td>${s.gp}</td>
+                    <td style="color:#10B981; font-weight:800;">${s.wins}</td>
+                    <td style="color:#EF4444; font-weight:800;">${s.losses}</td>
+                    <td class="highlight-val">${s.pct}</td>
+                    <td style="font-size:0.78rem; color:#94A3B8;">${s.gb}</td>
+                    <td>${s.cf}</td>
+                    <td>${s.cc}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="8" style="text-align:center; padding:16px;">Sin equipos registrados en esta categoría.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  },
+
+  // 3. CALENDAR & SCHEDULE VIEW (GOOGLE SPORTS FORMAT)
   async renderCalendarView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando calendario...</div></div>`;
 
@@ -983,46 +1054,44 @@ const App = {
             `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
         </div>
 
-        ${games.length ? games.map(g => `
-          <div class="md-card md-card-interactive">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-              <div style="display:flex; gap:6px; align-items:center;" class="text-truncate">
-                <span class="md-chip" style="font-size:0.65rem; background:rgba(245, 158, 11, 0.15); color:#F59E0B; border:none; padding:1px 6px;">⚾ ${g.game_stage || 'Temporada Regular'}</span>
-                <span class="text-truncate">${g.category_name} • ${App.formatDateTime(g.game_date)}</span>
+        <div class="google-match-grid">
+          ${games.length ? games.map(g => `
+            <div class="google-match-card" onclick="App.showView('game_detail', ${g.id})">
+              <div class="google-match-teams">
+                <div style="font-size:0.68rem; font-weight:700; color:#F59E0B;" class="text-truncate">
+                  🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name}
+                </div>
+                <div class="google-team-row">
+                  <div class="google-team-info text-truncate">
+                    <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
+                    <span class="google-team-name text-truncate">${g.away_team_name}</span>
+                  </div>
+                  <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
+                </div>
+                <div class="google-team-row">
+                  <div class="google-team-info text-truncate">
+                    <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
+                    <span class="google-team-name text-truncate">${g.home_team_name}</span>
+                  </div>
+                  <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
+                </div>
               </div>
-              ${App.getStatusBadge(g.status)}
+              <div class="google-match-status">
+                ${App.getStatusBadge(g.status)}
+                <span style="font-size:0.7rem; color:#94A3B8; margin-top:2px;">${App.formatDateTime(g.game_date)}</span>
+              </div>
             </div>
-
-            <div style="display:flex; justify-content:space-around; align-items:center; margin:12px 0;" onclick="App.showView('game_detail', ${g.id})">
-              <div style="text-align:center;" class="text-truncate">
-                <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
-                <div style="font-weight:800; font-size:1rem; margin-top:4px;" class="text-truncate">${g.away_team_name}</div>
-                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
-              </div>
-              <div style="font-size:1.1rem; font-weight:800; color:#64748B;">VS</div>
-              <div style="text-align:center;" class="text-truncate">
-                <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:40px; height:40px; border-radius:50%;">
-                <div style="font-weight:800; font-size:1rem; margin-top:4px;" class="text-truncate">${g.home_team_name}</div>
-                <div style="font-size:1.6rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
-              </div>
+          `).join('') : `
+            <div class="md-card" style="grid-column: 1 / -1; text-align:center; padding:24px;">
+              <span class="material-icons-round" style="font-size:36px; color:#3B82F6;">event_available</span>
+              <div style="font-weight:700; font-size:0.95rem; margin-top:6px;">No hay partidos en el calendario</div>
+              <div style="font-size:0.8rem; color:#94A3B8;">Los partidos programados de esta categoría se mostrarán aquí.</div>
             </div>
-
-            <div style="font-size:0.75rem; color:#94A3B8; text-align:center;" class="text-truncate">📍 Sede: ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
-
-            ${canEdit ? `
-              <div style="display:flex; gap:6px; margin-top:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
-                <button class="md-btn md-btn-gold" style="flex:1; padding:6px 8px; font-size:0.75rem; font-weight:800;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">📊 Actualizar Stats Jugadores</button>
-                <button class="md-btn md-btn-outlined" style="flex:1; padding:6px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); App.openGameResultModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️ Cargar Resultado</button>
-              </div>
-            ` : ''}
-          </div>
-        `).join('') : `
-          <div class="md-card" style="text-align:center; padding:24px;">
-            <div style="font-weight:700; font-size:0.95rem;">No hay partidos programados en esta categoría</div>
-          </div>
-        `}
+          `}
+        </div>
       </div>
     `;
+
     container.innerHTML = html;
   },
 
@@ -1169,10 +1238,14 @@ const App = {
           </div>
         `}
 
-        <!-- Batting Box Score -->
+        <!-- Batting & Pitching Box Scores (MLB Style) -->
         <div class="view-section">
-          <h3 class="section-title">Estadísticas de Bateo</h3>
-          <div style="font-weight:700; color:#F59E0B; margin-bottom:4px;" class="text-truncate">Visitante: ${g.away_team_name}</div>
+          <h3 class="section-title">📊 Planilla Oficial (MLB Boxscore)</h3>
+          
+          <!-- Bateo Visitante -->
+          <div style="font-weight:800; font-size:0.85rem; color:#F59E0B; margin-bottom:4px;" class="text-truncate">
+            🏏 Ofensiva Visitante: ${g.away_team_name}
+          </div>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -1190,7 +1263,10 @@ const App = {
             </table>
           </div>
 
-          <div style="font-weight:700; color:#F59E0B; margin-top:12px; margin-bottom:4px;" class="text-truncate">Local: ${g.home_team_name}</div>
+          <!-- Bateo Local -->
+          <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; margin-top:14px; margin-bottom:4px;" class="text-truncate">
+            🏏 Ofensiva Local: ${g.home_team_name}
+          </div>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -1207,6 +1283,31 @@ const App = {
               </tbody>
             </table>
           </div>
+
+          <!-- Pitcheo Summary -->
+          ${(data.away_pitchers?.length || data.home_pitchers?.length) ? `
+            <div style="font-weight:800; font-size:0.85rem; color:#10B981; margin-top:14px; margin-bottom:4px;">
+              ⚾ Pitcheo y Decisiones
+            </div>
+            <div class="md-table-wrapper">
+              <table class="md-table">
+                <thead>
+                  <tr><th>Lanzador</th><th>Equipo</th><th>IP</th><th>H</th><th>C</th><th>CL</th><th>BB</th><th>SO</th><th>Decisión</th></tr>
+                </thead>
+                <tbody>
+                  ${[...(data.away_pitchers || []), ...(data.home_pitchers || [])].map(p => `
+                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                      <td style="font-weight:700;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
+                      <td>${p.team_id == g.home_team_id ? g.home_short : g.away_short}</td>
+                      <td>${Math.floor(p.ip_outs/3)}.${p.ip_outs%3}</td>
+                      <td>${p.h}</td><td>${p.r}</td><td>${p.er}</td><td>${p.bb}</td><td class="highlight-val">${p.so}</td>
+                      <td><span class="md-chip" style="font-size:0.65rem; padding:1px 6px;">${p.decision || 'NONE'}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Play by Play Log -->
@@ -3145,11 +3246,13 @@ const App = {
       document.getElementById('edit-team-short').value = team.short_name || currentShort || '';
       document.getElementById('edit-team-color1').value = team.color_primary || '#0A192F';
       document.getElementById('edit-team-color2').value = team.color_secondary || '#D32F2F';
+      if (document.getElementById('edit-team-foundation')) document.getElementById('edit-team-foundation').value = team.foundation_year || 1950;
+      if (document.getElementById('edit-team-logo')) document.getElementById('edit-team-logo').value = team.logo_url || '';
 
       const selCatId = team.category_id !== undefined && team.category_id !== null ? team.category_id : currentCategoryId;
       const catSelect = document.getElementById('edit-team-category');
       if (catSelect) {
-        catSelect.innerHTML = `<option value="0" ${selCatId == 0 ? 'selected' : ''}>Sin Asignación (Orfano)</option>` + 
+        catSelect.innerHTML = `<option value="0" ${selCatId == 0 ? 'selected' : ''}>Sin Asignación (Libre / Inactivo)</option>` + 
           categories.map(c => `<option value="${c.id}" ${c.id == selCatId ? 'selected' : ''}>${c.name} (${c.code || ''})</option>`).join('');
       }
 
@@ -3182,12 +3285,14 @@ const App = {
     const home_stadium_id = document.getElementById('edit-team-stadium').value;
     const color_primary = document.getElementById('edit-team-color1').value;
     const color_secondary = document.getElementById('edit-team-color2').value;
+    const foundation_year = document.getElementById('edit-team-foundation') ? document.getElementById('edit-team-foundation').value : 1950;
+    const logo_url = document.getElementById('edit-team-logo') ? document.getElementById('edit-team-logo').value.trim() : '';
 
     try {
       const res = await fetch('api/teams.php?action=update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name, short_name, category_id, home_stadium_id, color_primary, color_secondary })
+        body: JSON.stringify({ id, name, short_name, category_id: parseInt(category_id), home_stadium_id: parseInt(home_stadium_id), color_primary, color_secondary, foundation_year: parseInt(foundation_year), logo_url })
       });
       const data = await res.json();
       if (data.success) {

@@ -742,3 +742,304 @@ div, span, p, h1, h2, h3, h4, h5, th, td, button, label, input, select {
   object-fit: cover;
   border: 1px solid var(--md-sys-color-outline);
 }
+
+/* ==========================================================================
+   Google Sports UI & MLB Boxscore Design System Extensions
+   ========================================================================== */
+
+/* Google Sports Top Nav Pills */
+.google-nav-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 12px 6px 12px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background: var(--lmb-navy-surface);
+  border-bottom: 1px solid var(--md-sys-color-outline);
+}
+
+.google-nav-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.google-pill {
+  padding: 6px 16px;
+  border-radius: 9999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.google-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.google-pill.active {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+body.light-theme .google-pill {
+  background: #F1F5F9;
+  color: #475569;
+  border-color: #E2E8F0;
+}
+
+body.light-theme .google-pill.active {
+  background: #1D4ED8 !important;
+  color: #FFFFFF !important;
+  border-color: #1D4ED8 !important;
+}
+
+/* Google Match Card & Grid */
+.google-match-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.google-match-card {
+  background: var(--lmb-navy-card);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.google-match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.google-match-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.google-team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.google-team-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.google-team-logo {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.google-team-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface);
+}
+
+.google-team-score {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-family: 'Roboto', sans-serif;
+  color: #FFFFFF;
+}
+
+body.light-theme .google-team-score {
+  color: #0F172A;
+}
+
+.google-match-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--md-sys-color-outline);
+  min-width: 80px;
+  text-align: right;
+}
+
+.google-live-badge {
+  color: #EF4444;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.google-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #EF4444;
+  animation: pulse-live 1.2s infinite;
+}
+
+/* Google Leaders Rank List */
+.google-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.google-rank-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--md-sys-color-outline);
+}
+
+.google-rank-number {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--lmb-gold-accent);
+  min-width: 24px;
+  text-align: center;
+}
+
+.google-rank-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.google-player-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--lmb-blue-primary);
+}
+
+.google-player-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.google-player-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+body.light-theme .google-player-name {
+  color: #0F172A;
+}
+
+.google-player-sub {
+  font-size: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.google-rank-value {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--lmb-gold-accent);
+  font-family: 'Roboto', sans-serif;
+}
+
+/* MLB Line Score Table */
+.mlb-linescore-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline);
+  background: rgba(15, 23, 42, 0.6);
+  margin: 10px 0;
+}
+
+.mlb-linescore-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.mlb-linescore-table th {
+  background: rgba(7, 13, 27, 0.9);
+  color: #94A3B8;
+  font-weight: 800;
+  padding: 6px 8px;
+  font-size: 0.7rem;
+  border-bottom: 1px solid var(--md-sys-color-outline);
+}
+
+.mlb-linescore-table td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-weight: 700;
+}
+
+.mlb-linescore-table .totals-col {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 900;
+  color: var(--lmb-gold-accent);
+}
+
+/* Consolidated Single Edit Modal Styles */
+.unified-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--md-sys-color-outline);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.unified-modal-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body.light-theme .unified-modal-title {
+  color: #0F172A;
+}
+
+.unified-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
