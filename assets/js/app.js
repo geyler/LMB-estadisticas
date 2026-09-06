@@ -719,33 +719,33 @@ const App = {
       let html = `
         <div class="view-content">
           <!-- Hero Header -->
-          <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
-            <div style="font-size:0.75rem; font-weight:700; color:#F59E0B; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
-            <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin:4px 0;" class="text-truncate">${this.settings.site_name || 'Buenos Aires'}</h2>
-            <p style="font-size:0.8rem; color:#94A3B8;">Estadísticas oficiales, calendario de partidos, tablas de posiciones y anotación en vivo.</p>
+          <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; box-shadow:0 1px 3px rgba(60,64,67,0.08);">
+            <div style="font-size:0.75rem; font-weight:800; color:#1A73E8; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
+            <h2 style="font-size:1.4rem; font-weight:900; color:#202124; margin:4px 0;" class="text-truncate">${this.settings.site_name || 'Buenos Aires'}</h2>
+            <p style="font-size:0.82rem; color:#5F6368;">Estadísticas oficiales, calendario de partidos, tablas de posiciones y anotación en vivo.</p>
 
             ${!this.currentUser ? `
               <div style="margin-top:10px;">
-                <button class="md-btn md-btn-gold" style="font-size:0.8rem; padding:6px 16px;" onclick="App.openAuthModal('register')">📝 Registrarse</button>
+                <button class="md-btn md-btn-primary" style="font-size:0.8rem; padding:6px 16px;" onclick="App.openAuthModal('register')">📝 Registrarse</button>
               </div>
             ` : ''}
           </div>
 
           ${champions.length ? `
             <!-- Section: Reigning Champions -->
-            <div class="view-section" style="margin-top:12px;">
+            <div class="view-section">
               <div class="section-header">
-                <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">workspace_premium</span> Campeones Vigentes LMB</h3>
+                <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">workspace_premium</span> Campeones Vigentes LMB</h3>
               </div>
               <div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;">
                 ${champions.map(c => `
-                  <div class="md-card" style="min-width:210px; padding:12px; background:linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border:1px solid #F59E0B40; border-radius:10px;">
-                    <div style="font-size:0.68rem; font-weight:800; color:#F59E0B; text-transform:uppercase;">🏆 ${c.category_name} (${c.season_name})</div>
+                  <div class="md-card" style="min-width:210px; padding:12px; background:#FFFFFF; border:1px solid #DADCE0; border-radius:10px;">
+                    <div style="font-size:0.68rem; font-weight:800; color:#1A73E8; text-transform:uppercase;">🏆 ${c.category_name} (${c.season_name})</div>
                     <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-                      <img src="${c.team_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; object-fit:contain;" onerror="this.src='assets/images/lmb_logo.png'">
-                      <div style="font-size:0.9rem; font-weight:800; color:#F8FAFC;" class="text-truncate">${c.team_name}</div>
+                      <img src="${c.team_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; object-fit:contain; border-radius:50%;" onerror="this.src='assets/images/lmb_logo.png'">
+                      <div style="font-size:0.9rem; font-weight:800; color:#202124;" class="text-truncate">${c.team_name}</div>
                     </div>
-                    <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;">👑 ${c.title_name || 'Campeón Oficial'}</div>
+                    <div style="font-size:0.75rem; color:#137333; font-weight:700; margin-top:4px;">👑 ${c.title_name || 'Campeón Oficial'}</div>
                   </div>
                 `).join('')}
               </div>
@@ -755,44 +755,44 @@ const App = {
           <!-- Section: Live / Simultaneous Matches -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#EF4444;">sports_baseball</span> Partidos en Vivo / Recientes</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#D93025;">sports_baseball</span> Partidos en Vivo / Recientes</h3>
               <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('calendar')">Ver Calendario</button>
             </div>
 
             ${games.length ? games.slice(0, 3).map(g => `
-              <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})">
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94A3B8;">
-                  <span class="text-truncate">${g.category_name} • ${App.formatDateTime(g.game_date)} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
+              <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})" style="cursor:pointer; transition:border-color 0.2s ease;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#5F6368;">
+                  <span class="text-truncate" style="font-weight:600;">${g.category_name} • ${App.formatDateTime(g.game_date)} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
                   ${App.getStatusBadge(g.status)}
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                  <div style="display:flex; align-items:center; gap:8px;" class="text-truncate">
-                    <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
-                    <div style="font-weight:700; font-size:0.95rem;" class="text-truncate">${g.away_team_name}</div>
+                  <div style="display:flex; align-items:center; gap:8px; min-width:0;" class="text-truncate">
+                    <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+                    <div style="font-weight:700; font-size:0.95rem; color:#202124;" class="text-truncate">${g.away_team_name}</div>
                   </div>
-                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
+                  <div style="font-size:1.25rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
                 </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <div style="display:flex; align-items:center; gap:8px;" class="text-truncate">
-                    <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:32px; height:32px; border-radius:50%;">
-                    <div style="font-weight:700; font-size:0.95rem;" class="text-truncate">${g.home_team_name}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                  <div style="display:flex; align-items:center; gap:8px; min-width:0;" class="text-truncate">
+                    <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+                    <div style="font-weight:700; font-size:0.95rem; color:#202124;" class="text-truncate">${g.home_team_name}</div>
                   </div>
-                  <div style="font-size:1.3rem; font-weight:800; color:#F59E0B;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
+                  <div style="font-size:1.25rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
                 </div>
 
                 ${canEdit ? `
-                  <div style="display:flex; gap:6px; margin-top:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px;">
+                  <div style="display:flex; gap:6px; margin-top:10px; border-top:1px solid #E3E8EE; padding-top:6px;">
                     <button class="md-btn md-btn-gold" style="flex:1; padding:5px 8px; font-size:0.75rem; font-weight:800;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">📊 Actualizar Stats Jugadores</button>
                   </div>
                 ` : ''}
               </div>
             `).join('') : `
               <div class="md-card" style="text-align:center; padding:24px;">
-                <span class="material-icons-round" style="font-size:36px; color:#3B82F6;">event_available</span>
-                <div style="font-weight:700; font-size:0.95rem; margin-top:6px;">No hay partidos programados aún</div>
-                <div style="font-size:0.8rem; color:#94A3B8;">Los nuevos partidos aparecerán aquí en tiempo real una vez creados en el calendario.</div>
+                <span class="material-icons-round" style="font-size:36px; color:#1A73E8;">event_available</span>
+                <div style="font-weight:700; font-size:0.95rem; margin-top:6px; color:#202124;">No hay partidos programados aún</div>
+                <div style="font-size:0.8rem; color:#5F6368;">Los nuevos partidos aparecerán aquí en tiempo real una vez creados en el calendario.</div>
               </div>
             `}
           </div>
@@ -800,11 +800,11 @@ const App = {
           <!-- Section: Standings Table (Tabla de Posiciones) -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">format_list_numbered</span> Tabla de Posiciones</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">format_list_numbered</span> Tabla de Posiciones</h3>
             </div>
 
             <div class="md-table-wrapper">
-              <table class="md-table" style="text-align:center;">
+              <table class="md-table">
                 <thead>
                   <tr>
                     <th style="text-align:left;">Equipo</th>
@@ -813,27 +813,29 @@ const App = {
                     <th>PP</th>
                     <th>PCT</th>
                     <th>DIF</th>
-                    <th class="highlight-val">CF</th>
+                    <th>CF</th>
                     <th>CC</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${standings.length ? standings.map((s, idx) => `
                     <tr onclick="App.showView('team_detail', ${s.team_id})" style="cursor:pointer;">
-                      <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:6px;" class="text-truncate">
-                        <span style="color:#94A3B8; font-size:0.75rem;">${idx + 1}</span>
-                        <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%;">
-                        <span class="text-truncate">${s.short_name}</span>
+                      <td style="text-align:left;">
+                        <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                          <span style="color:#5F6368; font-size:0.78rem; font-weight:800; width:14px; text-align:center; flex-shrink:0;">${idx + 1}</span>
+                          <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0; flex-shrink:0;" onerror="this.src='assets/images/lmb_logo.png'">
+                          <span style="font-weight:700; color:#202124;" class="text-truncate">${s.short_name || s.name}</span>
+                        </div>
                       </td>
                       <td>${s.gp}</td>
-                      <td style="color:#10B981; font-weight:700;">${s.wins}</td>
-                      <td style="color:#EF4444; font-weight:700;">${s.losses}</td>
-                      <td class="highlight-val">${s.pct}</td>
-                      <td style="font-size:0.75rem; color:#94A3B8;">${s.gb}</td>
+                      <td style="color:#137333; font-weight:800;">${s.wins}</td>
+                      <td style="color:#D93025; font-weight:800;">${s.losses}</td>
+                      <td style="color:#1A73E8; font-weight:900;">${s.pct}</td>
+                      <td style="font-size:0.75rem; color:#5F6368;">${s.gb}</td>
                       <td>${s.cf}</td>
                       <td>${s.cc}</td>
                     </tr>
-                  `).join('') : '<tr><td colspan="8" style="text-align:center; padding:16px;">Sin equipos registrados en la tabla de posiciones.</td></tr>'}
+                  `).join('') : '<tr><td colspan="8" style="text-align:center; padding:16px; color:#5F6368;">Sin equipos registrados en la tabla de posiciones.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -842,13 +844,13 @@ const App = {
           <!-- Section: Leaders Showcase (Google Sports Rank Style) -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">military_tech</span> Líderes de la Liga</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">military_tech</span> Líderes de la Liga</h3>
               <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('leaders')">Ver Todos</button>
             </div>
 
             <!-- Bateo Top 3 -->
-            <div class="md-card">
-              <div style="font-weight:800; font-size:0.85rem; color:#F59E0B; text-transform:uppercase; margin-bottom:8px;">🥇 Líderes de Bateo (AVG)</div>
+            <div class="md-card" style="padding:10px;">
+              <div style="font-weight:800; font-size:0.85rem; color:#1A73E8; text-transform:uppercase; margin-bottom:8px;">🥇 Líderes de Bateo (AVG)</div>
               <div class="google-rank-list">
                 ${batLeaders.length ? batLeaders.map((p, idx) => `
                   <div class="google-rank-item" onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
@@ -858,37 +860,37 @@ const App = {
                       <div class="google-player-details">
                         <div class="google-player-name">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
                         <div class="google-player-sub">
-                          <img src="${p.team_logo || 'assets/images/lmb_logo.png'}" style="width:14px; height:14px; border-radius:50%;" onerror="this.src='assets/images/lmb_logo.png'">
+                          <img src="${p.team_logo || 'assets/images/lmb_logo.png'}" style="width:14px; height:14px; border-radius:50%; object-fit:cover;" onerror="this.src='assets/images/lmb_logo.png'">
                           <span>${p.team_name}</span>
                         </div>
                       </div>
                     </div>
                     <div class="google-rank-value">${p.avg}</div>
                   </div>
-                `).join('') : '<div style="font-size:0.8rem; color:#94A3B8; padding:8px; text-align:center;">Sin estadísticas registradas.</div>'}
+                `).join('') : '<div style="font-size:0.8rem; color:#5F6368; padding:8px; text-align:center;">Sin estadísticas registradas.</div>'}
               </div>
             </div>
 
             <!-- Pitcheo Top 3 -->
-            <div class="md-card" style="margin-top:10px;">
-              <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; text-transform:uppercase; margin-bottom:8px;">⚾ Líderes de Pitcheo (ERA)</div>
+            <div class="md-card" style="margin-top:10px; padding:10px;">
+              <div style="font-weight:800; font-size:0.85rem; color:#1A73E8; text-transform:uppercase; margin-bottom:8px;">⚾ Líderes de Pitcheo (ERA)</div>
               <div class="google-rank-list">
                 ${pitchLeaders.length ? pitchLeaders.map((p, idx) => `
                   <div class="google-rank-item" onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
-                    <div class="google-rank-number" style="color:#3B82F6;">${idx + 1}</div>
+                    <div class="google-rank-number">${idx + 1}</div>
                     <div class="google-rank-player">
-                      <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" class="google-player-avatar" style="border-color:#3B82F6;" onerror="this.src='assets/images/lmb_logo.png'">
+                      <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" class="google-player-avatar" onerror="this.src='assets/images/lmb_logo.png'">
                       <div class="google-player-details">
                         <div class="google-player-name">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
                         <div class="google-player-sub">
-                          <img src="${p.team_logo || 'assets/images/lmb_logo.png'}" style="width:14px; height:14px; border-radius:50%;" onerror="this.src='assets/images/lmb_logo.png'">
+                          <img src="${p.team_logo || 'assets/images/lmb_logo.png'}" style="width:14px; height:14px; border-radius:50%; object-fit:cover;" onerror="this.src='assets/images/lmb_logo.png'">
                           <span>${p.team_name}</span>
                         </div>
                       </div>
                     </div>
-                    <div class="google-rank-value" style="color:#3B82F6;">${p.era}</div>
+                    <div class="google-rank-value">${p.era}</div>
                   </div>
-                `).join('') : '<div style="font-size:0.8rem; color:#94A3B8; padding:8px; text-align:center;">Sin estadísticas de pitcheo registradas.</div>'}
+                `).join('') : '<div style="font-size:0.8rem; color:#5F6368; padding:8px; text-align:center;">Sin estadísticas de pitcheo registradas.</div>'}
               </div>
             </div>
           </div>
@@ -896,17 +898,17 @@ const App = {
           <!-- Section: Sedes & Stadium Venues Overview -->
           <div class="view-section">
             <div class="section-header">
-              <h3 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">stadium</span> Sedes Deportivas Activas</h3>
+              <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">stadium</span> Sedes Deportivas Activas</h3>
             </div>
 
             <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
               ${stadia.length ? stadia.map(st => `
-                <div class="md-card" style="padding:12px; font-size:0.8rem;">
-                  <div style="font-weight:800; color:#FFFFFF;" class="text-truncate">📍 ${st.name}</div>
-                  <div style="color:#F59E0B; font-weight:700; font-size:0.75rem; margin-top:2px;" class="text-truncate">${st.field_name || 'Campo Principal'}</div>
-                  <div style="color:#94A3B8; font-size:0.7rem; margin-top:4px;" class="text-truncate">${st.city} • ${st.address}</div>
+                <div class="md-card" style="padding:12px; font-size:0.8rem; background:#FFFFFF; border:1px solid #DADCE0;">
+                  <div style="font-weight:800; color:#1A73E8; font-size:0.88rem;" class="text-truncate">📍 ${st.name}</div>
+                  <div style="color:#202124; font-weight:700; font-size:0.78rem; margin-top:2px;" class="text-truncate">${st.field_name || 'Campo Principal'}</div>
+                  <div style="color:#5F6368; font-size:0.72rem; margin-top:4px;" class="text-truncate">${st.city} • ${st.address}</div>
                 </div>
-              `).join('') : '<div style="grid-column:span 2; font-size:0.85rem; color:#94A3B8; padding:12px; text-align:center;">Sin sedes registradas. El administrador puede agregarlas en el panel.</div>'}
+              `).join('') : '<div style="grid-column:span 2; font-size:0.85rem; color:#5F6368; padding:12px; text-align:center;">Sin sedes registradas. El administrador puede agregarlas en el panel.</div>'}
             </div>
           </div>
         </div>
@@ -1060,7 +1062,7 @@ const App = {
           ${games.length ? games.map(g => `
             <div class="google-match-card" onclick="App.showView('game_detail', ${g.id})">
               <div class="google-match-teams">
-                <div style="font-size:0.68rem; font-weight:700; color:#F59E0B;" class="text-truncate">
+                <div style="font-size:0.68rem; font-weight:700; color:#1A73E8;" class="text-truncate">
                   🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name}
                 </div>
                 <div class="google-team-row">
@@ -1080,14 +1082,14 @@ const App = {
               </div>
               <div class="google-match-status">
                 ${App.getStatusBadge(g.status)}
-                <span style="font-size:0.7rem; color:#94A3B8; margin-top:2px;">${App.formatDateTime(g.game_date)}</span>
+                <span style="font-size:0.7rem; color:#5F6368; margin-top:2px;">${App.formatDateTime(g.game_date)}</span>
               </div>
             </div>
           `).join('') : `
-            <div class="md-card" style="grid-column: 1 / -1; text-align:center; padding:24px;">
-              <span class="material-icons-round" style="font-size:36px; color:#3B82F6;">event_available</span>
-              <div style="font-weight:700; font-size:0.95rem; margin-top:6px;">No hay partidos en el calendario</div>
-              <div style="font-size:0.8rem; color:#94A3B8;">Los partidos programados de esta categoría se mostrarán aquí.</div>
+            <div class="md-card" style="grid-column: 1 / -1; text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
+              <span class="material-icons-round" style="font-size:36px; color:#1A73E8;">event_available</span>
+              <div style="font-weight:700; font-size:0.95rem; margin-top:6px; color:#202124;">No hay partidos en el calendario</div>
+              <div style="font-size:0.8rem; color:#5F6368;">Los partidos programados de esta categoría se mostrarán aquí.</div>
             </div>
           `}
         </div>
@@ -1102,10 +1104,10 @@ const App = {
     if (!gameId) {
       container.innerHTML = `
         <div class="view-content">
-          <div class="md-card" style="text-align:center; padding:24px;">
+          <div class="md-card" style="text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
             <div style="font-size:2.5rem; margin-bottom:8px;">⚾</div>
-            <h3 style="font-size:1.15rem; font-weight:800; color:#FFFFFF;">Selecciona un Partido</h3>
-            <p style="font-size:0.85rem; color:#94A3B8; margin-top:6px;">Por favor, elige un encuentro desde la barra superior o desde el calendario de partidos.</p>
+            <h3 style="font-size:1.15rem; font-weight:800; color:#202124;">Selecciona un Partido</h3>
+            <p style="font-size:0.85rem; color:#5F6368; margin-top:6px;">Por favor, elige un encuentro desde la barra superior o desde el calendario de partidos.</p>
             <button class="md-btn md-btn-primary" style="margin-top:14px; font-size:0.8rem;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
           </div>
         </div>
@@ -1122,12 +1124,12 @@ const App = {
       if (!data.success || !data.game) {
         container.innerHTML = `
           <div class="view-content">
-            <div class="md-card" style="text-align:center; padding:24px; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">
+            <div class="md-card" style="text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
               <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
-              <h3 style="font-size:1.15rem; font-weight:800; color:#FFFFFF;">Partido No Encontrado</h3>
-              <p style="font-size:0.85rem; color:#94A3B8; margin-top:6px;">El partido solicitado (ID: ${gameId}) no se encuentra registrado o ha sido removido.</p>
+              <h3 style="font-size:1.15rem; font-weight:800; color:#202124;">Partido No Encontrado</h3>
+              <p style="font-size:0.85rem; color:#5F6368; margin-top:6px;">El partido solicitado (ID: ${gameId}) no se encuentra registrado o ha sido removido.</p>
               <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
-                <button class="md-btn md-btn-gold" style="font-size:0.8rem;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+                <button class="md-btn md-btn-primary" style="font-size:0.8rem;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
                 <button class="md-btn md-btn-outlined" style="font-size:0.8rem;" onclick="App.showView('home')">🏠 Inicio</button>
               </div>
             </div>
@@ -1148,36 +1150,36 @@ const App = {
     let html = `
       <div class="view-content">
         <!-- Match Header Box -->
-        <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
-          <div style="font-size:0.75rem; color:#F59E0B; font-weight:700;" class="text-truncate">🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; box-shadow:0 1px 3px rgba(60,64,67,0.08);">
+          <div style="font-size:0.75rem; color:#1A73E8; font-weight:700;" class="text-truncate">🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
-            <div style="text-align:center;" onclick="App.showView('team_detail', ${g.away_team_id})">
-              <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:50px; height:50px; border-radius:50%;">
-              <div style="font-weight:800; font-size:1.1rem; margin-top:4px;">${g.away_short}</div>
-              <div style="font-size:2.2rem; font-weight:800; color:#FFFFFF;">${g.away_score}</div>
+            <div style="text-align:center; cursor:pointer;" onclick="App.showView('team_detail', ${g.away_team_id})">
+              <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+              <div style="font-weight:800; font-size:1.05rem; margin-top:4px; color:#202124;">${g.away_short}</div>
+              <div style="font-size:2.2rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${g.away_score}</div>
             </div>
 
             <div>
               ${App.getStatusBadge(g.status)}
             </div>
 
-            <div style="text-align:center;" onclick="App.showView('team_detail', ${g.home_team_id})">
-              <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:50px; height:50px; border-radius:50%;">
-              <div style="font-weight:800; font-size:1.1rem; margin-top:4px;">${g.home_short}</div>
-              <div style="font-size:2.2rem; font-weight:800; color:#FFFFFF;">${g.home_score}</div>
+            <div style="text-align:center; cursor:pointer;" onclick="App.showView('team_detail', ${g.home_team_id})">
+              <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+              <div style="font-weight:800; font-size:1.05rem; margin-top:4px; color:#202124;">${g.home_short}</div>
+              <div style="font-size:2.2rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${g.home_score}</div>
             </div>
           </div>
 
           ${g.recap_notes ? `
-            <div style="background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; font-size:0.8rem; color:#94A3B8; margin-bottom:8px;" class="text-wrap-safe">
+            <div style="background:#F8F9FA; border:1px solid #DADCE0; padding:8px 12px; border-radius:8px; font-size:0.8rem; color:#5F6368; margin-bottom:8px;" class="text-wrap-safe">
               📝 ${g.recap_notes}
             </div>
           ` : ''}
 
           ${canEdit ? `
             <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
-              <button class="md-btn md-btn-gold" style="width:100%; font-size:0.85rem; font-weight:800; padding:8px 12px; background:linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color:#000000;" onclick="App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
+              <button class="md-btn md-btn-gold" style="width:100%; font-size:0.85rem; font-weight:800; padding:8px 12px;" onclick="App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
                 📊 Actualizar Estadísticas Jugador por Jugador
               </button>
               <div style="display:flex; gap:6px;">
@@ -1208,16 +1210,16 @@ const App = {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="text-align:left; font-weight:800;">${g.away_short}</td>
-                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.away[i] !== undefined && lines.away[i] !== null ? lines.away[i] : '<span style="color:#475569;">•</span>'}</td>`).join('')}
-                    <td class="highlight-val">${g.status === 'scheduled' ? '-' : g.away_score}</td>
+                    <td style="text-align:left; font-weight:800; color:#202124;">${g.away_short}</td>
+                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.away[i] !== undefined && lines.away[i] !== null ? lines.away[i] : '<span style="color:#BDC1C6;">•</span>'}</td>`).join('')}
+                    <td class="highlight-val" style="font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.away_score}</td>
                     <td>${g.status === 'scheduled' ? '-' : g.away_hits}</td>
                     <td>${g.status === 'scheduled' ? '-' : g.away_errors}</td>
                   </tr>
                   <tr>
-                    <td style="text-align:left; font-weight:800;">${g.home_short}</td>
-                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.home[i] !== undefined && lines.home[i] !== null ? lines.home[i] : '<span style="color:#475569;">•</span>'}</td>`).join('')}
-                    <td class="highlight-val">${g.status === 'scheduled' ? '-' : g.home_score}</td>
+                    <td style="text-align:left; font-weight:800; color:#202124;">${g.home_short}</td>
+                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.home[i] !== undefined && lines.home[i] !== null ? lines.home[i] : '<span style="color:#BDC1C6;">•</span>'}</td>`).join('')}
+                    <td class="highlight-val" style="font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.home_score}</td>
                     <td>${g.status === 'scheduled' ? '-' : g.home_hits}</td>
                     <td>${g.status === 'scheduled' ? '-' : g.home_errors}</td>
                   </tr>
@@ -1227,13 +1229,13 @@ const App = {
           </div>
         ` : `
           <div class="view-section">
-            <div class="md-card" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); text-align:center; padding:14px; border:1px solid #334155; border-radius:10px;">
-              <h4 style="font-size:0.8rem; font-weight:700; color:#F59E0B; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">📊 Marcador C - H - E</h4>
-              <div style="display:flex; justify-content:space-around; align-items:center; font-size:1.05rem; font-weight:800;">
-                <div style="color:#F8FAFC;">${g.away_short}: <span style="color:#F59E0B;">${g.status === 'scheduled' ? '-' : g.away_score} C</span> | ${g.status === 'scheduled' ? '-' : g.away_hits} H | ${g.status === 'scheduled' ? '-' : g.away_errors} E</div>
-                <div style="color:#F8FAFC;">${g.home_short}: <span style="color:#3B82F6;">${g.status === 'scheduled' ? '-' : g.home_score} C</span> | ${g.status === 'scheduled' ? '-' : g.home_hits} H | ${g.status === 'scheduled' ? '-' : g.home_errors} E</div>
+            <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; padding:14px; border-radius:10px;">
+              <h4 style="font-size:0.8rem; font-weight:800; color:#1A73E8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">📊 Marcador C - H - E</h4>
+              <div style="display:flex; justify-content:space-around; align-items:center; font-size:1.05rem; font-weight:800; color:#202124;">
+                <div>${g.away_short}: <span style="color:#1A73E8; font-weight:900;">${g.status === 'scheduled' ? '-' : g.away_score} C</span> | ${g.status === 'scheduled' ? '-' : g.away_hits} H | ${g.status === 'scheduled' ? '-' : g.away_errors} E</div>
+                <div>${g.home_short}: <span style="color:#1A73E8; font-weight:900;">${g.status === 'scheduled' ? '-' : g.home_score} C</span> | ${g.status === 'scheduled' ? '-' : g.home_hits} H | ${g.status === 'scheduled' ? '-' : g.home_errors} E</div>
               </div>
-              <div style="font-size:0.72rem; color:#94A3B8; margin-top:8px;">
+              <div style="font-size:0.72rem; color:#5F6368; margin-top:8px;">
                 ${g.status === 'scheduled' ? '📅 Partido programado (Aún no disputado)' : 'Resultado final registrado (Sin anotación jugada por jugada)'}
               </div>
             </div>

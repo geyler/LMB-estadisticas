@@ -1,7 +1,7 @@
 /* 
   Liga Metropolitana de Béisbol (LMB) Buenos Aires
   Google Search Sports UI & MLB Boxscore Design System
-  Clean Light Theme (Google White #FFFFFF)
+  Clean Light Theme (#FFFFFF)
 */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
@@ -65,7 +65,7 @@ body {
   line-height: 1.4;
 }
 
-/* Master Outer Container (Max 768px Fluid) */
+/* Master Outer Container */
 #app-container {
   width: 100%;
   max-width: var(--max-app-width);
@@ -78,7 +78,7 @@ body {
   padding-bottom: 76px;
 }
 
-/* Top App Header (Google Style White Header) */
+/* Top App Header (Google White Header) */
 .md-top-app-bar {
   position: sticky;
   top: 0;
@@ -106,9 +106,12 @@ body {
   width: 36px;
   height: 36px;
   min-width: 36px;
+  max-width: 36px;
+  max-height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #1A73E8;
+  flex-shrink: 0;
 }
 
 .brand-title {
@@ -189,7 +192,7 @@ body {
   white-space: nowrap;
 }
 
-/* Scorebug Ticker Carousel (Google / MLB Scorebug) */
+/* Scorebug Ticker Carousel */
 .scorebug-container {
   background: #F8F9FA;
   border-bottom: 1px solid #DADCE0;
@@ -205,18 +208,19 @@ body {
 }
 
 .scorebug-card {
-  min-width: 160px;
-  max-width: 190px;
+  min-width: 180px;
+  max-width: 210px;
   background: #FFFFFF;
   border: 1px solid #DADCE0;
   border-radius: 10px;
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(60, 64, 67, 0.08);
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .scorebug-card:hover {
@@ -230,24 +234,24 @@ body {
 }
 
 .scorebug-status {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
   color: #5F6368;
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 4px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .scorebug-team-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  font-size: 0.82rem;
+  gap: 8px;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #202124;
 }
@@ -257,22 +261,27 @@ body {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  flex: 1;
 }
 
 .scorebug-logo {
   width: 20px;
   height: 20px;
   min-width: 20px;
+  max-width: 20px;
+  max-height: 20px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid #DADCE0;
+  flex-shrink: 0;
 }
 
 .scorebug-score {
   font-family: 'Roboto', sans-serif;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 900;
   color: #202124;
+  flex-shrink: 0;
 }
 
 /* Google Sports Main Navigation Pills */
@@ -318,7 +327,7 @@ body {
   box-shadow: 0 1px 3px rgba(26, 115, 232, 0.3);
 }
 
-/* Category / Sub-League Filter Chips */
+/* Category Filter Chips */
 .md-chip-group {
   display: flex;
   gap: 6px;
@@ -392,19 +401,32 @@ body {
   gap: 6px;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.view-section {
+  margin-bottom: 16px;
+}
+
 /* Status Badges */
 .md-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  font-size: 0.68rem;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
 .badge-scheduled { background: #E8F0FE; color: #1A73E8; border-color: #AECBFA; }
@@ -424,7 +446,7 @@ body {
 .google-match-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -432,14 +454,14 @@ body {
   background: #FFFFFF;
   border: 1px solid #DADCE0;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(60, 64, 67, 0.08);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .google-match-card:hover {
@@ -447,6 +469,7 @@ body {
   box-shadow: 0 2px 8px rgba(26, 115, 232, 0.15);
 }
 
+.google-match-teams,
 .google-match-info {
   display: flex;
   flex-direction: column;
@@ -455,6 +478,7 @@ body {
   min-width: 0;
 }
 
+.google-team-row,
 .google-match-team {
   display: flex;
   align-items: center;
@@ -465,11 +489,42 @@ body {
   color: #202124;
 }
 
+.google-team-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.google-team-logo {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #DADCE0;
+  flex-shrink: 0;
+}
+
+.google-team-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #202124;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.google-team-score,
 .google-match-score {
   font-family: 'Roboto', sans-serif;
   font-weight: 900;
   font-size: 1.05rem;
   color: #202124;
+  flex-shrink: 0;
 }
 
 .google-match-status {
@@ -477,12 +532,13 @@ body {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   font-size: 0.72rem;
   color: #5F6368;
   flex-shrink: 0;
-  padding-left: 8px;
+  padding-left: 10px;
   border-left: 1px solid #F1F3F4;
+  min-width: 75px;
 }
 
 /* Google Sports Leaderboard Ranking Card */
@@ -493,7 +549,7 @@ body {
   padding: 10px 12px;
   border-bottom: 1px solid #E3E8EE;
   background: #FFFFFF;
-  transition: background 0.15s ease;
+  gap: 10px;
 }
 
 .google-rank-item:last-child {
@@ -505,23 +561,37 @@ body {
 }
 
 .google-rank-number {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 900;
   color: #5F6368;
   width: 24px;
   min-width: 24px;
   text-align: center;
+  flex-shrink: 0;
+}
+
+.google-rank-player,
+.google-player-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .google-player-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  max-height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid #DADCE0;
-  margin: 0 10px;
+  flex-shrink: 0;
 }
 
+.google-player-details,
 .google-player-info {
   display: flex;
   flex-direction: column;
@@ -530,9 +600,12 @@ body {
 }
 
 .google-player-name {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #202124;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .google-player-sub {
@@ -541,53 +614,69 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .google-rank-value {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 900;
   color: #1A73E8;
   font-family: 'Roboto', sans-serif;
+  flex-shrink: 0;
 }
 
-/* Google Sports Standings Table */
+/* Tables & Wrappers */
+.md-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #DADCE0;
+  border-radius: 10px;
+  background: #FFFFFF;
+}
+
+.md-table,
 .google-standings-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
   background: #FFFFFF;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #DADCE0;
 }
 
+.md-table th,
 .google-standings-table th {
   background: #F8F9FA;
   color: #5F6368;
   font-weight: 800;
   padding: 8px 10px;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
   border-bottom: 1px solid #DADCE0;
   text-align: center;
+  white-space: nowrap;
 }
 
+.md-table th.text-left,
 .google-standings-table th.text-left {
   text-align: left;
 }
 
+.md-table td,
 .google-standings-table td {
-  padding: 10px;
+  padding: 9px 8px;
   border-bottom: 1px solid #E3E8EE;
   color: #202124;
   text-align: center;
   font-weight: 600;
+  white-space: nowrap;
 }
 
+.md-table tr:hover,
 .google-standings-table tr:hover {
   background: #F8F9FA;
 }
 
+.md-table td.text-left,
 .google-standings-table td.text-left {
   text-align: left;
 }
