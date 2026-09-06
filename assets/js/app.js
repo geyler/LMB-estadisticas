@@ -1414,6 +1414,19 @@ const App = {
     `;
 
     container.innerHTML = html;
+    } catch(err) {
+      console.error("Error al cargar detalle de partido", err);
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
+            <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
+            <h3 style="font-size:1.15rem; font-weight:800; color:#202124;">Error al Cargar Partido</h3>
+            <p style="font-size:0.85rem; color:#5F6368; margin-top:6px;">Ocurrió un problema al procesar la información del partido.</p>
+            <button class="md-btn md-btn-primary" style="margin-top:14px; font-size:0.8rem;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+          </div>
+        </div>
+      `;
+    }
   },
 
   switchBoxscoreTeam(teamKey) {
@@ -1432,55 +1445,6 @@ const App = {
       if (awayBtn) { awayBtn.style.background = '#F8F9FA'; awayBtn.style.color = '#5F6368'; awayBtn.style.borderBottom = 'none'; awayBtn.style.fontWeight = '600'; }
       if (homeContent) homeContent.style.display = 'block';
       if (awayContent) awayContent.style.display = 'none';
-    }
-  },
-
-        <!-- Play by Play Log -->
-        <div class="view-section">
-          <h3 class="section-title">Registro Jugada a Jugada</h3>
-          <div class="md-card">
-            ${pbp.length ? pbp.map(p => `
-              <div style="border-bottom:1px solid rgba(255,255,255,0.05); padding:8px 0;">
-                <div style="font-size:0.75rem; font-weight:700; color:#F59E0B;">
-                  ${p.half_inning === 'top' ? '▲' : '▼'} Inning ${p.inning} • Outs: ${p.outs_before}
-                </div>
-                <div style="font-size:0.9rem; font-weight:600; color:#FFFFFF; margin-top:2px;">
-                  ${p.description}
-                </div>
-              </div>
-            `).join('') : '<div style="font-size:0.85rem; color:#94A3B8;">No hay jugadas registradas en el historial.</div>'}
-          </div>
-        </div>
-
-        <!-- Postcards Gallery -->
-        <div class="view-section">
-          <div class="section-header">
-            <h3 class="section-title">📸 Postales del Partido (${photos.length}/10)</h3>
-            ${(canEdit && photos.length < 10) ? 
-              `<button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showUploadPhotoModal(${g.id})">📷 Subir Foto</button>` : ''}
-          </div>
-
-          <div class="photo-gallery-grid">
-            ${photos.length ? photos.map(p => `
-              <img src="${p.image_url}" class="photo-gallery-item" alt="${p.caption}">
-            `).join('') : '<div style="grid-column: span 3; font-size:0.85rem; color:#94A3B8;">Sin fotografías aún de este partido.</div>'}
-          </div>
-        </div>
-      </div>
-    `;
-    container.innerHTML = html;
-    } catch(err) {
-      console.error("Error al renderizar el partido", err);
-      container.innerHTML = `
-        <div class="view-content">
-          <div class="md-card" style="text-align:center; padding:24px;">
-            <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
-            <h3 style="font-size:1.15rem; font-weight:800; color:#FFFFFF;">Error al Cargar Partido</h3>
-            <p style="font-size:0.85rem; color:#94A3B8; margin-top:6px;">No se pudo procesar la información del partido.</p>
-            <button class="md-btn md-btn-gold" style="margin-top:14px; font-size:0.8rem;" onclick="App.showView('calendar')">📅 Regresar al Calendario</button>
-          </div>
-        </div>
-      `;
     }
   },
 

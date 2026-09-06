@@ -103,15 +103,16 @@ body {
 }
 
 .brand-logo {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  max-width: 36px;
-  max-height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #1A73E8;
-  flex-shrink: 0;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 2px solid #1A73E8 !important;
+  box-shadow: 0 0 6px rgba(26, 115, 232, 0.3) !important;
+  flex-shrink: 0 !important;
 }
 
 .brand-title {
@@ -121,8 +122,8 @@ body {
 }
 
 .brand-title h1 {
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 900;
   letter-spacing: -0.3px;
   color: #202124;
   line-height: 1.1;
@@ -132,11 +133,11 @@ body {
 }
 
 .brand-title span {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   color: #1A73E8;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .header-actions {
