@@ -1513,37 +1513,40 @@ const App = {
 
     let html = `
       <div class="view-content">
-        <div class="md-card" style="background: linear-gradient(135deg, ${t.color_primary} 0%, #070D1B 100%); text-align:center; align-items:center;">
-          <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:74px; height:74px; border-radius:50%; border:3px solid #F59E0B; object-fit:cover;">
-          <h2 style="font-size:1.4rem; font-weight:800; color:#FFFFFF; margin-top:6px;" class="text-truncate">${t.name}</h2>
-          <span class="md-chip active">${t.category_name} • Sede: ${t.home_stadium_name || 'Sin Sede Fija'}</span>
+        <!-- Google Light Team Header Card -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:20px; text-align:center; align-items:center; box-shadow:0 1px 3px rgba(60,64,67,0.08);">
+          <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:74px; height:74px; border-radius:50%; border:2px solid #DADCE0; object-fit:cover;" onerror="this.src='assets/images/lmb_logo.png'">
+          <h2 style="font-size:1.4rem; font-weight:800; color:#202124; margin-top:8px;" class="text-truncate">${t.name}</h2>
+          <div style="margin-top:4px;">
+            <span class="md-chip active" style="font-size:0.78rem; padding:4px 12px; background:#1A73E8; color:#FFFFFF;">${t.category_name} • Sede: ${t.home_stadium_name || 'Sin Sede Fija'}</span>
+          </div>
 
-          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; justify-content:center;">
             ${isAuthorizedForTeam ? `
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showFileUploadModal('logo', ${t.id}, 'Subir Logo de ${t.name}')">📷 Logo</button>
             ` : ''}
-            <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEntityGalleryModal('team', ${t.id}, 'Galería de ${t.name}')">🖼️ Galería (Postales)</button>
+            <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem; border-color:#DADCE0;" onclick="App.showEntityGalleryModal('team', ${t.id}, 'Galería de ${t.name}')">🖼️ Galería (Postales)</button>
           </div>
 
-          <div style="display:flex; justify-content:space-around; width:100%; margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
-            <div><div style="font-size:0.75rem; color:#94A3B8;">PJ</div><div style="font-size:1.2rem; font-weight:800;">${stats.games_played}</div></div>
-            <div><div style="font-size:0.75rem; color:#94A3B8;">PG</div><div style="font-size:1.2rem; font-weight:800; color:#10B981;">${stats.wins}</div></div>
-            <div><div style="font-size:0.75rem; color:#94A3B8;">PP</div><div style="font-size:1.2rem; font-weight:800; color:#EF4444;">${stats.losses}</div></div>
-            <div><div style="font-size:0.75rem; color:#94A3B8;">PCT</div><div style="font-size:1.2rem; font-weight:800; color:#F59E0B;">${stats.pct}</div></div>
+          <div style="display:flex; justify-content:space-around; width:100%; margin-top:16px; border-top:1px solid #F1F3F4; padding-top:14px;">
+            <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PJ</div><div style="font-size:1.25rem; font-weight:900; color:#202124;">${stats.games_played}</div></div>
+            <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PG</div><div style="font-size:1.25rem; font-weight:900; color:#1E8E3E;">${stats.wins}</div></div>
+            <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PP</div><div style="font-size:1.25rem; font-weight:900; color:#D93025;">${stats.losses}</div></div>
+            <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PCT</div><div style="font-size:1.25rem; font-weight:900; color:#1A73E8;">${stats.pct}</div></div>
           </div>
         </div>
 
         <!-- Cuerpo Técnico -->
         ${coachingStaff.length ? `
           <div class="view-section" style="margin-top:14px;">
-            <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">engineering</span> Cuerpo Técnico y Dirección</h3>
+            <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">engineering</span> Cuerpo Técnico y Dirección</h3>
             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:10px; margin-top:8px;">
               ${coachingStaff.map(c => `
-                <div class="md-card" style="padding:8px; text-align:center;">
-                  <div style="font-size:0.75rem; color:#F59E0B; font-weight:800;">${roleLabels[c.role_type] || c.role_type}</div>
-                  <div style="font-weight:700; font-size:0.85rem; color:#FFF;" class="text-truncate">${c.first_name} ${c.last_name}</div>
+                <div class="md-card" style="padding:10px; text-align:center; background:#FFFFFF; border:1px solid #DADCE0;">
+                  <div style="font-size:0.75rem; color:#1A73E8; font-weight:800;">${roleLabels[c.role_type] || c.role_type}</div>
+                  <div style="font-weight:700; font-size:0.88rem; color:#202124;" class="text-truncate">${c.first_name} ${c.last_name}</div>
                   ${isAuthorizedForTeam ? `
-                    <div style="display:flex; gap:4px; justify-content:center; margin-top:4px;">
+                    <div style="display:flex; gap:4px; justify-content:center; margin-top:6px;">
                       <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.65rem;" onclick="App.showEditPlayerModal(${c.id})">✏️ Editar</button>
                       <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.65rem;" onclick="App.deletePlayer(${c.id}, '${c.first_name} ${c.last_name}')">🗑️</button>
                     </div>
@@ -1563,34 +1566,34 @@ const App = {
             ` : ''}
           </div>
 
-          <div class="md-table-wrapper">
-            <table class="md-table">
+          <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow:hidden;">
+            <table class="md-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
               <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Jugador</th>
-                  <th>Posición</th>
-                  <th>Batea/Lanza</th>
-                  ${isAuthorizedForTeam ? `<th>Acciones</th>` : ''}
+                <tr style="border-bottom:1px solid #DADCE0; color:#5F6368;">
+                  <th style="width:40px; text-align:center; padding:8px 4px;">#</th>
+                  <th style="text-align:left; padding:8px 4px;">Jugador</th>
+                  <th style="text-align:center; padding:8px 4px;">Posición</th>
+                  <th style="text-align:center; padding:8px 4px;">Batea/Lanza</th>
+                  ${isAuthorizedForTeam ? `<th style="text-align:center; padding:8px 4px;">Acciones</th>` : ''}
                 </tr>
               </thead>
               <tbody>
                 ${activePlayers.length ? activePlayers.map(p => `
-                  <tr>
-                    <td style="font-weight:800; color:#F59E0B; cursor:pointer;" onclick="App.showView('player_detail', ${p.id})">#${p.jersey_number}</td>
-                    <td style="font-weight:700; cursor:pointer;" class="text-truncate" onclick="App.showView('player_detail', ${p.id})">${p.first_name} ${p.last_name}</td>
-                    <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position_primary}</span></td>
-                    <td style="font-size:0.8rem; color:#94A3B8;">B: ${p.bats} / L: ${p.throws}</td>
+                  <tr style="border-bottom:1px solid #F1F3F4;">
+                    <td style="width:40px; text-align:center; font-weight:800; color:#1A73E8; cursor:pointer; padding:8px 4px;" onclick="App.showView('player_detail', ${p.id})">#${p.jersey_number}</td>
+                    <td style="font-weight:700; color:#202124; cursor:pointer; text-align:left; padding:8px 4px;" class="text-truncate" onclick="App.showView('player_detail', ${p.id})">${p.first_name} ${p.last_name}</td>
+                    <td style="text-align:center; padding:8px 4px;"><span class="md-chip" style="padding:2px 8px; font-size:0.72rem; font-weight:700; background:#F1F3F4; color:#202124; border:1px solid #DADCE0;">${p.position_primary}</span></td>
+                    <td style="text-align:center; font-size:0.8rem; color:#5F6368; padding:8px 4px;">B: ${p.bats} / L: ${p.throws}</td>
                     ${isAuthorizedForTeam ? `
-                      <td>
-                        <div style="display:flex; gap:4px;">
+                      <td style="text-align:center; padding:8px 4px;">
+                        <div style="display:flex; gap:4px; justify-content:center;">
                           <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditPlayerModal(${p.id})">✏️ Editar / Mover</button>
                           <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deletePlayer(${p.id}, '${p.first_name} ${p.last_name}')">🗑️ Baja</button>
                         </div>
                       </td>
                     ` : ''}
                   </tr>
-                `).join('') : `<tr><td colspan="${isAuthorizedForTeam ? 5 : 4}" style="text-align:center; padding:16px;">Sin jugadores activos registrados.</td></tr>`}
+                `).join('') : `<tr><td colspan="${isAuthorizedForTeam ? 5 : 4}" style="text-align:center; padding:16px; color:#5F6368;">Sin jugadores activos registrados.</td></tr>`}
               </tbody>
             </table>
           </div>
@@ -1623,24 +1626,25 @@ const App = {
 
     let html = `
       <div class="view-content">
-        <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #070D1B 100%); text-align:center; align-items:center;">
-          <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:80px; height:80px; border-radius:50%; border:3px solid #F59E0B; object-fit:cover;">
-          <div style="font-size:1.6rem; font-weight:800; color:#FFFFFF; margin-top:4px;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
-          <div style="font-size:0.9rem; font-weight:700; color:#F59E0B;" class="text-truncate">${p.team_name} • ${p.category_name}</div>
-
-          <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
-            <span class="md-chip active">Pos: ${p.position_primary}</span>
-            <span class="md-chip">Batea: ${p.bats === 'R' ? 'Derecho' : (p.bats === 'L' ? 'Zurdo' : 'Ambidextro')}</span>
-            <span class="md-chip">Lanza: ${p.throws === 'R' ? 'Derecho' : 'Zurdo'}</span>
-          </div>
+        <!-- Google Light Player Header Card -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:20px; text-align:center; align-items:center; box-shadow:0 1px 3px rgba(60,64,67,0.08);">
+          <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:80px; height:80px; border-radius:50%; border:2px solid #DADCE0; object-fit:cover;" onerror="this.src='assets/images/lmb_logo.png'">
+          <div style="font-size:1.5rem; font-weight:800; color:#202124; margin-top:8px;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
+          <div style="font-size:0.9rem; font-weight:700; color:#1A73E8; margin-top:2px;" class="text-truncate">${p.team_name} • ${p.category_name}</div>
 
           <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
+            <span class="md-chip active" style="font-size:0.75rem; background:#1A73E8; color:#FFFFFF;">Pos: ${p.position_primary}</span>
+            <span class="md-chip" style="font-size:0.75rem; background:#F1F3F4; color:#202124; border:1px solid #DADCE0;">Batea: ${p.bats === 'R' ? 'Derecho' : (p.bats === 'L' ? 'Zurdo' : 'Ambidextro')}</span>
+            <span class="md-chip" style="font-size:0.75rem; background:#F1F3F4; color:#202124; border:1px solid #DADCE0;">Lanza: ${p.throws === 'R' ? 'Derecho' : 'Zurdo'}</span>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; justify-content:center;">
             ${isAuthorized ? `
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEditPlayerModal(${p.id})">✏️ Editar Perfil / Reasignar</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showFileUploadModal('player', ${p.id}, 'Subir Foto de ${p.first_name}')">📷 Cambiar Foto</button>
               <button class="md-btn md-btn-danger" style="padding:4px 10px; font-size:0.75rem;" onclick="App.deletePlayer(${p.id}, '${p.first_name} ${p.last_name}')">🗑️ Dar de Baja</button>
             ` : ''}
-            <button class="md-btn md-btn-gold" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showEntityGalleryModal('player', ${p.id}, 'Galería de ${p.first_name}')">🖼️ Galería (Postales)</button>
+            <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem; border-color:#DADCE0;" onclick="App.showEntityGalleryModal('player', ${p.id}, 'Galería de ${p.first_name}')">🖼️ Galería (Postales)</button>
           </div>
         </div>
 
@@ -1734,27 +1738,31 @@ const App = {
           </div>
         </div>
 
-        <div class="md-table-wrapper">
-          <table class="md-table">
+        <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow:hidden;">
+          <table class="md-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
             <thead>
-              <tr>
-                <th>Lugar</th>
-                <th>Jugador</th>
-                <th>Equipo</th>
-                <th>Valor</th>
+              <tr style="border-bottom:1px solid #DADCE0; color:#5F6368;">
+                <th style="width:45px; text-align:center; padding:8px 4px;">Lugar</th>
+                <th style="text-align:left; padding:8px 4px;">Jugador</th>
+                <th style="text-align:center; padding:8px 4px;">Equipo</th>
+                <th style="text-align:center; padding:8px 4px; width:65px;">Valor</th>
               </tr>
             </thead>
             <tbody>
               ${leaders.length ? leaders.map((l, idx) => `
-                <tr onclick="App.showView('player_detail', ${l.player_id})" style="cursor:pointer;">
-                  <td style="font-weight:800; color:${idx === 0 ? '#F59E0B' : '#94A3B8'};">#${idx + 1}</td>
-                  <td style="font-weight:700;" class="text-truncate">#${l.jersey_number} ${l.first_name} ${l.last_name}</td>
-                  <td><span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${l.team_short}</span></td>
-                  <td class="highlight-val" style="font-size:1rem;">
+                <tr onclick="App.showView('player_detail', ${l.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                  <td style="width:45px; text-align:center; font-weight:800; color:${idx === 0 ? '#1A73E8' : '#5F6368'}; font-size:0.9rem; padding:8px 4px;">#${idx + 1}</td>
+                  <td style="font-weight:700; color:#202124; text-align:left; padding:8px 4px;" class="text-truncate">
+                    <span style="color:#5F6368; font-weight:600; margin-right:4px;">#${l.jersey_number}</span> ${l.first_name} ${l.last_name}
+                  </td>
+                  <td style="text-align:center; padding:8px 4px;">
+                    <span class="md-chip" style="padding:3px 8px; font-size:0.75rem; font-weight:700; background:#F8F9FA; color:#202124; border:1px solid #DADCE0;">${l.team_short || l.team_name}</span>
+                  </td>
+                  <td class="highlight-val" style="text-align:center; font-size:1.05rem; font-weight:900; color:#1A73E8; padding:8px 4px;">
                     ${type === 'batting' ? (l[stat] || l.avg) : (stat === 'era' ? l.era : (stat === 'so' ? l.so : (stat === 'wins' ? l.wins : (stat === 'saves' ? l.saves : l.whip))))}
                   </td>
                 </tr>
-              `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin líderes registrados en este departamento.</td></tr>'}
+              `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px; color:#5F6368;">Sin líderes registrados en este departamento.</td></tr>'}
             </tbody>
           </table>
         </div>
