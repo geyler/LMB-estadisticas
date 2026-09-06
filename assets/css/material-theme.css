@@ -1043,3 +1043,85 @@ body.light-theme .unified-modal-title {
   gap: 12px;
 }
 
+/* MLB Diamond & Base Runner Graphic */
+.mlb-diamond-container {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.mlb-diamond {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.mlb-base {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transform: rotate(45deg);
+}
+
+.mlb-base.b1 { right: 2px; top: 8px; }
+.mlb-base.b2 { left: 8px; top: 2px; }
+.mlb-base.b3 { left: 2px; top: 8px; }
+
+.mlb-base.occupied {
+  background: var(--lmb-gold-accent) !important;
+  border-color: #FFFFFF !important;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+}
+
+.mlb-outs-dots {
+  display: flex;
+  gap: 3px;
+  font-size: 0.6rem;
+  color: #EF4444;
+}
+
+/* MLB Team Boxscore Sub-Tabs */
+.mlb-team-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--md-sys-color-outline);
+  margin-bottom: 12px;
+}
+
+.mlb-team-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.mlb-team-tab.active {
+  color: #FFFFFF;
+  border-bottom-color: var(--lmb-gold-accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.light-theme .mlb-team-tab.active {
+  color: #0F172A;
+  border-bottom-color: var(--lmb-blue-primary);
+}
+
+/* MLB Boxscore Totals Row */
+.mlb-totals-row {
+  background: rgba(245, 158, 11, 0.1) !important;
+  font-weight: 900 !important;
+}
+
+.mlb-totals-row td {
+  border-top: 2px solid var(--lmb-gold-accent) !important;
+  color: var(--lmb-gold-accent) !important;
+}
+
+

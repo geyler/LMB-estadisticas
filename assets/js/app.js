@@ -963,19 +963,33 @@ const App = {
           <span class="text-truncate">${g.category_code} • ${g.stadium_field || 'Cancha 1'}</span>
           ${App.getStatusBadge(g.status)}
         </div>
-        <div class="scorebug-team-row">
-          <div class="scorebug-team-name text-truncate">
-            <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
-            <span class="text-truncate">${g.away_short}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="flex:1;">
+            <div class="scorebug-team-row">
+              <div class="scorebug-team-name text-truncate">
+                <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
+                <span class="text-truncate">${g.away_short}</span>
+              </div>
+              <div class="scorebug-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
+            </div>
+            <div class="scorebug-team-row">
+              <div class="scorebug-team-name text-truncate">
+                <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
+                <span class="text-truncate">${g.home_short}</span>
+              </div>
+              <div class="scorebug-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
+            </div>
           </div>
-          <div class="scorebug-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
-        </div>
-        <div class="scorebug-team-row">
-          <div class="scorebug-team-name text-truncate">
-            <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="scorebug-logo">
-            <span class="text-truncate">${g.home_short}</span>
-          </div>
-          <div class="scorebug-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
+          ${g.status === 'live' ? `
+            <div class="mlb-diamond-container" style="margin-left:6px;">
+              <div class="mlb-diamond">
+                <div class="mlb-base b1"></div>
+                <div class="mlb-base b2"></div>
+                <div class="mlb-base b3"></div>
+              </div>
+              <div class="mlb-outs-dots">●●○</div>
+            </div>
+          ` : ''}
         </div>
       </div>
     `).join('');
