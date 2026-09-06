@@ -247,33 +247,37 @@ body {
 }
 
 .scorebug-team-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
   font-size: 0.85rem;
   font-weight: 700;
   color: #202124;
 }
 
 .scorebug-team-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  white-space: nowrap !important;
 }
 
 .scorebug-logo {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  max-width: 20px;
-  max-height: 20px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #DADCE0;
-  flex-shrink: 0;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1px solid #DADCE0 !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
 }
 
 .scorebug-score {
@@ -480,33 +484,37 @@ body {
 
 .google-team-row,
 .google-match-team {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
   font-size: 0.88rem;
   font-weight: 700;
   color: #202124;
 }
 
 .google-team-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex: 1;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  white-space: nowrap !important;
 }
 
 .google-team-logo {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  max-width: 22px;
-  max-height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #DADCE0;
-  flex-shrink: 0;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1px solid #DADCE0 !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
 }
 
 .google-team-name {
@@ -986,7 +994,6 @@ select.form-control {
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  display: block;
   max-width: 100%;
 }
 
