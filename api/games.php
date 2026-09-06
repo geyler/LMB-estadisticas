@@ -79,8 +79,8 @@ if ($action === 'detail') {
             SUM(CASE WHEN (home_team_id = ? AND home_score < away_score) OR (away_team_id = ? AND away_score < home_score) THEN 1 ELSE 0 END) as losses
         FROM games 
         WHERE (home_team_id = ? OR away_team_id = ?) 
-          AND status IN ('finalized', 'completed')
-          AND is_exhibition = 0
+          AND status IN ('finalized', 'completed', 'finished')
+          AND (game_stage IS NULL OR game_stage NOT LIKE '%Amistoso%')
     ");
 
     $stmtRec->execute([$game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id']]);

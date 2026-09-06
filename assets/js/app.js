@@ -1152,7 +1152,7 @@ const App = {
     if (g.status === 'live') {
       statusText = `En Vivo • Inning ${g.current_inning || 1}`;
       statusColor = '#1E8E3E';
-    } else if (['finalized', 'completed'].includes(g.status)) {
+    } else if (['finalized', 'completed', 'finished'].includes(g.status)) {
       statusText = 'Finalizado';
       statusColor = '#202124';
     } else if (g.status === 'delayed') {
