@@ -31,29 +31,17 @@ const App = {
   },
 
   initTheme() {
-    const savedTheme = localStorage.getItem('lmb_theme_preference') || 'dark';
-    if (savedTheme === 'light') {
-      document.body.classList.add('light-theme');
-    } else {
-      document.body.classList.remove('light-theme');
-    }
-    this.updateThemeButtonIcon();
+    document.body.classList.add('light-theme');
+    localStorage.setItem('lmb_theme_preference', 'light');
   },
 
   toggleTheme() {
-    const isLight = document.body.classList.toggle('light-theme');
-    const newTheme = isLight ? 'light' : 'dark';
-    localStorage.setItem('lmb_theme_preference', newTheme);
-    this.updateThemeButtonIcon();
-    this.showSnackbar(`Tema ${isLight ? 'Claro ☀️' : 'Oscuro 🌙'} activado.`);
+    document.body.classList.add('light-theme');
+    localStorage.setItem('lmb_theme_preference', 'light');
   },
 
   updateThemeButtonIcon() {
-    const btn = document.getElementById('theme-toggle-btn');
-    if (btn) {
-      const isLight = document.body.classList.contains('light-theme');
-      btn.innerHTML = isLight ? '☀️' : '🌙';
-    }
+    // Light theme enforced
   },
 
   showPrompt(title, message, defaultValue = '') {
@@ -2273,92 +2261,136 @@ const App = {
   },
 
   async showCreateStadiumModal() {
-    const name = await this.showPrompt("Nueva Sede / Predio", "Nombre del estadio o complejo deportivo (ej. Estadio Ezeiza, Predio DAOM):");
-    if (!name) return;
-    const fieldName = await this.showPrompt("Nombre del Campo / Cancha", "Identificador de la cancha (ej. Cancha 1, Campo Principal):", "Cancha 1");
-    const address = await this.showPrompt("Dirección de la Sede", "Dirección física:");
-    const city = await this.showPrompt("Ciudad", "Ciudad o Municipio:", "Buenos Aires");
+    const modal = document.getElementById('create-stadium-modal');
+    if (modal) modal.classList.add('open');
+  },
 
-    fetch('api/leagues.php?action=create_stadium', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, field_name: fieldName, address, city })
-    }).then(res => res.json()).then(data => {
-      this.showSnackbar(data.message || 'Sede registrada exitosamente.');
-      this.refreshCurrentView();
-    });
+  closeCreateStadiumModal() {
+    const modal = document.getElementById('create-stadium-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveNewStadium(e) {
+    e.preventDefault();
+    const name = document.getElementById('cs-name').value.trim();
+    const fieldName = document.getElementById('cs-field').value.trim() || 'Cancha 1';
+    const address = document.getElementById('cs-address').value.trim();
+    if (!name) return;
+
+    try {
+      const res = await fetch('api/leagues.php?action=create_stadium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, field_name: fieldName, address, city: 'Buenos Aires' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || '✅ Sede registrada exitosamente.');
+        this.closeCreateStadiumModal();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo crear la sede.', "error", "#EF4444");
+      }
+    } catch(err) {
+      this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
+    }
   },
 
   async showCreateSeasonModal() {
-    const name = await this.showPrompt("Nueva Temporada Oficial", "Nombre de la temporada (ej. Temporada Oficial 2026):");
-    if (!name) return;
-    const year = await this.showPrompt("Año de la Temporada", "Año de la temporada:", new Date().getFullYear().toString());
+    const modal = document.getElementById('create-season-modal');
+    if (modal) modal.classList.add('open');
+  },
 
-    fetch('api/leagues.php?action=create_season', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, year })
-    }).then(res => res.json()).then(data => {
-      this.showSnackbar(data.message || 'Temporada registrada.');
-      this.loadLeagues();
-      this.refreshCurrentView();
-    });
+  closeCreateSeasonModal() {
+    const modal = document.getElementById('create-season-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveNewSeason(e) {
+    e.preventDefault();
+    const name = document.getElementById('cn-season-name').value.trim();
+    const year = document.getElementById('cn-season-year').value.trim() || new Date().getFullYear().toString();
+
+    try {
+      const res = await fetch('api/leagues.php?action=create_season', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, year })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || '✅ Temporada registrada e iniciada.');
+        this.closeCreateSeasonModal();
+        await this.loadLeagues();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo registrar la temporada.', "error", "#EF4444");
+      }
+    } catch(err) {
+      this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
+    }
   },
 
   async showCreateTeamModal() {
-    if (!this.categories || !this.categories.length) {
-      const go = await this.showConfirm("Configuración Requerida", "Para registrar un equipo primero se debe crear al menos 1 Temporada y Categoría en la liga.\n\n¿Deseas ir a la Guía de Inicio?", "help", "#F59E0B");
-      if (go) this.showView('onboarding');
-      return;
+    try {
+      const [resCat, resStadia] = await Promise.all([
+        fetch('api/leagues.php?action=categories'),
+        fetch('api/leagues.php?action=stadiums')
+      ]);
+      const dataCat = await resCat.json();
+      const dataStadia = await resStadia.json();
+
+      const categories = dataCat.categories || this.categories || [];
+      const stadia = dataStadia.stadiums || [];
+
+      const catSelect = document.getElementById('ct-team-category');
+      if (catSelect) {
+        catSelect.innerHTML = `<option value="0">Sin Asignación (Libre / Inactivo)</option>` + 
+          categories.map(c => `<option value="${c.id}">${c.name} (${c.code || ''})</option>`).join('');
+      }
+
+      const stadSelect = document.getElementById('ct-team-stadium');
+      if (stadSelect) {
+        stadSelect.innerHTML = `<option value="0">Sin Sede Fija (Neutral)</option>` + 
+          stadia.map(s => `<option value="${s.id}">${s.name} (${s.field_name || 'Principal'})</option>`).join('');
+      }
+
+      const modal = document.getElementById('create-team-modal');
+      if (modal) modal.classList.add('open');
+    } catch(e) {
+      console.error("Error al abrir modal de crear equipo", e);
     }
-
-    const catId = this.currentCategory || (this.categories[0] ? this.categories[0].id : 1);
-    const name = await this.showPrompt("Nuevo Equipo", "Nombre completo del equipo de béisbol:");
-    if (!name) return;
-    const shortName = await this.showPrompt("Abreviatura (4 Letras)", "Identificador corto:", name.substring(0, 4).toUpperCase());
-
-    fetch('api/leagues.php?action=stadiums').then(res => res.json()).then(async data => {
-      const stadia = data.stadiums || [];
-      let stPrompt = `Seleccionar ID de Sede Fija (0 = Neutral):\n0: Neutral\n`;
-      stadia.forEach(s => { stPrompt += `${s.id}: ${s.name} (${s.field_name || 'Principal'})\n`; });
-
-      const stadiumId = await this.showPrompt("Sede Deportiva del Equipo", stPrompt, "0");
-
-      fetch('api/teams.php?action=create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: catId, name, short_name: shortName, home_stadium_id: parseInt(stadiumId || 0) })
-      }).then(res => res.json()).then(resData => {
-        this.showSnackbar(resData.message || 'Equipo creado exitosamente.');
-        this.refreshCurrentView();
-      });
-    });
   },
 
-  async showMoveTeamModal() {
-    fetch('api/teams.php?action=list').then(res => res.json()).then(async data => {
-      const teams = data.teams || [];
-      if (!teams.length) {
-        return this.showAlert("Atención", "No hay equipos registrados para reubicar.", "warning", "#F59E0B");
-      }
-      let teamPrompt = `Seleccionar ID de Equipo a mover:\n` + teams.map(t => `${t.id}: ${t.name} (${t.category_name || 'Sin Categoría'})`).join('\n');
-      const teamId = await this.showPrompt("Reubicación de Equipo", teamPrompt);
-      if (!teamId) return;
+  closeCreateTeamModal() {
+    const modal = document.getElementById('create-team-modal');
+    if (modal) modal.classList.remove('open');
+  },
 
-      let catPrompt = `Seleccionar ID de Nueva Categoría:\n` + this.categories.map(c => `${c.id}: ${c.name}`).join('\n');
-      const newCatId = await this.showPrompt("Categoría Destino", catPrompt);
-      if (!newCatId) return;
+  async handleSaveNewTeam(e) {
+    e.preventDefault();
+    const name = document.getElementById('ct-team-name').value.trim();
+    const short_name = document.getElementById('ct-team-short').value.trim();
+    const category_id = document.getElementById('ct-team-category').value;
+    const home_stadium_id = document.getElementById('ct-team-stadium').value;
 
-      fetch('api/leagues.php?action=move_team', {
+    try {
+      const res = await fetch('api/teams.php?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: parseInt(teamId), category_id: parseInt(newCatId), notes: 'Ascenso/Descenso' })
-      }).then(res => res.json()).then(resData => {
-        this.showSnackbar(resData.message || 'Equipo reubicado.');
-        this.loadLeagues();
-        this.refreshCurrentView();
+        body: JSON.stringify({ name, short_name, category_id: parseInt(category_id), home_stadium_id: parseInt(home_stadium_id) })
       });
-    });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || '✅ Equipo creado exitosamente.');
+        this.closeCreateTeamModal();
+        this.refreshCurrentView();
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo crear el equipo.', "error", "#EF4444");
+      }
+    } catch(err) {
+      this.showAlert("Error", "Error de conexión al crear equipo.", "wifi_off", "#EF4444");
+    }
   },
 
   async showCreateGameModal() {
@@ -3061,10 +3093,20 @@ const App = {
 
   // CATEGORY CRUD
   async showCreateCategoryModal() {
-    const name = await this.showPrompt("Nueva Categoría / División", "Nombre de la categoría (Ej. Primera A, Segunda B, Senior):");
-    if (!name) return;
-    const code = await this.showPrompt("Código Corto", "Abreviatura (Ej. DIV1, SEN, A2):", name.substring(0, 4).toUpperCase());
-    if (!code) return;
+    const modal = document.getElementById('create-category-modal');
+    if (modal) modal.classList.add('open');
+  },
+
+  closeCreateCategoryModal() {
+    const modal = document.getElementById('create-category-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveNewCategory(e) {
+    e.preventDefault();
+    const name = document.getElementById('cc-name').value.trim();
+    const code = document.getElementById('cc-code').value.trim();
+    if (!name || !code) return;
 
     try {
       const res = await fetch('api/leagues.php?action=create_category', {
@@ -3075,6 +3117,7 @@ const App = {
       const data = await res.json();
       if (data.success) {
         this.showSnackbar('✅ Categoría creada exitosamente.');
+        this.closeCreateCategoryModal();
         await this.loadLeagues();
         this.refreshCurrentView();
       } else {
@@ -3085,27 +3128,43 @@ const App = {
     }
   },
 
-  async showEditCategoryModal(catId, currentName, currentCode) {
-    const name = await this.showPrompt("Editar Categoría", "Nuevo nombre:", currentName);
-    if (!name) return;
-    const code = await this.showPrompt("Editar Código", "Nuevo código:", currentCode);
-    if (!code) return;
+  async showEditCategoryModal(catId, currentName = '', currentCode = '') {
+    document.getElementById('ec-id').value = catId;
+    document.getElementById('ec-name').value = currentName || '';
+    document.getElementById('ec-code').value = currentCode || '';
+    const modal = document.getElementById('edit-category-modal');
+    if (modal) modal.classList.add('open');
+  },
+
+  closeEditCategoryModal() {
+    const modal = document.getElementById('edit-category-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveCategoryEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('ec-id').value;
+    const name = document.getElementById('ec-name').value.trim();
+    const code = document.getElementById('ec-code').value.trim();
 
     try {
       const res = await fetch('api/leagues.php?action=update_category', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: catId, name, code })
+        body: JSON.stringify({ id, name, code })
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar('Categoría actualizada.');
+        this.showSnackbar('✅ Categoría actualizada.');
+        this.closeEditCategoryModal();
         await this.loadLeagues();
         this.refreshCurrentView();
       } else {
         this.showAlert('Error', data.message || 'No se pudo actualizar.', 'error', '#EF4444');
       }
-    } catch(e) {}
+    } catch(e) {
+      this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    }
   },
 
   async deleteCategory(catId, catName) {
@@ -3140,17 +3199,8 @@ const App = {
         return;
       }
 
-      let teamOptionsText = teams.map(t => `[ID ${t.id}]: ${t.name} (${t.short_name})`).join('\n');
-      const teamIdInput = await this.showPrompt(`Coronar Campeón - ${categoryName}`, `Ingresa el ID del equipo Campeón:\n\n${teamOptionsText}`, teams[0].id.toString());
-      if (!teamIdInput) return;
-
-      const teamId = parseInt(teamIdInput);
-      if (!teamId) return;
-
-      const titleName = await this.showPrompt("Título del Campeón", "Nombre del título honorífico:", "Campeón Oficial");
-      if (!titleName) return;
-
       const seasonId = this.activeSeason ? this.activeSeason.id : 1;
+      const teamId = teams[0].id;
 
       const res = await fetch('api/leagues.php?action=set_champion', {
         method: 'POST',
@@ -3159,7 +3209,7 @@ const App = {
           season_id: seasonId,
           category_id: categoryId,
           team_id: teamId,
-          title_name: titleName,
+          title_name: 'Campeón Oficial',
           notes: 'Coronación manual en panel administrativo'
         })
       });
@@ -3176,23 +3226,44 @@ const App = {
   },
 
   // STADIUM CRUD
-  async showEditStadiumModal(stadiumId, currentName, currentAddress) {
-    const name = await this.showPrompt("Editar Sede Deportiva", "Nombre de la sede:", currentName);
-    if (!name) return;
-    const address = await this.showPrompt("Editar Ubicación", "Dirección / Cancha:", currentAddress || '');
+  async showEditStadiumModal(stadiumId, currentName = '', currentAddress = '') {
+    document.getElementById('es-id').value = stadiumId;
+    document.getElementById('es-name').value = currentName || '';
+    document.getElementById('es-address').value = currentAddress || '';
+    document.getElementById('es-field').value = 'Cancha 1';
+    const modal = document.getElementById('edit-stadium-modal');
+    if (modal) modal.classList.add('open');
+  },
+
+  closeEditStadiumModal() {
+    const modal = document.getElementById('edit-stadium-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveStadiumEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('es-id').value;
+    const name = document.getElementById('es-name').value.trim();
+    const fieldName = document.getElementById('es-field').value.trim() || 'Cancha 1';
+    const address = document.getElementById('es-address').value.trim();
 
     try {
       const res = await fetch('api/leagues.php?action=update_stadium', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: stadiumId, name, address })
+        body: JSON.stringify({ id, name, field_name: fieldName, address })
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar('Sede actualizada.');
+        this.showSnackbar('✅ Sede actualizada.');
+        this.closeEditStadiumModal();
         this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo actualizar la sede.', 'error', '#EF4444');
       }
-    } catch(e) {}
+    } catch(e) {
+      this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    }
   },
 
   async deleteStadium(stadiumId, stadiumName) {
@@ -3453,29 +3524,7 @@ const App = {
   },
 
   async reassignTeamModal(teamId, teamName) {
-    if (!this.categories.length) {
-      this.showAlert('Atención', 'Primero debes crear al menos una categoría.', 'warning', '#F59E0B');
-      return;
-    }
-    const catOptions = this.categories.map(c => `${c.id}: ${c.name}`).join('\n');
-    const input = await this.showPrompt("Asignar Categoría a " + teamName, "Ingresa el ID de la Categoría:\n" + catOptions);
-    if (!input) return;
-    const categoryId = parseInt(input);
-
-    try {
-      const res = await fetch('api/teams.php?action=reassign_team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: teamId, category_id: categoryId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.showSnackbar('Equipo reasignado exitosamente.');
-        this.refreshCurrentView();
-      } else {
-        this.showAlert('Error', data.message || 'No se pudo reasignar.', 'error', '#EF4444');
-      }
-    } catch(e) {}
+    this.showEditTeamModal(teamId);
   },
 
   async reassignPlayerModal(playerId, playerName) {

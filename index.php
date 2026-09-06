@@ -99,9 +99,6 @@ session_start();
         <button class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía Paso a Paso">
           📖 <span class="hide-mobile">Guía</span>
         </button>
-        <button id="theme-toggle-btn" class="md-btn md-btn-outlined header-btn" onclick="App.toggleTheme()" title="Cambiar Tema">
-          🌙
-        </button>
         <button id="user-action-btn" class="md-btn md-btn-outlined user-badge-btn">
           <span class="material-icons-round" style="font-size: 16px;">login</span> Acceder
         </button>
@@ -729,11 +726,43 @@ session_start();
           <button class="md-btn md-btn-gold" style="flex:1;" id="prompt-modal-ok">Aceptar</button>
         </div>
       </div>
+    <!-- Full Create Team Modal -->
+    <div id="create-team-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">🛡️ Registrar Nuevo Equipo</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateTeamModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveNewTeam(event);">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre del Equipo</label>
+            <input type="text" id="ct-team-name" class="form-control" placeholder="Ej. Criollos de Buenos Aires" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Abreviatura (3-4 letras)</label>
+            <input type="text" id="ct-team-short" class="form-control" maxlength="10" placeholder="Ej. CRIO" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Categoría / División</label>
+            <select id="ct-team-category" class="form-control"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">📍 Sede Deportiva / Campo Local</label>
+            <select id="ct-team-stadium" class="form-control"></select>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateTeamModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">➕ Guardar Equipo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Full Edit Team Modal -->
     <div id="edit-team-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h3 style="font-size:1.1rem; font-weight:800; color:#FFFFFF;">✏️ Editar Equipo Completo</h3>
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">✏️ Editar Equipo Completo</h3>
           <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeEditTeamModal()">✕</button>
         </div>
         <form onsubmit="App.handleSaveTeamEdit(event);">
@@ -748,11 +777,11 @@ session_start();
           </div>
           <div class="form-group" style="margin-bottom:10px;">
             <label style="font-size:0.78rem; font-weight:700;">Categoría / División</label>
-            <select id="edit-team-category" class="form-control" style="background:#0F172A;"></select>
+            <select id="edit-team-category" class="form-control"></select>
           </div>
           <div class="form-group" style="margin-bottom:10px;">
             <label style="font-size:0.78rem; font-weight:700;">📍 Sede Deportiva / Campo Local</label>
-            <select id="edit-team-stadium" class="form-control" style="background:#0F172A;"></select>
+            <select id="edit-team-stadium" class="form-control"></select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
@@ -777,6 +806,134 @@ session_start();
           <div style="display:flex; gap:10px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditTeamModal()">Cancelar</button>
             <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Todos los Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Category CRUD Modals -->
+    <div id="create-category-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">🏆 Nueva Categoría / División</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateCategoryModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveNewCategory(event);">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre de la Categoría</label>
+            <input type="text" id="cc-name" class="form-control" placeholder="Ej. Primera División A1" required>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">Código / Abreviatura</label>
+            <input type="text" id="cc-code" class="form-control" placeholder="Ej. A1" required>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateCategoryModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Categoría</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-category-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">✏️ Editar Categoría</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeEditCategoryModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveCategoryEdit(event);">
+          <input type="hidden" id="ec-id">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre de la Categoría</label>
+            <input type="text" id="ec-name" class="form-control" required>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">Código / Abreviatura</label>
+            <input type="text" id="ec-code" class="form-control" required>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditCategoryModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Stadium CRUD Modals -->
+    <div id="create-stadium-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">📍 Nueva Sede Deportiva</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateStadiumModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveNewStadium(event);">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre de la Sede / Predio</label>
+            <input type="text" id="cs-name" class="form-control" placeholder="Ej. Estadio Ezeiza, Predio DAOM" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Identificador de Cancha / Campo</label>
+            <input type="text" id="cs-field" class="form-control" placeholder="Ej. Cancha 1" value="Cancha 1">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">Dirección / Ubicación</label>
+            <input type="text" id="cs-address" class="form-control" placeholder="Ej. Av. Ezeiza 1200, Buenos Aires">
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateStadiumModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Sede</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-stadium-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">✏️ Editar Sede Deportiva</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeEditStadiumModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveStadiumEdit(event);">
+          <input type="hidden" id="es-id">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre de la Sede</label>
+            <input type="text" id="es-name" class="form-control" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Cancha / Campo</label>
+            <input type="text" id="es-field" class="form-control">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">Dirección / Ubicación</label>
+            <input type="text" id="es-address" class="form-control">
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditStadiumModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Create Season Modal -->
+    <div id="create-season-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">🗓️ Nueva Temporada Oficial</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateSeasonModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveNewSeason(event);">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Nombre de la Temporada</label>
+            <input type="text" id="cn-season-name" class="form-control" placeholder="Ej. Temporada Oficial 2026" required>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">Año</label>
+            <input type="number" id="cn-season-year" class="form-control" value="2026" required>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateSeasonModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">🚀 Crear e Iniciar Temporada</button>
           </div>
         </form>
       </div>
