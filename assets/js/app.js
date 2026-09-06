@@ -1147,38 +1147,70 @@ const App = {
 
     const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
 
+    let statusText = 'Programado';
+    let statusColor = '#5F6368';
+    if (g.status === 'live') {
+      statusText = `En Vivo • Inning ${g.current_inning || 1}`;
+      statusColor = '#1E8E3E';
+    } else if (['finalized', 'completed'].includes(g.status)) {
+      statusText = 'Finalizado';
+      statusColor = '#202124';
+    } else if (g.status === 'delayed') {
+      statusText = 'Demorado';
+      statusColor = '#D93025';
+    }
+
+    const awayRecordStr = (g.away_wins !== undefined) ? `(${g.away_wins} - ${g.away_losses})` : `(${g.away_short})`;
+    const homeRecordStr = (g.home_wins !== undefined) ? `(${g.home_wins} - ${g.home_losses})` : `(${g.home_short})`;
+
     let html = `
-      <div class="view-content">
-        <!-- Match Header Box -->
-        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; box-shadow:0 1px 3px rgba(60,64,67,0.08);">
-          <div style="font-size:0.75rem; color:#1A73E8; font-weight:700;" class="text-truncate">🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</div>
+      <div class="view-content" style="max-width:900px; margin:0 auto; padding:12px;">
+        <!-- MLB Google Style Match Header -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px;">
+          <!-- Top Row: Category Left, Status Right -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F3F4; padding-bottom:10px; margin-bottom:16px;">
+            <div style="font-size:0.82rem; font-weight:700; color:#1A73E8;" class="text-truncate">
+              🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + (g.stadium_field ? ' (' + g.stadium_field + ')' : '') : (g.field_location || 'Cancha Principal')}
+            </div>
+            <div style="font-size:0.85rem; font-weight:800; color:${statusColor};">
+              ${statusText}
+            </div>
+          </div>
 
-          <div style="display:flex; justify-content:space-around; align-items:center; margin:16px 0;">
-            <div style="text-align:center; cursor:pointer;" onclick="App.showView('team_detail', ${g.away_team_id})">
-              <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
-              <div style="font-weight:800; font-size:1.05rem; margin-top:4px; color:#202124;">${g.away_short}</div>
-              <div style="font-size:2.2rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${g.away_score}</div>
+          <!-- Main Score Row (Logo + Score - Score + Logo) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0;">
+            <!-- Away Team Block -->
+            <div style="flex:1; text-align:center; cursor:pointer;" onclick="App.showView('team_detail', ${g.away_team_id})">
+              <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:6px;">
+                <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+                <span style="font-size:2.4rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${g.status === 'scheduled' ? '-' : g.away_score}</span>
+              </div>
+              <div style="font-size:1.05rem; font-weight:700; color:#202124;" class="text-truncate">${g.away_team_name}</div>
+              <div style="font-size:0.8rem; font-weight:500; color:#5F6368; margin-top:2px;">${awayRecordStr}</div>
             </div>
 
-            <div>
-              ${App.getStatusBadge(g.status)}
-            </div>
+            <!-- Dash Separator -->
+            <div style="font-size:1.8rem; font-weight:700; color:#5F6368; padding:0 12px;">-</div>
 
-            <div style="text-align:center; cursor:pointer;" onclick="App.showView('team_detail', ${g.home_team_id})">
-              <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
-              <div style="font-weight:800; font-size:1.05rem; margin-top:4px; color:#202124;">${g.home_short}</div>
-              <div style="font-size:2.2rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${g.home_score}</div>
+            <!-- Home Team Block -->
+            <div style="flex:1; text-align:center; cursor:pointer;" onclick="App.showView('team_detail', ${g.home_team_id})">
+              <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:6px;">
+                <span style="font-size:2.4rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${g.status === 'scheduled' ? '-' : g.home_score}</span>
+                <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+              </div>
+              <div style="font-size:1.05rem; font-weight:700; color:#202124;" class="text-truncate">${g.home_team_name}</div>
+              <div style="font-size:0.8rem; font-weight:500; color:#5F6368; margin-top:2px;">${homeRecordStr}</div>
             </div>
           </div>
 
           ${g.recap_notes ? `
-            <div style="background:#F8F9FA; border:1px solid #DADCE0; padding:8px 12px; border-radius:8px; font-size:0.8rem; color:#5F6368; margin-bottom:8px;" class="text-wrap-safe">
+            <div style="background:#F8F9FA; border:1px solid #DADCE0; padding:8px 12px; border-radius:8px; font-size:0.82rem; color:#5F6368; margin-top:12px;" class="text-wrap-safe">
               📝 ${g.recap_notes}
             </div>
           ` : ''}
 
           ${canEdit ? `
-            <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px; border-top:1px solid #F1F3F4; padding-top:12px;">
               <button class="md-btn md-btn-gold" style="width:100%; font-size:0.85rem; font-weight:800; padding:8px 12px;" onclick="App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">
                 📊 Actualizar Estadísticas Jugador por Jugador
               </button>
@@ -1194,117 +1226,99 @@ const App = {
           ` : ''}
         </div>
 
+        <!-- Inning Line Score Table (Official MLB Style) -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px; overflow-x:auto;">
+          <table class="md-table" style="width:100%; text-align:center; border-collapse:collapse; font-size:0.85rem;">
+            <thead>
+              <tr style="border-bottom:1px solid #DADCE0; color:#5F6368; font-weight:600;">
+                <th style="text-align:left; padding:8px; min-width:140px;">Equipo</th>
+                ${[1,2,3,4,5,6,7,8,9].map(i => `<th style="padding:6px 4px; min-width:24px;">${i}</th>`).join('')}
+                <th style="padding:6px 8px; border-left:1px solid #DADCE0; font-weight:800; color:#202124;">C</th>
+                <th style="padding:6px 8px; font-weight:800; color:#202124;">H</th>
+                <th style="padding:6px 8px; font-weight:800; color:#202124;">E</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Away Team Row -->
+              <tr style="border-bottom:1px solid #F1F3F4;">
+                <td style="text-align:left; font-weight:700; color:#202124; padding:8px 6px;" class="text-truncate">
+                  ${g.away_team_name}
+                </td>
+                ${[1,2,3,4,5,6,7,8,9].map(i => {
+                  const val = (lines.away && lines.away[i] !== undefined && lines.away[i] !== null) ? lines.away[i] : (['finalized','completed','live'].includes(g.status) && i <= (g.current_inning || 9) ? '0' : '-');
+                  return `<td style="padding:6px 4px; color:#3C4043;">${val}</td>`;
+                }).join('')}
+                <td style="padding:6px 8px; border-left:1px solid #DADCE0; font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.away_score}</td>
+                <td style="padding:6px 8px; font-weight:700; color:#202124;">${g.status === 'scheduled' ? '-' : g.away_hits}</td>
+                <td style="padding:6px 8px; font-weight:700; color:#202124;">${g.status === 'scheduled' ? '-' : g.away_errors}</td>
+              </tr>
+              <!-- Home Team Row -->
+              <tr>
+                <td style="text-align:left; font-weight:700; color:#202124; padding:8px 6px;" class="text-truncate">
+                  ${g.home_team_name}
+                </td>
+                ${[1,2,3,4,5,6,7,8,9].map(i => {
+                  const val = (lines.home && lines.home[i] !== undefined && lines.home[i] !== null) ? lines.home[i] : (['finalized','completed','live'].includes(g.status) && i <= (g.current_inning || 9) ? '0' : '-');
+                  return `<td style="padding:6px 4px; color:#3C4043;">${val}</td>`;
+                }).join('')}
+                <td style="padding:6px 8px; border-left:1px solid #DADCE0; font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.home_score}</td>
+                <td style="padding:6px 8px; font-weight:700; color:#202124;">${g.status === 'scheduled' ? '-' : g.home_hits}</td>
+                <td style="padding:6px 8px; font-weight:700; color:#202124;">${g.status === 'scheduled' ? '-' : g.home_errors}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-        <!-- Inning Line Score Table or Score Summary -->
-        ${(lines && (Object.keys(lines.away || {}).length > 0 || Object.keys(lines.home || {}).length > 0)) ? `
-          <div class="view-section">
-            <h3 class="section-title">Anotación por Entradas (Line Score)</h3>
-            <div class="md-table-wrapper">
-              <table class="md-table" style="text-align:center;">
-                <thead>
-                  <tr>
-                    <th style="text-align:left;">Equipo</th>
-                    <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th>
-                    <th class="highlight-val">C</th><th>H</th><th>E</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="text-align:left; font-weight:800; color:#202124;">${g.away_short}</td>
-                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.away[i] !== undefined && lines.away[i] !== null ? lines.away[i] : '<span style="color:#BDC1C6;">•</span>'}</td>`).join('')}
-                    <td class="highlight-val" style="font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.away_score}</td>
-                    <td>${g.status === 'scheduled' ? '-' : g.away_hits}</td>
-                    <td>${g.status === 'scheduled' ? '-' : g.away_errors}</td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:left; font-weight:800; color:#202124;">${g.home_short}</td>
-                    ${[1,2,3,4,5,6,7,8,9].map(i => `<td>${lines.home[i] !== undefined && lines.home[i] !== null ? lines.home[i] : '<span style="color:#BDC1C6;">•</span>'}</td>`).join('')}
-                    <td class="highlight-val" style="font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.home_score}</td>
-                    <td>${g.status === 'scheduled' ? '-' : g.home_hits}</td>
-                    <td>${g.status === 'scheduled' ? '-' : g.home_errors}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ` : `
-          <div class="view-section">
-            <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; padding:14px; border-radius:10px;">
-              <h4 style="font-size:0.8rem; font-weight:800; color:#1A73E8; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">📊 Marcador C - H - E</h4>
-              <div style="display:flex; justify-content:space-around; align-items:center; font-size:1.05rem; font-weight:800; color:#202124;">
-                <div>${g.away_short}: <span style="color:#1A73E8; font-weight:900;">${g.status === 'scheduled' ? '-' : g.away_score} C</span> | ${g.status === 'scheduled' ? '-' : g.away_hits} H | ${g.status === 'scheduled' ? '-' : g.away_errors} E</div>
-                <div>${g.home_short}: <span style="color:#1A73E8; font-weight:900;">${g.status === 'scheduled' ? '-' : g.home_score} C</span> | ${g.status === 'scheduled' ? '-' : g.home_hits} H | ${g.status === 'scheduled' ? '-' : g.home_errors} E</div>
-              </div>
-              <div style="font-size:0.72rem; color:#5F6368; margin-top:8px;">
-                ${g.status === 'scheduled' ? '📅 Partido programado (Aún no disputado)' : 'Resultado final registrado (Sin anotación jugada por jugada)'}
-              </div>
-            </div>
-          </div>
-        `}
+        <!-- Google MLB Team Selector Tabs for Boxscore -->
+        <div style="display:flex; background:#F8F9FA; border:1px solid #DADCE0; border-radius:8px; overflow:hidden; margin-bottom:12px;">
+          <button id="tab-box-away" onclick="App.switchBoxscoreTeam('away')" style="flex:1; padding:10px; font-weight:700; font-size:0.85rem; border:none; background:#FFFFFF; color:#1A73E8; border-bottom:2px solid #1A73E8; cursor:pointer; text-transform:uppercase;">
+            ${g.away_team_name}
+          </button>
+          <button id="tab-box-home" onclick="App.switchBoxscoreTeam('home')" style="flex:1; padding:10px; font-weight:600; font-size:0.85rem; border:none; background:#F8F9FA; color:#5F6368; cursor:pointer; text-transform:uppercase;">
+            ${g.home_team_name}
+          </button>
+        </div>
 
-        <!-- Batting & Pitching Box Scores (MLB Style) -->
-        <div class="view-section">
-          <h3 class="section-title">📊 Planilla Oficial (MLB Boxscore)</h3>
-          
-          <!-- Bateo Visitante -->
-          <div style="font-weight:800; font-size:0.85rem; color:#F59E0B; margin-bottom:4px;" class="text-truncate">
-            🏏 Ofensiva Visitante: ${g.away_team_name}
-          </div>
+        <!-- Away Boxscore Content -->
+        <div id="boxscore-content-away" class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px;">
+          <h4 style="font-weight:800; font-size:0.9rem; color:#202124; margin-bottom:10px;">Bateo - ${g.away_team_name}</h4>
           <div class="md-table-wrapper">
-            <table class="md-table">
+            <table class="md-table" style="width:100%; font-size:0.84rem;">
               <thead>
-                <tr><th>Bateador</th><th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th></tr>
+                <tr style="color:#5F6368; border-bottom:1px solid #DADCE0;">
+                  <th style="text-align:left;">Jugador</th><th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th>
+                </tr>
               </thead>
               <tbody>
                 ${aBat.length ? aBat.map(b => `
-                  <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer;">
-                    <td style="font-weight:700;" class="text-truncate">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position})</td>
-                    <td>${b.ab}</td><td>${b.r}</td><td class="highlight-val">${b.h}</td>
+                  <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                    <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
+                      <span style="color:#5F6368; margin-right:4px;">#${b.jersey_number}</span> ${b.first_name} ${b.last_name} <span style="font-size:0.75rem; color:#5F6368;">• ${b.position}</span>
+                    </td>
+                    <td>${b.ab}</td><td>${b.r}</td><td style="font-weight:800; color:#202124;">${b.h}</td>
                     <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
                   </tr>
-                `).join('') : '<tr><td colspan="10" style="text-align:center; padding:12px;">Sin turnos al bate registrados.</td></tr>'}
+                `).join('') : '<tr><td colspan="10" style="text-align:center; padding:12px; color:#5F6368;">Sin turnos al bate registrados.</td></tr>'}
               </tbody>
             </table>
           </div>
-
-          <!-- Bateo Local -->
-          <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; margin-top:14px; margin-bottom:4px;" class="text-truncate">
-            🏏 Ofensiva Local: ${g.home_team_name}
-          </div>
-          <div class="md-table-wrapper">
-            <table class="md-table">
-              <thead>
-                <tr><th>Bateador</th><th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th></tr>
-              </thead>
-              <tbody>
-                ${hBat.length ? hBat.map(b => `
-                  <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer;">
-                    <td style="font-weight:700;" class="text-truncate">#${b.jersey_number} ${b.first_name} ${b.last_name} (${b.position})</td>
-                    <td>${b.ab}</td><td>${b.r}</td><td class="highlight-val">${b.h}</td>
-                    <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
-                  </tr>
-                `).join('') : '<tr><td colspan="10" style="text-align:center; padding:12px;">Sin turnos al bate registrados.</td></tr>'}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Pitcheo Summary -->
-          ${(data.away_pitchers?.length || data.home_pitchers?.length) ? `
-            <div style="font-weight:800; font-size:0.85rem; color:#10B981; margin-top:14px; margin-bottom:4px;">
-              ⚾ Pitcheo y Decisiones
-            </div>
+          ${(data.away_pitchers?.length) ? `
+            <h4 style="font-weight:800; font-size:0.9rem; color:#202124; margin:16px 0 10px 0;">Pitcheo - ${g.away_team_name}</h4>
             <div class="md-table-wrapper">
-              <table class="md-table">
+              <table class="md-table" style="width:100%; font-size:0.84rem;">
                 <thead>
-                  <tr><th>Lanzador</th><th>Equipo</th><th>IP</th><th>H</th><th>C</th><th>CL</th><th>BB</th><th>SO</th><th>Decisión</th></tr>
+                  <tr style="color:#5F6368; border-bottom:1px solid #DADCE0;">
+                    <th style="text-align:left;">Lanzador</th><th>IP</th><th>H</th><th>C</th><th>CL</th><th>BB</th><th>SO</th><th>Decisión</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  ${[...(data.away_pitchers || []), ...(data.home_pitchers || [])].map(p => `
-                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
-                      <td style="font-weight:700;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</td>
-                      <td>${p.team_id == g.home_team_id ? g.home_short : g.away_short}</td>
+                  ${data.away_pitchers.map(p => `
+                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                      <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
+                        <span style="color:#5F6368; margin-right:4px;">#${p.jersey_number}</span> ${p.first_name} ${p.last_name}
+                      </td>
                       <td>${Math.floor(p.ip_outs/3)}.${p.ip_outs%3}</td>
-                      <td>${p.h}</td><td>${p.r}</td><td>${p.er}</td><td>${p.bb}</td><td class="highlight-val">${p.so}</td>
+                      <td>${p.h}</td><td>${p.r}</td><td>${p.er}</td><td>${p.bb}</td><td style="font-weight:800; color:#202124;">${p.so}</td>
                       <td><span class="md-chip" style="font-size:0.65rem; padding:1px 6px;">${p.decision || 'NONE'}</span></td>
                     </tr>
                   `).join('')}
@@ -1313,6 +1327,113 @@ const App = {
             </div>
           ` : ''}
         </div>
+
+        <!-- Home Boxscore Content (Hidden by default, shown when Home tab active) -->
+        <div id="boxscore-content-home" class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px; display:none;">
+          <h4 style="font-weight:800; font-size:0.9rem; color:#202124; margin-bottom:10px;">Bateo - ${g.home_team_name}</h4>
+          <div class="md-table-wrapper">
+            <table class="md-table" style="width:100%; font-size:0.84rem;">
+              <thead>
+                <tr style="color:#5F6368; border-bottom:1px solid #DADCE0;">
+                  <th style="text-align:left;">Jugador</th><th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${hBat.length ? hBat.map(b => `
+                  <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                    <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
+                      <span style="color:#5F6368; margin-right:4px;">#${b.jersey_number}</span> ${b.first_name} ${b.last_name} <span style="font-size:0.75rem; color:#5F6368;">• ${b.position}</span>
+                    </td>
+                    <td>${b.ab}</td><td>${b.r}</td><td style="font-weight:800; color:#202124;">${b.h}</td>
+                    <td>${b.doubles}</td><td>${b.triples}</td><td>${b.hr}</td><td>${b.rbi}</td><td>${b.bb}</td><td>${b.so}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="10" style="text-align:center; padding:12px; color:#5F6368;">Sin turnos al bate registrados.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+          ${(data.home_pitchers?.length) ? `
+            <h4 style="font-weight:800; font-size:0.9rem; color:#202124; margin:16px 0 10px 0;">Pitcheo - ${g.home_team_name}</h4>
+            <div class="md-table-wrapper">
+              <table class="md-table" style="width:100%; font-size:0.84rem;">
+                <thead>
+                  <tr style="color:#5F6368; border-bottom:1px solid #DADCE0;">
+                    <th style="text-align:left;">Lanzador</th><th>IP</th><th>H</th><th>C</th><th>CL</th><th>BB</th><th>SO</th><th>Decisión</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.home_pitchers.map(p => `
+                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                      <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
+                        <span style="color:#5F6368; margin-right:4px;">#${p.jersey_number}</span> ${p.first_name} ${p.last_name}
+                      </td>
+                      <td>${Math.floor(p.ip_outs/3)}.${p.ip_outs%3}</td>
+                      <td>${p.h}</td><td>${p.r}</td><td>${p.er}</td><td>${p.bb}</td><td style="font-weight:800; color:#202124;">${p.so}</td>
+                      <td><span class="md-chip" style="font-size:0.65rem; padding:1px 6px;">${p.decision || 'NONE'}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Play by Play Log -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px;">
+          <h4 style="font-weight:800; font-size:0.9rem; color:#202124; margin-bottom:10px;">Registro Jugada a Jugada</h4>
+          ${pbp.length ? pbp.map(p => `
+            <div style="border-bottom:1px solid #F1F3F4; padding:8px 0;">
+              <div style="font-size:0.75rem; font-weight:700; color:#1A73E8;">
+                ${p.half_inning === 'top' ? '▲' : '▼'} Inning ${p.inning} • Outs: ${p.outs_before}
+              </div>
+              <div style="font-size:0.88rem; font-weight:600; color:#202124; margin-top:2px;">
+                ${p.description}
+              </div>
+            </div>
+          `).join('') : '<div style="font-size:0.82rem; color:#5F6368;">No hay jugadas registradas en el historial.</div>'}
+        </div>
+
+        <!-- Postcards Gallery -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="font-weight:800; font-size:0.9rem; color:#202124; margin:0;">📸 Postales del Partido (${photos.length}/10)</h4>
+            ${(canEdit && photos.length < 10) ? 
+              `<button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showUploadPhotoModal(${g.id})">📷 Subir Foto</button>` : ''}
+          </div>
+          ${photos.length ? `
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
+              ${photos.map(ph => `
+                <div style="position:relative;">
+                  <img src="${ph.photo_url}" style="width:100%; height:90px; object-fit:cover; border-radius:8px; border:1px solid #DADCE0; cursor:pointer;" onclick="App.openGalleryModal('${ph.photo_url}')">
+                  ${canEdit ? `<button onclick="App.deleteGamePhoto(${ph.id}, ${g.id})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#FFF; border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:0.7rem;">✕</button>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : '<div style="font-size:0.82rem; color:#5F6368;">Aún no se han publicado postales.</div>'}
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  },
+
+  switchBoxscoreTeam(teamKey) {
+    const awayBtn = document.getElementById('tab-box-away');
+    const homeBtn = document.getElementById('tab-box-home');
+    const awayContent = document.getElementById('boxscore-content-away');
+    const homeContent = document.getElementById('boxscore-content-home');
+    
+    if (teamKey === 'away') {
+      if (awayBtn) { awayBtn.style.background = '#FFFFFF'; awayBtn.style.color = '#1A73E8'; awayBtn.style.borderBottom = '2px solid #1A73E8'; awayBtn.style.fontWeight = '700'; }
+      if (homeBtn) { homeBtn.style.background = '#F8F9FA'; homeBtn.style.color = '#5F6368'; homeBtn.style.borderBottom = 'none'; homeBtn.style.fontWeight = '600'; }
+      if (awayContent) awayContent.style.display = 'block';
+      if (homeContent) homeContent.style.display = 'none';
+    } else {
+      if (homeBtn) { homeBtn.style.background = '#FFFFFF'; homeBtn.style.color = '#1A73E8'; homeBtn.style.borderBottom = '2px solid #1A73E8'; homeBtn.style.fontWeight = '700'; }
+      if (awayBtn) { awayBtn.style.background = '#F8F9FA'; awayBtn.style.color = '#5F6368'; awayBtn.style.borderBottom = 'none'; awayBtn.style.fontWeight = '600'; }
+      if (homeContent) homeContent.style.display = 'block';
+      if (awayContent) awayContent.style.display = 'none';
+    }
+  },
 
         <!-- Play by Play Log -->
         <div class="view-section">

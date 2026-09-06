@@ -72,6 +72,27 @@ if ($action === 'detail') {
         exit;
     }
 
+    // Team Records (W - L)
+    $stmtRec = $pdo->prepare("
+        SELECT 
+            SUM(CASE WHEN (home_team_id = ? AND home_score > away_score) OR (away_team_id = ? AND away_score > home_score) THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN (home_team_id = ? AND home_score < away_score) OR (away_team_id = ? AND away_score < home_score) THEN 1 ELSE 0 END) as losses
+        FROM games 
+        WHERE (home_team_id = ? OR away_team_id = ?) 
+          AND status IN ('finalized', 'completed')
+          AND is_exhibition = 0
+    ");
+
+    $stmtRec->execute([$game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id']]);
+    $awayRec = $stmtRec->fetch();
+    $game['away_wins'] = intval($awayRec['wins'] ?? 0);
+    $game['away_losses'] = intval($awayRec['losses'] ?? 0);
+
+    $stmtRec->execute([$game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id']]);
+    $homeRec = $stmtRec->fetch();
+    $game['home_wins'] = intval($homeRec['wins'] ?? 0);
+    $game['home_losses'] = intval($homeRec['losses'] ?? 0);
+
     // Line Scores
     $stmtLine = $pdo->prepare("SELECT * FROM game_line_scores WHERE game_id = ? ORDER BY team_id, inning ASC");
     $stmtLine->execute([$id]);
