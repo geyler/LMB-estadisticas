@@ -553,6 +553,12 @@ const App = {
     const activePill = document.getElementById(`pill-${viewName}`);
     if (activePill) activePill.classList.add('active');
 
+    // ONLY show upcoming/live matches carousel (#scorebug-carousel) on Home view
+    const scorebugEl = document.getElementById('scorebug-carousel');
+    if (scorebugEl) {
+      scorebugEl.style.display = (viewName === 'home') ? 'flex' : 'none';
+    }
+
     const container = document.getElementById('view-container');
     if (!container) return;
 
@@ -948,8 +954,10 @@ const App = {
     const scorebug = document.getElementById('scorebug-carousel');
     if (!scorebug) return;
 
+    scorebug.style.display = (this.currentView === 'home') ? 'flex' : 'none';
+
     if (!games || !games.length) {
-      scorebug.innerHTML = `<div style="padding:4px 12px; font-size:0.75rem; color:#94A3B8;">Liga Metropolitana de Béisbol - Buenos Aires</div>`;
+      scorebug.innerHTML = `<div style="padding:4px 12px; font-size:0.75rem; color:#5F6368;">Liga Metropolitana de Béisbol - Buenos Aires</div>`;
       return;
     }
 
@@ -3345,11 +3353,16 @@ const App = {
         if (data.success) {
           this.showSnackbar('Categoría eliminada.');
           await this.loadLeagues();
+          if (this.currentCategory == catId) {
+            this.currentCategory = (this.categories && this.categories.length) ? this.categories[0].id : 0;
+          }
           this.refreshCurrentView();
         } else {
           this.showAlert('Error', data.message || 'No se pudo eliminar la categoría.', 'warning', '#F59E0B');
         }
-      } catch(e) {}
+      } catch(e) {
+        this.showAlert('Error', 'Error de conexión al eliminar categoría.', 'wifi_off', '#EF4444');
+      }
     }
   },
 
@@ -3360,13 +3373,41 @@ const App = {
       const teams = dataTeams.teams || [];
 
       if (!teams.length) {
-        this.showAlert("Atención", "No hay equipos registrados en esta categoría.", "warning", "#F59E0B");
+        this.showAlert("Atención", `No hay equipos registrados en la categoría "${categoryName}". Registra al menos un equipo antes de coronar.`, "warning", "#F59E0B");
         return;
       }
 
-      const seasonId = this.activeSeason ? this.activeSeason.id : 1;
-      const teamId = teams[0].id;
+      document.getElementById('crown-category-id').value = categoryId;
+      document.getElementById('crown-category-name').value = categoryName;
 
+      const teamSelect = document.getElementById('crown-team-id');
+      if (teamSelect) {
+        teamSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.name} (${t.short_name})</option>`).join('');
+      }
+
+      const modal = document.getElementById('crown-champion-modal');
+      if (modal) modal.classList.add('open');
+    } catch(e) {
+      console.error("Error al abrir modal de coronación de campeón", e);
+      this.showAlert("Error", "No se pudieron obtener los equipos de la categoría.", "error", "#EF4444");
+    }
+  },
+
+  closeCrownChampionModal() {
+    const modal = document.getElementById('crown-champion-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleSaveCrownChampion(e) {
+    e.preventDefault();
+    const categoryId = parseInt(document.getElementById('crown-category-id').value || 0);
+    const teamId = parseInt(document.getElementById('crown-team-id').value || 0);
+    const titleName = document.getElementById('crown-title-name').value.trim() || 'Campeón Oficial';
+    const seasonId = this.activeSeason ? this.activeSeason.id : 1;
+
+    if (!categoryId || !teamId) return;
+
+    try {
       const res = await fetch('api/leagues.php?action=set_champion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3374,19 +3415,20 @@ const App = {
           season_id: seasonId,
           category_id: categoryId,
           team_id: teamId,
-          title_name: 'Campeón Oficial',
-          notes: 'Coronación manual en panel administrativo'
+          title_name: titleName,
+          notes: 'Coronación realizada desde el panel de administración'
         })
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar(data.message || '¡Campeón registrado exitosamente!');
+        this.showSnackbar(data.message || '🏆 ¡Campeón registrado con éxito!');
+        this.closeCrownChampionModal();
         this.refreshCurrentView();
       } else {
         this.showAlert('Error', data.message || 'No se pudo registrar el campeón.', 'error', '#EF4444');
       }
     } catch(e) {
-      console.error("Error al coronar campeón", e);
+      this.showAlert('Error', 'Error de conexión al coronar campeón.', 'wifi_off', '#EF4444');
     }
   },
 
@@ -3688,11 +3730,11 @@ const App = {
     }
   },
 
-  async reassignTeamModal(teamId, teamName) {
-    this.showEditTeamModal(teamId);
+  async reassignTeamModal(teamId, teamName = '') {
+    await this.showEditTeamModal(teamId, teamName);
   },
 
-  async reassignPlayerModal(playerId, playerName) {
+  async reassignPlayerModal(playerId, playerName = '') {
     await this.showEditPlayerModal(playerId);
   },
 

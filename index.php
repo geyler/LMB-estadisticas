@@ -859,6 +859,35 @@ session_start();
       </div>
     </div>
 
+    <!-- Crown Champion Modal -->
+    <div id="crown-champion-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">👑 Coronar Equipo Campeón</h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCrownChampionModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleSaveCrownChampion(event);">
+          <input type="hidden" id="crown-category-id">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Categoría / División</label>
+            <input type="text" id="crown-category-name" class="form-control" readonly style="background:#F8F9FA; font-weight:700;">
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Seleccionar Equipo Ganador</label>
+            <select id="crown-team-id" class="form-control" style="font-weight:700; color:#202124;" required></select>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem; font-weight:700;">Título Otorgado</label>
+            <input type="text" id="crown-title-name" class="form-control" value="Campeón Oficial" required>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCrownChampionModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">👑 Registrar Campeón</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Stadium CRUD Modals -->
     <div id="create-stadium-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:440px;">
