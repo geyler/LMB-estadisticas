@@ -165,7 +165,31 @@ if ($action === 'record_play') {
     exit;
 }
 
-// Action 2: Inning Half Change
+// Action 2: Manual Run Scored (+1 Carrera)
+if ($action === 'record_run') {
+    $isHomeBatting = ($game['half_inning'] === 'bottom');
+    $battingTeamId = $isHomeBatting ? $game['home_team_id'] : $game['away_team_id'];
+    $scoreCol = $isHomeBatting ? 'home_score' : 'away_score';
+
+    $pdo->prepare("UPDATE games SET {$scoreCol} = {$scoreCol} + 1 WHERE id = ?")->execute([$gameId]);
+
+    // Upsert Line Score
+    $stmtL = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");
+    $stmtL->execute([$gameId, $battingTeamId, $game['current_inning']]);
+    $lineRow = $stmtL->fetch();
+
+    if ($lineRow) {
+        $pdo->prepare("UPDATE game_line_scores SET runs = runs + 1 WHERE id = ?")->execute([$lineRow['id']]);
+    } else {
+        $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, 1)")
+            ->execute([$gameId, $battingTeamId, $game['current_inning']]);
+    }
+
+    echo json_encode(['success' => true, 'message' => '+1 Carrera guardada en servidor.']);
+    exit;
+}
+
+// Action 3: Inning Half Change
 if ($action === 'change_inning') {
     $nextInning = intval($input['current_inning'] ?? $game['current_inning']);
     $nextHalf = trim($input['half_inning'] ?? ($game['half_inning'] === 'top' ? 'bottom' : 'top'));
@@ -177,9 +201,16 @@ if ($action === 'change_inning') {
     exit;
 }
 
-// Action 3: Finalize Match
+// Action 4: Finalize Match
 if ($action === 'finalize') {
-    $pdo->prepare("UPDATE games SET status = 'finished', lock_user_id = NULL WHERE id = ?")->execute([$gameId]);
+    $awayScore = isset($input['away_score']) ? intval($input['away_score']) : $game['away_score'];
+    $homeScore = isset($input['home_score']) ? intval($input['home_score']) : $game['home_score'];
+    $currentInning = isset($input['current_inning']) ? intval($input['current_inning']) : $game['current_inning'];
+    $halfInning = isset($input['half_inning']) ? trim($input['half_inning']) : $game['half_inning'];
+
+    $pdo->prepare("UPDATE games SET status = 'finished', away_score = ?, home_score = ?, current_inning = ?, half_inning = ?, lock_user_id = NULL WHERE id = ?")
+        ->execute([$awayScore, $homeScore, $currentInning, $halfInning, $gameId]);
+
     echo json_encode(['success' => true, 'message' => 'Partido finalizado oficialmente.']);
     exit;
 }

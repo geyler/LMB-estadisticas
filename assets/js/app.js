@@ -2014,7 +2014,7 @@ const App = {
             <h3 style="font-size:1rem; font-weight:800;">🏆 Etapas y Tipos de Partido</h3>
             <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStageModal()">➕ Nueva Etapa / Rol</button>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Crea etiquetas personalizadas para el calendario de partidos (ej. 8vos de final, Comodín, Amistoso Internacional, Juego de Exhibición).</p>
+          <p style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Crea etiquetas personalizadas para el calendario de partidos (ej. 8vos de final, Comodín, Amistoso Internacional, Juego de Exhibición).</p>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">

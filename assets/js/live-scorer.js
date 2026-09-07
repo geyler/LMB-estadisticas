@@ -1,7 +1,7 @@
 /**
  * Live Match Scorekeeper Engine ("En Partido" / "Piloto Automático")
  * Liga Metropolitana de Béisbol (LMB)
- * Automated Lineup Rotation & Fast Play-by-Play Recording with Safety Guard & Diamond Graphic
+ * Automated Lineup Rotation, Real-Time Score Sync & Offline Queue Resilience
  */
 
 const LiveScorer = {
@@ -19,6 +19,8 @@ const LiveScorer = {
   outsCount: 0,
 
   baseRunners: { b1: false, b2: false, b3: false },
+  isSyncing: false,
+  autoSyncTimer: null,
 
   init(gameDetailData) {
     this.game = gameDetailData.game;
@@ -111,6 +113,105 @@ const LiveScorer = {
 
     this.autoSelectActivePlayers();
     this.renderScorerInterface();
+
+    // Start auto-sync loop for offline queue
+    if (this.autoSyncTimer) clearInterval(this.autoSyncTimer);
+    this.autoSyncTimer = setInterval(() => this.processOfflineQueue(), 4000);
+    window.addEventListener('online', () => this.processOfflineQueue());
+    this.processOfflineQueue();
+  },
+
+  // --- OFFLINE QUEUE MANAGEMENT (Resilience on High Latency / Connection Loss) ---
+  getOfflineQueueKey() {
+    return `lmb_offline_queue_${this.game ? this.game.id : 0}`;
+  },
+
+  getOfflineQueue() {
+    try {
+      return JSON.parse(localStorage.getItem(this.getOfflineQueueKey()) || '[]');
+    } catch(e) {
+      return [];
+    }
+  },
+
+  setOfflineQueue(queue) {
+    try {
+      localStorage.setItem(this.getOfflineQueueKey(), JSON.stringify(queue));
+    } catch(e) {}
+  },
+
+  enqueueOfflineAction(payload) {
+    const queue = this.getOfflineQueue();
+    queue.push({
+      id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      timestamp: new Date().toISOString(),
+      payload
+    });
+    this.setOfflineQueue(queue);
+    this.updateQueueBadgeUI();
+    this.processOfflineQueue();
+  },
+
+  async processOfflineQueue() {
+    if (this.isSyncing) return;
+    const queue = this.getOfflineQueue();
+    if (!queue.length) {
+      this.updateQueueBadgeUI();
+      return;
+    }
+
+    this.isSyncing = true;
+    this.updateQueueBadgeUI();
+
+    while (queue.length > 0) {
+      const item = queue[0];
+      try {
+        const res = await fetch('api/live_score.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item.payload)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success || data.message) {
+            queue.shift(); // Remove processed action
+            this.setOfflineQueue(queue);
+          } else {
+            console.warn("Error retrying offline play action:", data.message);
+            break; // Stop loop on server business logic rejection
+          }
+        } else {
+          break; // Stop loop on HTTP failure
+        }
+      } catch (err) {
+        // Network connection error
+        break;
+      }
+    }
+
+    this.isSyncing = false;
+    this.updateQueueBadgeUI();
+  },
+
+  updateQueueBadgeUI() {
+    const badgeEl = document.getElementById('live-queue-badge');
+    if (!badgeEl) return;
+
+    const queue = this.getOfflineQueue();
+    if (queue.length > 0) {
+      badgeEl.style.display = 'inline-flex';
+      badgeEl.style.background = '#FEF3C7';
+      badgeEl.style.color = '#B45309';
+      badgeEl.style.borderColor = '#F59E0B';
+      badgeEl.innerHTML = `⚠️ ${queue.length} jugada(s) guardadas en local (${this.isSyncing ? 'Sincronizando...' : 'Retomando red'})`;
+    } else {
+      badgeEl.style.display = 'inline-flex';
+      badgeEl.style.background = '#E8F0FE';
+      badgeEl.style.color = '#1A73E8';
+      badgeEl.style.borderColor = '#1A73E8';
+      badgeEl.innerHTML = `🔴 ANOTADOR EN VIVO (En Línea)`;
+    }
   },
 
   toggleRunner(base) {
@@ -174,7 +275,7 @@ const LiveScorer = {
         <!-- Live Header Box (Light Theme) -->
         <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; padding:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="md-chip active" style="background:#E8F0FE; color:#1A73E8; font-weight:800;">🔴 ANOTADOR EN VIVO</span>
+            <span id="live-queue-badge" class="md-chip active" style="background:#E8F0FE; color:#1A73E8; font-weight:800; border:1px solid #1A73E8;">🔴 ANOTADOR EN VIVO</span>
             <div style="display:flex; gap:6px;">
               <button class="md-btn md-btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
@@ -293,6 +394,7 @@ const LiveScorer = {
     `;
 
     container.innerHTML = html;
+    this.updateQueueBadgeUI();
   },
 
   async confirmPlay(code, label, outsAdded = 0) {
@@ -328,6 +430,11 @@ const LiveScorer = {
 
   recordPlay(code, label, outsAdded = 0) {
     const runs = (code === 'HR') ? 1 : 0;
+    if (runs > 0) {
+      const isTop = this.game.half_inning === 'top';
+      if (isTop) this.game.away_score += runs;
+      else this.game.home_score += runs;
+    }
     
     // Automatic Base Runner Progression
     if (code === '1B') {
@@ -358,6 +465,7 @@ const LiveScorer = {
     }
 
     const payload = {
+      action: 'record_play',
       game_id: this.game.id,
       inning: this.game.current_inning,
       half_inning: this.game.half_inning,
@@ -370,19 +478,10 @@ const LiveScorer = {
       runs_scored: runs
     };
 
-    fetch('api/live_score.php?action=record_play', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then(res => res.json()).then(data => {
-      if (data.success) {
-        App.showSnackbar(`Jugada registrada: ${label}`);
-        this.advanceBatterLineup();
-        this.renderScorerInterface();
-      } else {
-        App.showSnackbar(data.message || 'Error al registrar la jugada.');
-      }
-    });
+    this.enqueueOfflineAction(payload);
+    App.showSnackbar(`Jugada registrada: ${label}`);
+    this.advanceBatterLineup();
+    this.renderScorerInterface();
   },
 
   recordRunScored() {
@@ -392,6 +491,15 @@ const LiveScorer = {
     } else {
       this.game.home_score++;
     }
+
+    const payload = {
+      action: 'record_run',
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning
+    };
+
+    this.enqueueOfflineAction(payload);
     App.showSnackbar("+1 Carrera sumada al marcador");
     this.renderScorerInterface();
   },
@@ -405,6 +513,15 @@ const LiveScorer = {
     }
     this.outsCount = 0;
     this.baseRunners = { b1: false, b2: false, b3: false };
+    
+    const payload = {
+      action: 'change_inning',
+      game_id: this.game.id,
+      current_inning: this.game.current_inning,
+      half_inning: this.game.half_inning
+    };
+
+    this.enqueueOfflineAction(payload);
     this.autoSelectActivePlayers();
     this.renderScorerInterface();
   },
@@ -451,21 +568,22 @@ const LiveScorer = {
   },
 
   async finishGame() {
-    const confirmed = await App.showConfirm("Finalizar Partido", "¿Está seguro de que desea dar por finalizado oficialmente este partido?", "sports_baseball", "#EF4444");
+    const confirmed = await App.showConfirm("Finalizar Partido", `¿Está seguro de finalizar el partido con marcador ${this.game.away_short} ${this.game.away_score} - ${this.game.home_score} ${this.game.home_short}?`, "sports_baseball", "#EF4444");
     if (confirmed) {
-      fetch('api/games.php?action=update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: this.game.id,
-          status: 'finished',
-          stadium_id: this.game.stadium_id,
-          game_date: this.game.game_date
-        })
-      }).then(res => res.json()).then(data => {
-        App.showAlert("Partido Finalizado", "El resultado final ha sido registrado exitosamente.", "check_circle", "#10B981");
-        App.showView('game_detail', this.game.id);
-      });
+      const payload = {
+        action: 'finalize',
+        game_id: this.game.id,
+        away_score: this.game.away_score,
+        home_score: this.game.home_score,
+        current_inning: this.game.current_inning,
+        half_inning: this.game.half_inning
+      };
+
+      this.enqueueOfflineAction(payload);
+      await this.processOfflineQueue();
+
+      App.showAlert("Partido Finalizado", `El resultado final (${this.game.away_score} - ${this.game.home_score}) ha sido registrado exitosamente.`, "check_circle", "#10B981");
+      App.showView('game_detail', this.game.id);
     }
   }
 };

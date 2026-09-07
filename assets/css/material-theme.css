@@ -1024,3 +1024,51 @@ div, span, p, h1, h2, h3, h4, h5, th, td, button, label, input, select {
   min-width: 0;
   overflow-wrap: break-word;
 }
+
+/* Admin Autonomous Control Panel Tabs & Buttons System */
+.admin-tab-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 12px 2px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.admin-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tab-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #FFFFFF;
+  color: #5F6368;
+  border: 1px solid #DADCE0;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.admin-tab-chip:hover {
+  background: #F8F9FA;
+  color: #202124;
+  border-color: #BDC1C6;
+}
+
+.admin-tab-chip.active {
+  background: #E8F0FE !important;
+  color: #1A73E8 !important;
+  border-color: #1A73E8 !important;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.15);
+}
