@@ -72,7 +72,7 @@ session_start();
     <div id="pwa-install-banner" class="md-card" style="display:none; position:fixed; bottom:74px; left:50%; transform:translateX(-50%); width: calc(100% - 24px); max-width: 744px; z-index: 250; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid var(--lmb-blue-primary); box-shadow: 0 8px 32px rgba(0,0,0,0.6); padding: 12px 14px; border-radius: 16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div style="display:flex; align-items:center; gap:10px; min-width:0;">
-          <img src="assets/images/lmb_logo.png" style="width:40px; height:40px; min-width:40px; border-radius:50%; border:2px solid #F59E0B; object-fit:cover;" alt="LMB">
+          <img src="assets/images/lmb_logo.png" style="width:40px; height:40px; min-width:40px; border-radius:50%; border:2px solid #1A73E8; object-fit:cover;" alt="LMB">
           <div style="min-width:0;">
             <div style="font-weight:800; font-size:0.88rem; color:#FFFFFF;" class="text-truncate">¡Instala LMB Stats App!</div>
             <div style="font-size:0.75rem; color:#94A3B8; line-height:1.2;" class="text-truncate">Acceso directo, alertas en vivo y uso sin conexión.</div>
@@ -127,7 +127,7 @@ session_start();
     <!-- Dynamic SPA View Mount -->
     <main id="view-container">
       <div class="view-content" style="text-align: center; padding: 40px 16px;">
-        <div style="font-size: 1.1rem; font-weight: 700; color: #F59E0B;">Cargando LMB Béisbol...</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: #1A73E8;">Cargando LMB Béisbol...</div>
       </div>
     </main>
 
@@ -141,13 +141,13 @@ session_start();
         <span class="material-icons-round">calendar_month</span>
         <span>Partidos</span>
       </button>
-      <button id="nav-leaders" class="nav-item" onclick="App.showView('leaders')">
-        <span class="material-icons-round">military_tech</span>
-        <span>Líderes</span>
+      <button id="nav-standings" class="nav-item" onclick="App.showView('standings')">
+        <span class="material-icons-round">leaderboard</span>
+        <span>Posiciones</span>
       </button>
-      <button id="nav-teams" class="nav-item" onclick="App.showView('teams')">
-        <span class="material-icons-round">groups</span>
-        <span>Equipos</span>
+      <button id="nav-leaders" class="nav-item" onclick="App.showView('leaders')">
+        <span class="material-icons-round">workspace_premium</span>
+        <span>Líderes</span>
       </button>
       <button id="nav-admin" class="nav-item" onclick="App.showView('admin')">
         <span class="material-icons-round">admin_panel_settings</span>
@@ -158,20 +158,20 @@ session_start();
     <!-- Snackbar Notification Toast -->
     <div id="snackbar" style="display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#3B82F6; color:#FFF; padding:10px 18px; border-radius:99px; font-size:0.8rem; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,0.5); z-index:400; white-space:nowrap;"></div>
 
-    <!-- Auth Bottom Sheet Modal Dialog (Login & Register) -->
+    <!-- Global Auth / Login Sheet Modal -->
     <div id="auth-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet">
         <div class="sheet-handle" onclick="App.closeAuthModal()"></div>
         
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="display:flex; gap:8px;">
-            <button id="auth-tab-login-btn" class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.switchAuthTab('login')">Iniciar Sesión</button>
-            <button id="auth-tab-register-btn" class="md-btn md-btn-outlined" style="padding:6px 14px; font-size:0.8rem;" onclick="App.switchAuthTab('register')">Crear Cuenta</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div id="auth-modal-tabs" style="display:flex; gap:8px;">
+            <button id="tab-login" class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.85rem;" onclick="App.switchAuthTab('login')">Ingresar</button>
+            <button id="tab-register" class="md-btn md-btn-outlined" style="padding:6px 14px; font-size:0.85rem;" onclick="App.switchAuthTab('register')">Registrarse</button>
           </div>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeAuthModal()">❌</button>
         </div>
 
-        <div id="first-user-banner" class="md-card" style="display:none; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color:#000; padding:10px;">
+        <div id="first-user-banner" class="md-card" style="display:none; background: #E8F0FE; color:#1A73E8; border: 1px solid #AECBFA; padding:10px; border-radius:12px;">
           <div style="font-weight:800; font-size:0.82rem;">🌟 ¡Serás el primer usuario registrado y tomarás el control como Super Administrador!</div>
         </div>
 
@@ -229,8 +229,8 @@ session_start();
         <div class="sheet-handle" onclick="App.closeUserProfileModal()"></div>
         
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">account_circle</span> Mi Perfil de Usuario
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">account_circle</span> Mi Perfil de Usuario
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeUserProfileModal()">❌</button>
         </div>
@@ -247,8 +247,8 @@ session_start();
         <div class="sheet-handle" onclick="App.closeGameResultModal()"></div>
         
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">edit_note</span> Cargar Resultado y Estado del Partido
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">edit_note</span> Cargar Resultado y Estado del Partido
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeGameResultModal()">✕</button>
         </div>
@@ -257,8 +257,8 @@ session_start();
           <input type="hidden" id="gr-game-id">
           
           <div class="form-group">
-            <label style="color:#F59E0B; font-weight:800;">Estado del Partido</label>
-            <select id="gr-status" class="form-control" style="background:#0F172A; font-weight:700;">
+            <label style="color:#202124; font-weight:800;">Estado del Partido</label>
+            <select id="gr-status" class="form-control" style="font-weight:700;">
               <option value="scheduled">📅 Programado</option>
               <option value="live">🔴 En Vivo</option>
               <option value="delayed">⏳ Retrasado</option>
@@ -268,9 +268,9 @@ session_start();
             </select>
           </div>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(255,255,255,0.03); padding:10px; border-radius:12px;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:#F8F9FA; border:1px solid #DADCE0; padding:10px; border-radius:12px;">
             <div style="text-align:center;">
-              <div id="gr-away-team-label" style="font-weight:800; color:#F59E0B; font-size:0.85rem;" class="text-truncate">Visitante</div>
+              <div id="gr-away-team-label" style="font-weight:800; color:#202124; font-size:0.85rem;" class="text-truncate">Visitante</div>
               <div class="form-group" style="margin-top:6px;">
                 <label>Carreras (C)</label>
                 <input type="number" id="gr-away-score" class="form-control" min="0" value="0" style="text-align:center; font-size:1.1rem; font-weight:800;">
@@ -341,17 +341,17 @@ session_start();
       <div class="md-bottom-sheet">
         <div class="sheet-handle" onclick="App.closeRoleEditModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">manage_accounts</span> Asignar Rol y Equipo de Usuario
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">manage_accounts</span> Asignar Rol y Equipo de Usuario
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeRoleEditModal()">✕</button>
         </div>
         <form id="role-edit-form" onsubmit="App.handleSaveUserRole(event)" style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
           <input type="hidden" id="re-user-id">
-          <div style="font-size:0.85rem; font-weight:700; color:#3B82F6;" id="re-user-info">Usuario</div>
+          <div style="font-size:0.85rem; font-weight:700; color:#1A73E8;" id="re-user-info">Usuario</div>
           <div class="form-group">
-            <label style="color:#F59E0B; font-weight:800;">Rol de Administración</label>
-            <select id="re-user-role" class="form-control" style="background:#0F172A; font-weight:700;">
+            <label style="color:#202124; font-weight:800;">Rol de Administración</label>
+            <select id="re-user-role" class="form-control" style="font-weight:700;">
               <option value="super_admin">👑 Super Administrador</option>
               <option value="admin">🛡️ Administrador de Liga</option>
               <option value="team_admin">🧢 Administrador de Equipo</option>
@@ -361,11 +361,11 @@ session_start();
           </div>
           <div class="form-group">
             <label>Equipo Asignado (opcional)</label>
-            <select id="re-user-team" class="form-control" style="background:#0F172A;">
+            <select id="re-user-team" class="form-control">
               <option value="">- Sin equipo específico -</option>
             </select>
           </div>
-          <button type="submit" class="md-btn md-btn-gold" style="width:100%;">💾 Guardar Cambios de Rol</button>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%;">💾 Guardar Cambios de Rol</button>
         </form>
       </div>
     </div>
@@ -375,7 +375,7 @@ session_start();
       <div class="md-bottom-sheet">
         <div class="sheet-handle" onclick="App.closeCreatePlayerModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
             <span class="material-icons-round" style="color:#10B981;">person_add</span> Registrar en Plantel del Equipo
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeCreatePlayerModal()">✕</button>
@@ -384,8 +384,8 @@ session_start();
           <input type="hidden" id="cp-team-id">
           
           <div class="form-group">
-            <label style="color:#F59E0B; font-weight:800;">Tipo de Integrante</label>
-            <select id="cp-role-type" class="form-control" style="background:#0F172A; font-weight:700;">
+            <label style="color:#202124; font-weight:800;">Tipo de Integrante</label>
+            <select id="cp-role-type" class="form-control" style="font-weight:700;">
               <option value="player">⚾ Jugador Activo</option>
               <option value="manager">🧢 Manager / Mánager Principal</option>
               <option value="pitching_coach">⚾ Coach de Pitcheo</option>
@@ -411,7 +411,7 @@ session_start();
             </div>
             <div class="form-group">
               <label>Posición Principal</label>
-              <select id="cp-position" class="form-control" style="background:#0F172A;">
+              <select id="cp-position" class="form-control">
                 <option value="P">P - Lanzador / Pitcher</option>
                 <option value="C">C - Receptor / Catcher</option>
                 <option value="1B">1B - Primera Base</option>
@@ -436,8 +436,8 @@ session_start();
       <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
         <div class="sheet-handle" onclick="App.closeEditPlayerModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">person_edit</span> Editar Integrante del Plantel
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">person_edit</span> Editar Integrante del Plantel
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeEditPlayerModal()">✕</button>
         </div>
@@ -445,13 +445,13 @@ session_start();
           <input type="hidden" id="ep-player-id">
 
           <div class="form-group">
-            <label style="color:#F59E0B; font-weight:800;">⚾ Equipo Asignado (Mover a)</label>
-            <select id="ep-team-id" class="form-control" style="background:#0F172A; font-weight:700; color:#FFF;"></select>
+            <label style="color:#202124; font-weight:800;">⚾ Equipo Asignado (Mover a)</label>
+            <select id="ep-team-id" class="form-control" style="font-weight:700;"></select>
           </div>
 
           <div class="form-group">
-            <label style="color:#3B82F6; font-weight:800;">Tipo de Integrante / Rol</label>
-            <select id="ep-role-type" class="form-control" style="background:#0F172A; font-weight:700;">
+            <label style="color:#1A73E8; font-weight:800;">Tipo de Integrante / Rol</label>
+            <select id="ep-role-type" class="form-control" style="font-weight:700;">
               <option value="player">⚾ Jugador Activo</option>
               <option value="manager">🧢 Manager / Mánager Principal</option>
               <option value="pitching_coach">⚾ Coach de Pitcheo</option>
@@ -478,7 +478,7 @@ session_start();
             </div>
             <div class="form-group">
               <label>Posición Principal</label>
-              <select id="ep-position-primary" class="form-control" style="background:#0F172A;">
+              <select id="ep-position-primary" class="form-control">
                 <option value="P">P - Lanzador / Pitcher</option>
                 <option value="C">C - Receptor / Catcher</option>
                 <option value="1B">1B - Primera Base</option>
@@ -497,7 +497,7 @@ session_start();
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div class="form-group">
               <label>Batea</label>
-              <select id="ep-bats" class="form-control" style="background:#0F172A;">
+              <select id="ep-bats" class="form-control">
                 <option value="R">Derecho (R)</option>
                 <option value="L">Zurdo (L)</option>
                 <option value="S">Ambidextro (S)</option>
@@ -505,7 +505,7 @@ session_start();
             </div>
             <div class="form-group">
               <label>Lanza</label>
-              <select id="ep-throws" class="form-control" style="background:#0F172A;">
+              <select id="ep-throws" class="form-control">
                 <option value="R">Derecho (R)</option>
                 <option value="L">Zurdo (L)</option>
               </select>
@@ -514,7 +514,7 @@ session_start();
 
           <div style="display:flex; gap:10px; margin-top:6px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditPlayerModal()">Cancelar</button>
-            <button type="submit" class="md-btn md-btn-gold" style="flex:1;">💾 Guardar Cambios</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">💾 Guardar Cambios</button>
           </div>
         </form>
       </div>
@@ -525,8 +525,8 @@ session_start();
       <div class="md-bottom-sheet" style="max-width:540px; max-height:92vh; overflow-y:auto;">
         <div class="sheet-handle" onclick="App.closeGameLineupModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">checklist</span> Configurar Lineup de Partido
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">checklist</span> Configurar Lineup de Partido
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeGameLineupModal()">✕</button>
         </div>
@@ -547,8 +547,8 @@ session_start();
       <div class="md-bottom-sheet" style="max-width:480px;">
         <div class="sheet-handle" onclick="App.closeFileUploadModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#3B82F6;">cloud_upload</span> Subir Logo / Foto
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">cloud_upload</span> Subir Logo / Foto
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeFileUploadModal()">✕</button>
         </div>
@@ -556,8 +556,8 @@ session_start();
           <input type="hidden" id="upload-type" value="logo">
           <input type="hidden" id="upload-target-id" value="0">
           <div class="form-group">
-            <label style="font-weight:700; color:#F59E0B;" id="upload-label-title">Seleccionar Archivo de Imagen</label>
-            <input type="file" id="upload-file-input" class="form-control" accept="image/*" required style="padding:8px; background:#0F172A;">
+            <label style="font-weight:700; color:#202124;" id="upload-label-title">Seleccionar Archivo de Imagen</label>
+            <input type="file" id="upload-file-input" class="form-control" accept="image/*" required style="padding:8px;">
           </div>
           <button type="submit" class="md-btn md-btn-primary" style="width:100%;">📤 Cargar Imagen</button>
         </form>
@@ -569,20 +569,20 @@ session_start();
       <div class="md-bottom-sheet" style="max-width:600px; max-height:90vh; overflow-y:auto;">
         <div class="sheet-handle" onclick="App.closeEntityGalleryModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">photo_library</span> Galería de Postales e Imágenes (Máx. 10)
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">photo_library</span> Galería de Postales e Imágenes (Máx. 10)
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeEntityGalleryModal()">✕</button>
         </div>
         
-        <div id="gallery-upload-section" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.04); border-radius:12px;">
+        <div id="gallery-upload-section" style="margin-top:10px; padding:10px; background:#F8F9FA; border:1px solid #DADCE0; border-radius:12px;">
           <form id="gallery-upload-form" onsubmit="App.handleUploadGalleryPhoto(event)" style="display:flex; flex-direction:column; gap:8px;">
             <input type="hidden" id="gallery-entity-type">
             <input type="hidden" id="gallery-entity-id">
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <input type="file" id="gallery-file-input" class="form-control" accept="image/*" required style="flex:1; font-size:0.8rem; padding:4px;">
               <input type="text" id="gallery-caption-input" class="form-control" placeholder="Descripción / Leyenda" style="flex:1; font-size:0.8rem;">
-              <button type="submit" class="md-btn md-btn-gold" style="padding:6px 12px; font-size:0.8rem; flex-shrink:0;">➕ Subir</button>
+              <button type="submit" class="md-btn md-btn-primary" style="padding:6px 12px; font-size:0.8rem; flex-shrink:0;">➕ Subir</button>
             </div>
           </form>
         </div>
@@ -598,8 +598,8 @@ session_start();
       <div class="md-bottom-sheet" style="max-width:540px; max-height:92vh; overflow-y:auto;">
         <div class="sheet-handle" onclick="App.closeGameStatsModal()"></div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons-round" style="color:#F59E0B;">analytics</span> Cargar / Editar Estadísticas Post-Partido
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">analytics</span> Cargar / Editar Estadísticas Post-Partido
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeGameStatsModal()">✕</button>
         </div>
@@ -608,14 +608,14 @@ session_start();
           <input type="hidden" id="gs-team-id">
 
           <div class="form-group">
-            <label style="color:#3B82F6; font-weight:800;">Seleccionar Jugador del Partido</label>
-            <select id="gs-player-id" class="form-control" style="background:#0F172A; font-weight:700;" onchange="App.onManualStatPlayerChange(this.value)">
+            <label style="color:#1A73E8; font-weight:800;">Seleccionar Jugador del Partido</label>
+            <select id="gs-player-id" class="form-control" style="font-weight:700;" onchange="App.onManualStatPlayerChange(this.value)">
               <!-- Loaded dynamically -->
             </select>
           </div>
 
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px;">
-            <div style="font-size:0.85rem; font-weight:800; color:#F59E0B; margin-bottom:8px;">🏏 ESTADÍSTICAS DE BATEO</div>
+          <div style="background:#F8F9FA; border:1px solid #DADCE0; border-radius:10px; padding:10px;">
+            <div style="font-size:0.85rem; font-weight:800; color:#1A73E8; margin-bottom:8px;">🏏 ESTADÍSTICAS DE BATEO</div>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
               <div>
                 <label style="font-size:0.7rem;">Turnos (AB)</label>
@@ -656,8 +656,8 @@ session_start();
             </div>
           </div>
 
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px;">
-            <div style="font-size:0.85rem; font-weight:800; color:#3B82F6; margin-bottom:8px;">⚾ ESTADÍSTICAS DE PITCHEO (Si lanzó)</div>
+          <div style="background:#F8F9FA; border:1px solid #DADCE0; border-radius:10px; padding:10px;">
+            <div style="font-size:0.85rem; font-weight:800; color:#1A73E8; margin-bottom:8px;">⚾ ESTADÍSTICAS DE PITCHEO (Si lanzó)</div>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
               <div>
                 <label style="font-size:0.7rem;">Outs (IP: 3 outs = 1 Inn)</label>
@@ -685,7 +685,7 @@ session_start();
               </div>
               <div style="grid-column: span 3;">
                 <label style="font-size:0.7rem;">Decisión de Lanzador</label>
-                <select id="gs-p-decision" class="form-control" style="background:#0F172A;">
+                <select id="gs-p-decision" class="form-control">
                   <option value="NONE">Ninguna / Relevo Normal</option>
                   <option value="W">W - Lanzador Ganador</option>
                   <option value="L">L - Lanzador Perdedor</option>
@@ -695,7 +695,7 @@ session_start();
             </div>
           </div>
 
-          <button type="submit" class="md-btn md-btn-gold" style="width:100%;">💾 Guardar Estadísticas de Jugador</button>
+          <button type="submit" class="md-btn md-btn-primary" style="width:100%;">💾 Guardar Estadísticas de Jugador</button>
         </form>
       </div>
     </div>
@@ -704,10 +704,10 @@ session_start();
     <div id="custom-alert-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:440px;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-          <span id="custom-alert-icon" class="material-icons-round" style="font-size:28px; color:#F59E0B;">info</span>
-          <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;" id="custom-alert-title">Atención</div>
+          <span id="custom-alert-icon" class="material-icons-round" style="font-size:28px; color:#1A73E8;">info</span>
+          <div style="font-weight:800; font-size:1.1rem; color:#202124;" id="custom-alert-title">Atención</div>
         </div>
-        <div style="font-size:0.88rem; color:#94A3B8; margin-bottom:16px; line-height:1.4;" id="custom-alert-message">Mensaje del sistema</div>
+        <div style="font-size:0.88rem; color:#5F6368; margin-bottom:16px; line-height:1.4;" id="custom-alert-message">Mensaje del sistema</div>
         <div style="display:flex; gap:10px;">
           <button class="md-btn md-btn-outlined" style="flex:1; display:none;" id="custom-alert-cancel-btn">Cancelar</button>
           <button class="md-btn md-btn-primary" style="flex:1;" id="custom-alert-ok-btn">Aceptar</button>
@@ -718,12 +718,12 @@ session_start();
     <!-- Custom Prompt Dialog Modal -->
     <div id="custom-prompt-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:440px;">
-        <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;" id="prompt-modal-title">Ingresar Valor</div>
-        <p style="font-size:0.82rem; color:#94A3B8; margin:4px 0 8px 0;" id="prompt-modal-msg">Ingrese el valor requerido:</p>
+        <div style="font-weight:800; font-size:1.1rem; color:#202124;" id="prompt-modal-title">Ingresar Valor</div>
+        <p style="font-size:0.82rem; color:#5F6368; margin:4px 0 8px 0;" id="prompt-modal-msg">Ingrese el valor requerido:</p>
         <input type="text" id="prompt-modal-input" class="form-control" style="margin-bottom:14px;">
         <div style="display:flex; gap:10px;">
           <button class="md-btn md-btn-outlined" style="flex:1;" id="prompt-modal-cancel">Cancelar</button>
-          <button class="md-btn md-btn-gold" style="flex:1;" id="prompt-modal-ok">Aceptar</button>
+          <button class="md-btn md-btn-primary" style="flex:1;" id="prompt-modal-ok">Aceptar</button>
         </div>
       </div>
     <!-- Full Create Team Modal -->
@@ -943,39 +943,39 @@ session_start();
     <div id="create-game-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h3 style="font-size:1.1rem; font-weight:800; color:#FFFFFF;">⚾ Programar Partido</h3>
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">⚾ Programar Partido</h3>
           <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateGameModal()">✕</button>
         </div>
         <form onsubmit="App.handleSaveNewGame(event);">
           <div class="form-group" style="margin-bottom:10px;">
             <label style="font-size:0.78rem; font-weight:700;">Categoría / División</label>
-            <select id="schedule-game-category" class="form-control" style="background:#0F172A;" onchange="App.onGameCategoryChange()"></select>
+            <select id="schedule-game-category" class="form-control" onchange="App.onGameCategoryChange()"></select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
               <label style="font-size:0.75rem; font-weight:700;">Equipo Local</label>
-              <select id="schedule-game-home" class="form-control" style="background:#0F172A;"></select>
+              <select id="schedule-game-home" class="form-control"></select>
             </div>
             <div>
               <label style="font-size:0.75rem; font-weight:700;">Equipo Visitante</label>
-              <select id="schedule-game-away" class="form-control" style="background:#0F172A;"></select>
+              <select id="schedule-game-away" class="form-control"></select>
             </div>
           </div>
           <div class="form-group" style="margin-bottom:10px;">
             <label style="font-size:0.78rem; font-weight:700;">📍 Sede / Campo Deportivo</label>
-            <select id="schedule-game-stadium" class="form-control" style="background:#0F172A;"></select>
+            <select id="schedule-game-stadium" class="form-control"></select>
           </div>
           <div class="form-group" style="margin-bottom:10px;">
             <label style="font-size:0.78rem; font-weight:700;">🏆 Etapa / Rol de Partido</label>
-            <select id="schedule-game-stage" class="form-control" style="background:#0F172A;"></select>
+            <select id="schedule-game-stage" class="form-control"></select>
           </div>
           <div class="form-group" style="margin-bottom:14px;">
             <label style="font-size:0.78rem; font-weight:700;">📅 Fecha y Hora del Encuentro</label>
-            <input type="datetime-local" id="schedule-game-date" class="form-control" required style="background:#0F172A; color:#FFFFFF;">
+            <input type="datetime-local" id="schedule-game-date" class="form-control" required>
           </div>
           <div style="display:flex; gap:10px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateGameModal()">Cancelar</button>
-            <button type="submit" class="md-btn md-btn-gold" style="flex:1;">🗓️ Programar Partido</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">🗓️ Programar Partido</button>
           </div>
         </form>
       </div>

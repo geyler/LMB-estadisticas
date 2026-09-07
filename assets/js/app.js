@@ -153,7 +153,7 @@ const App = {
   },
 
   // Custom HTML Alert & Confirm Dialogs (NO native browser alerts)
-  showAlert(title, message, icon = 'info', iconColor = '#F59E0B') {
+  showAlert(title, message, icon = 'info', iconColor = '#1A73E8') {
     return new Promise((resolve) => {
       const modal = document.getElementById('custom-alert-modal');
       const titleEl = document.getElementById('custom-alert-title');
@@ -337,7 +337,7 @@ const App = {
         <div style="display:flex; align-items:center;">
           ${teamBtnHtml}
           <button id="user-action-btn" class="md-btn md-btn-outlined" style="display:flex; align-items:center; gap:6px; padding:4px 10px; font-size:0.78rem;" onclick="App.showUserModal()">
-            <span class="material-icons-round" style="color:#F59E0B; font-size:18px;">account_circle</span>
+            <span class="material-icons-round" style="color:#1A73E8; font-size:18px;">account_circle</span>
             <span class="user-badge-name text-truncate">${this.currentUser.name}</span>
             <span class="user-badge-role">${roleTag}</span>
           </button>
@@ -618,49 +618,49 @@ const App = {
         </div>
 
         <!-- Paso 1 -->
-        <div class="md-card" style="margin-top:12px; border-left:4px solid ${cats.length ? '#10B981' : '#F59E0B'};">
+        <div class="md-card" style="margin-top:12px; border-left:4px solid ${cats.length ? '#188038' : '#1A73E8'};">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 1: Temporadas y Categorías</div>
+            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 1: Temporadas y Categorías</div>
             <span class="md-chip ${cats.length ? 'active' : ''}">${cats.length ? `✅ ${cats.length} Categorías` : '⚠️ Requerido'}</span>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Crea las divisiones de la liga (ej. A1 Primera División, A2 Segunda División, Infantiles).</p>
+          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Crea las divisiones de la liga (ej. A1 Primera División, A2 Segunda División, Infantiles).</p>
           ${isAuth ? `<button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('admin')">⚙️ Gestionar Categorías</button>` : ''}
         </div>
 
         <!-- Paso 2 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${stadia.length ? '#10B981' : '#F59E0B'};">
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${stadia.length ? '#188038' : '#1A73E8'};">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 2: Sedes y Campos Deportivos</div>
+            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 2: Sedes y Campos Deportivos</div>
             <span class="md-chip ${stadia.length ? 'active' : ''}">${stadia.length ? `✅ ${stadia.length} Sedes` : '⚠️ Requerido'}</span>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Registra los estadios y canchas donde se disputarán los partidos oficializados de la temporada.</p>
+          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Registra los estadios y canchas donde se disputarán los partidos oficializados de la temporada.</p>
           ${isAuth ? `<button class="md-btn md-btn-primary" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateStadiumModal()">📍 Registrar Nueva Sede</button>` : ''}
         </div>
 
         <!-- Paso 3 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${teams.length >= 2 ? '#10B981' : '#F59E0B'};">
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${teams.length >= 2 ? '#188038' : '#1A73E8'};">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 3: Registro de Equipos</div>
+            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 3: Registro de Equipos</div>
             <span class="md-chip ${teams.length >= 2 ? 'active' : ''}">${teams.length ? `✅ ${teams.length} Equipos` : '⚠️ Mínimo 2 equipos'}</span>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Registra los clubes participantes y asócialos a su categoría y sede correspondiente.</p>
+          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Registra los clubes participantes y asócialos a su categoría y sede correspondiente.</p>
           ${isAuth ? `<button class="md-btn md-btn-primary" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateTeamModal()">🛡️ Registrar Equipo</button>` : ''}
         </div>
 
         <!-- Paso 4 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${players.length >= 14 ? '#10B981' : '#F59E0B'};">
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${players.length >= 14 ? '#188038' : '#1A73E8'};">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 4: Jugadores y Cuerpo Técnico</div>
+            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 4: Jugadores y Cuerpo Técnico</div>
             <span class="md-chip ${players.length >= 14 ? 'active' : ''}">${players.length ? `✅ ${players.length} Integrantes` : '⚠️ 7-9 jugadores por equipo'}</span>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Carga los planteles (jugadores activos, managers y cuerpo técnico). Se exigen al menos 7 a 9 jugadores por equipo.</p>
+          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Carga los planteles (jugadores activos, managers y cuerpo técnico). Se exigen al menos 7 a 9 jugadores por equipo.</p>
           ${teams.length ? `<button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('teams')">👥 Ver Equipos para Cargar Plantel</button>` : ''}
         </div>
 
         <!-- Paso 5 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${games.length ? '#10B981' : '#F59E0B'};">
+        <div class="md-card" style="margin-top:10px; border-left:4px solid ${games.length ? '#188038' : '#1A73E8'};">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 5: Programación de Partidos</div>
+            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 5: Programación de Partidos</div>
             <span class="md-chip ${games.length ? 'active' : ''}">${games.length ? `✅ ${games.length} Partidos` : '⚠️ Pendiente'}</span>
           </div>
           <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Programa los juegos fijando la sede, horario y contendientes.</p>
@@ -996,7 +996,7 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">format_list_numbered</span> Tabla de Posiciones Oficial</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">format_list_numbered</span> Tabla de Posiciones Oficial</h2>
         </div>
 
         <div class="md-card" style="padding:0; overflow:hidden;">
@@ -1461,7 +1461,7 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">groups</span> Equipos de la Liga</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">groups</span> Equipos de la Liga</h2>
           ${canCreate ? `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateTeamModal()">➕ Crear Equipo</button>` : ''}
         </div>
 
@@ -1650,7 +1650,7 @@ const App = {
 
         <!-- Batting Stats Table -->
         <div class="view-section">
-          <h3 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">sports_baseball</span> Tabla de Estadísticas de Bateo (Ofensiva)</h3>
+          <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">sports_baseball</span> Tabla de Estadísticas de Bateo (Ofensiva)</h3>
           <div class="md-table-wrapper">
             <table class="md-table" style="text-align:center; font-size:0.8rem;">
               <thead>
@@ -1660,10 +1660,10 @@ const App = {
               </thead>
               <tbody>
                 <tr>
-                  <td>${b.gp || 0}</td><td>${b.ab || 0}</td><td>${b.r || 0}</td><td style="font-weight:800; color:#3B82F6;">${b.h || 0}</td>
-                  <td>${b.doubles || 0}</td><td>${b.triples || 0}</td><td style="font-weight:800; color:#EF4444;">${b.hr || 0}</td><td style="font-weight:800;">${b.rbi || 0}</td>
+                  <td>${b.gp || 0}</td><td>${b.ab || 0}</td><td>${b.r || 0}</td><td style="font-weight:800; color:#1A73E8;">${b.h || 0}</td>
+                  <td>${b.doubles || 0}</td><td>${b.triples || 0}</td><td style="font-weight:800; color:#EA4335;">${b.hr || 0}</td><td style="font-weight:800;">${b.rbi || 0}</td>
                   <td>${b.bb || 0}</td><td>${b.so || 0}</td><td>${b.sb || 0}</td>
-                  <td style="font-weight:800; color:#F59E0B;">${b.avg || '.000'}</td><td>${b.obp || '.000'}</td><td>${b.slg || '.000'}</td><td style="font-weight:800; color:#10B981;">${b.ops || '.000'}</td>
+                  <td style="font-weight:800; color:#1A73E8;">${b.avg || '.000'}</td><td>${b.obp || '.000'}</td><td>${b.slg || '.000'}</td><td style="font-weight:800; color:#188038;">${b.ops || '.000'}</td>
                 </tr>
               </tbody>
             </table>
@@ -1672,7 +1672,7 @@ const App = {
 
         <!-- Pitching Stats Table -->
         <div class="view-section" style="margin-top:16px;">
-          <h3 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">sports</span> Tabla de Estadísticas de Pitcheo (Lanzador)</h3>
+          <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">sports</span> Tabla de Estadísticas de Pitcheo (Lanzador)</h3>
           <div class="md-table-wrapper">
             <table class="md-table" style="text-align:center; font-size:0.8rem;">
               <thead>
@@ -1682,10 +1682,10 @@ const App = {
               </thead>
               <tbody>
                 <tr>
-                  <td>${pi.gp || 0}</td><td>${pi.wins || 0}-${pi.losses || 0}</td><td style="color:#F59E0B; font-weight:800;">${pi.saves || 0}</td>
+                  <td>${pi.gp || 0}</td><td>${pi.wins || 0}-${pi.losses || 0}</td><td style="color:#1A73E8; font-weight:800;">${pi.saves || 0}</td>
                   <td style="font-weight:800;">${pi.ip_display || '0.0'}</td><td>${pi.h || 0}</td><td>${pi.r || 0}</td><td>${pi.er || 0}</td>
-                  <td>${pi.bb || 0}</td><td style="font-weight:800; color:#EF4444;">${pi.so || 0}</td>
-                  <td style="font-weight:800; color:#3B82F6;">${pi.era || '0.00'}</td><td style="font-weight:700;">${pi.whip || '0.00'}</td>
+                  <td>${pi.bb || 0}</td><td style="font-weight:800; color:#EA4335;">${pi.so || 0}</td>
+                  <td style="font-weight:800; color:#1A73E8;">${pi.era || '0.00'}</td><td style="font-weight:700;">${pi.whip || '0.00'}</td>
                 </tr>
               </tbody>
             </table>
@@ -1707,7 +1707,7 @@ const App = {
     let html = `
       <div class="view-content">
         <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#F59E0B;">military_tech</span> Líderes Departamentales</h2>
+          <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">military_tech</span> Líderes Departamentales</h2>
         </div>
 
         <div class="md-card">
@@ -1719,7 +1719,7 @@ const App = {
 
           <!-- Department Selector Chips -->
           <div class="form-group" style="margin-top:10px;">
-            <label style="font-weight:800; color:#F59E0B;">Seleccionar Departamento:</label>
+            <label style="font-weight:800; color:#202124;">Seleccionar Departamento:</label>
             <div class="md-chip-group" style="padding:4px 0;">
               ${type === 'batting' ? `
                 <button class="md-chip ${stat==='avg'?'active':''}" onclick="App.renderLeadersView(document.getElementById('view-container'), 'batting', 'avg')">Average (AVG)</button>
@@ -1798,7 +1798,7 @@ const App = {
           <button class="admin-tab-chip ${this.adminTab === 'categories' ? 'active' : ''}" onclick="App.switchAdminTab('categories')">🏆 Ligas y Categorías</button>
           <button class="admin-tab-chip ${this.adminTab === 'stadiums' ? 'active' : ''}" onclick="App.switchAdminTab('stadiums')">📍 Sedes y Campos</button>
           <button class="admin-tab-chip ${this.adminTab === 'teams' ? 'active' : ''}" onclick="App.switchAdminTab('teams')">🛡️ Equipos</button>
-          <button class="admin-tab-chip ${this.adminTab === 'unassigned' ? 'active' : ''}" style="${this.adminTab === 'unassigned' ? '' : 'border-color:#F59E0B;'}" onclick="App.switchAdminTab('unassigned')">⚠️ Sin Asignación</button>
+          <button class="admin-tab-chip ${this.adminTab === 'unassigned' ? 'active' : ''}" style="${this.adminTab === 'unassigned' ? '' : 'border-color:#1A73E8;'}" onclick="App.switchAdminTab('unassigned')">⚠️ Sin Asignación</button>
           <button class="admin-tab-chip ${this.adminTab === 'stages' ? 'active' : ''}" onclick="App.switchAdminTab('stages')">⚾ Etapas / Tipos</button>
           <button class="admin-tab-chip ${this.adminTab === 'audit' ? 'active' : ''}" onclick="App.switchAdminTab('audit')">📜 Auditoría</button>
           <button class="admin-tab-chip ${this.adminTab === 'users' ? 'active' : ''}" onclick="App.switchAdminTab('users')">👥 Usuarios y Roles</button>
@@ -1832,7 +1832,7 @@ const App = {
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
             </div>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
+          <p style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -1847,13 +1847,13 @@ const App = {
                   <td><span class="md-chip" style="padding:2px 6px;">${c.code}</span></td>
                   <td>
                     <div style="display:flex; gap:4px;">
-                      <button class="md-btn md-btn-gold" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showCrownChampionModal(${c.id}, '${c.name}')">👑 Coronar</button>
+                      <button class="md-btn md-btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showCrownChampionModal(${c.id}, '${c.name}')">👑 Coronar</button>
                       <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditCategoryModal(${c.id}, '${c.name}', '${c.code}')">✏️ Editar</button>
                       <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteCategory(${c.id}, '${c.name}')">🗑️ Borrar</button>
                     </div>
                   </td>
                 </tr>
-              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px; color:#94A3B8;">Sin categorías registradas. Puedes crear las tuyas de 0.</td></tr>'}
+              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px; color:#5F6368;">Sin categorías registradas. Puedes crear las tuyas de 0.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -1869,7 +1869,7 @@ const App = {
             <h3 style="font-size:1rem; font-weight:800;">Gestor de Sedes y Campos</h3>
             <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStadiumModal()">➕ Nueva Sede / Cancha</button>
           </div>
-          <p style="font-size:0.8rem; color:#94A3B8;">Configura predios principales (ej. Ezeiza Canchas 1, 2, 3, 4) o campos propios de clubes.</p>
+          <p style="font-size:0.8rem; color:#5F6368;">Configura predios principales (ej. Ezeiza Canchas 1, 2, 3, 4) o campos propios de clubes.</p>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -1881,7 +1881,7 @@ const App = {
               ${stadia.length ? stadia.map(s => `
                 <tr>
                   <td style="font-weight:800;">📍 ${s.name}</td>
-                  <td style="font-size:0.8rem; color:#94A3B8;">${s.city} • ${s.address}</td>
+                  <td style="font-size:0.8rem; color:#5F6368;">${s.city} • ${s.address}</td>
                   <td>
                     <div style="display:flex; gap:4px;">
                       <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditStadiumModal(${s.id}, '${s.name}', '${s.address}')">✏️ Editar</button>
@@ -1905,7 +1905,7 @@ const App = {
             <h3 style="font-size:1rem; font-weight:800;">Equipos de la Liga</h3>
             <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateTeamModal()">➕ Registrar Equipo</button>
           </div>
-          <button class="md-btn md-btn-gold" style="width:100%; margin-top:8px;" onclick="App.showMoveTeamModal()">🔄 Mover Equipo (Ascenso / Descenso)</button>
+          <button class="md-btn md-btn-primary" style="width:100%; margin-top:8px;" onclick="App.showMoveTeamModal()">🔄 Mover Equipo (Ascenso / Descenso)</button>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -1937,14 +1937,14 @@ const App = {
       const uPlayers = data.unassigned_players || [];
 
       tabContainer.innerHTML = `
-        <div class="md-card" style="border:1px solid #F59E0B;">
-          <h3 style="font-size:1rem; font-weight:800; color:#F59E0B;">⚠️ Listado de Elementos Sin Asignación</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Aquí convergen automáticamente los equipos cuya categoría fue eliminada o los jugadores que quedaron huérfanos al borrar un equipo. Puedes reasignarlos fácilmente.</p>
+        <div class="md-card" style="border:1px solid #1A73E8; background:#E8F0FE;">
+          <h3 style="font-size:1rem; font-weight:800; color:#1A73E8;">⚠️ Listado de Elementos Sin Asignación</h3>
+          <p style="font-size:0.8rem; color:#3C4043;">Aquí convergen automáticamente los equipos cuya categoría fue eliminada o los jugadores que quedaron huérfanos al borrar un equipo. Puedes reasignarlos fácilmente.</p>
         </div>
 
         <!-- Equipos Sin Categoría -->
         <div class="view-section" style="margin-top:12px;">
-          <h4 style="font-size:0.9rem; font-weight:800; color:#FFFFFF; margin-bottom:6px;">🛡️ Equipos Sin Categoría / División (${uTeams.length})</h4>
+          <h4 style="font-size:0.9rem; font-weight:800; color:#202124; margin-bottom:6px;">🛡️ Equipos Sin Categoría / División (${uTeams.length})</h4>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -1956,10 +1956,10 @@ const App = {
                     <td style="font-weight:800;">${t.name}</td>
                     <td><span class="md-chip">${t.short_name}</span></td>
                     <td>
-                      <button class="md-btn md-btn-gold" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignTeamModal(${t.id}, '${t.name}')">🔄 Asignar Categoría</button>
+                      <button class="md-btn md-btn-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignTeamModal(${t.id}, '${t.name}')">🔄 Asignar Categoría</button>
                     </td>
                   </tr>
-                `).join('') : '<tr><td colspan="3" style="text-align:center; padding:12px; color:#10B981;">✅ Todos los equipos están asignados a una categoría.</td></tr>'}
+                `).join('') : '<tr><td colspan="3" style="text-align:center; padding:12px; color:#188038;">✅ Todos los equipos están asignados a una categoría.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -1967,7 +1967,7 @@ const App = {
 
         <!-- Jugadores Sin Equipo (Agentes Libres) -->
         <div class="view-section" style="margin-top:16px;">
-          <h4 style="font-size:0.9rem; font-weight:800; color:#FFFFFF; margin-bottom:6px;">🧢 Jugadores Sin Equipo / Agentes Libres (${uPlayers.length})</h4>
+          <h4 style="font-size:0.9rem; font-weight:800; color:#202124; margin-bottom:6px;">🧢 Jugadores Sin Equipo / Agentes Libres (${uPlayers.length})</h4>
           <div class="md-table-wrapper">
             <table class="md-table">
               <thead>
@@ -1976,14 +1976,14 @@ const App = {
               <tbody>
                 ${uPlayers.length ? uPlayers.map(p => `
                   <tr>
-                    <td style="font-weight:800; color:#F59E0B;">#${p.jersey_number}</td>
+                    <td style="font-weight:800; color:#1A73E8;">#${p.jersey_number}</td>
                     <td style="font-weight:700;">${p.first_name} ${p.last_name}</td>
                     <td><span class="md-chip" style="padding:2px 6px;">${p.position_primary}</span></td>
                     <td>
                       <button class="md-btn md-btn-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignPlayerModal(${p.id}, '${p.first_name} ${p.last_name}')">🧢 Asignar a Equipo</button>
                     </td>
                   </tr>
-                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px; color:#10B981;">✅ Todos los jugadores activos están integrados en un equipo.</td></tr>'}
+                `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px; color:#188038;">✅ Todos los jugadores activos están integrados en un equipo.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -2011,7 +2011,7 @@ const App = {
             <tbody>
               ${stages.length ? stages.map(s => `
                 <tr>
-                  <td style="font-weight:800; color:#F59E0B;">⚾ ${s.name}</td>
+                  <td style="font-weight:800; color:#1A73E8;">⚾ ${s.name}</td>
                   <td><span class="md-chip">${s.code}</span></td>
                   <td>
                     <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteStage(${s.id}, '${s.name}')">🗑️ Eliminar</button>
@@ -2029,8 +2029,8 @@ const App = {
 
       tabContainer.innerHTML = `
         <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800; color:#3B82F6;">📜 Histórico de Cambios y Auditoría</h3>
-          <p style="font-size:0.8rem; color:#94A3B8;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
+          <h3 style="font-size:1rem; font-weight:800; color:#1A73E8;">📜 Histórico de Cambios y Auditoría</h3>
+          <p style="font-size:0.8rem; color:#5F6368;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -2041,10 +2041,10 @@ const App = {
             <tbody>
               ${logs.length ? logs.map(l => `
                 <tr>
-                  <td style="white-space:nowrap; color:#94A3B8;">${l.created_at}</td>
+                  <td style="white-space:nowrap; color:#5F6368;">${l.created_at}</td>
                   <td><span class="md-chip" style="font-size:0.65rem;">${l.action}</span></td>
                   <td style="font-weight:600;">${l.description}</td>
-                  <td style="color:#F59E0B;">${l.user_name || 'Admin'}</td>
+                  <td style="color:#1A73E8;">${l.user_name || 'Admin'}</td>
                 </tr>
               `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">Sin registros en la auditoría.</td></tr>'}
             </tbody>
@@ -2056,8 +2056,8 @@ const App = {
     } else if (this.adminTab === 'branding') {
       tabContainer.innerHTML = `
         <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800; color:#3B82F6; margin-bottom:8px;">🎨 Personalización Total de Marca y Branding</h3>
-          <p style="font-size:0.8rem; color:#94A3B8; margin-bottom:12px;">Modifica el nombre de la liga, eslogan visual, logotipo oficial, esquema de colores y descripción SEO.</p>
+          <h3 style="font-size:1rem; font-weight:800; color:#1A73E8; margin-bottom:8px;">🎨 Personalización Total de Marca y Branding</h3>
+          <p style="font-size:0.8rem; color:#5F6368; margin-bottom:12px;">Modifica el nombre de la liga, eslogan visual, logotipo oficial, esquema de colores y descripción SEO.</p>
           
           <div style="display:flex; flex-direction:column; gap:10px;">
             <div class="form-group">
@@ -2078,8 +2078,8 @@ const App = {
             <div class="form-group">
               <label style="font-size:0.78rem; font-weight:700;">Color Primario de la Marca (Hex / RGB)</label>
               <div style="display:flex; gap:8px;">
-                <input type="color" id="setting-site-color-picker" value="${this.settings.site_primary_color || '#3B82F6'}" style="width:40px; height:38px; padding:2px; border-radius:6px;" onchange="document.getElementById('setting-site-color').value=this.value">
-                <input type="text" id="setting-site-color" class="form-control" value="${this.settings.site_primary_color || '#3B82F6'}">
+                <input type="color" id="setting-site-color-picker" value="${this.settings.site_primary_color || '#1A73E8'}" style="width:40px; height:38px; padding:2px; border-radius:6px;" onchange="document.getElementById('setting-site-color').value=this.value">
+                <input type="text" id="setting-site-color" class="form-control" value="${this.settings.site_primary_color || '#1A73E8'}">
               </div>
             </div>
 
@@ -2109,8 +2109,8 @@ const App = {
 
     let html = `
       <div class="md-card">
-        <h3 style="font-size:1rem; font-weight:800; color:#F59E0B;">👥 Gestión de Usuarios y Roles</h3>
-        <p style="font-size:0.8rem; color:#94A3B8;">Filtra por correo electrónico para asignar permisos por club o rol de administración.</p>
+        <h3 style="font-size:1rem; font-weight:800; color:#1A73E8;">👥 Gestión de Usuarios y Roles</h3>
+        <p style="font-size:0.8rem; color:#5F6368;">Filtra por correo electrónico para asignar permisos por club o rol de administración.</p>
 
         <div class="form-group" style="margin-top:8px;">
           <input type="text" id="user-search-input" class="form-control" placeholder="Buscar correo electrónico..." value="${q}" oninput="App.renderUsersManagementView(document.getElementById('admin-tab-content'))">
@@ -2132,10 +2132,10 @@ const App = {
               <tr>
                 <td>
                   <div style="font-weight:800;">${u.name}</div>
-                  <div style="font-size:0.75rem; color:#94A3B8;">${u.email}</div>
+                  <div style="font-size:0.75rem; color:#5F6368;">${u.email}</div>
                 </td>
                 <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
-                <td style="font-size:0.8rem; color:#F59E0B;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
+                <td style="font-size:0.8rem; color:#1A73E8;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
                 <td>
                   <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.7rem;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})">✏️ Permisos</button>
                 </td>
@@ -2165,19 +2165,19 @@ const App = {
     const roleTitle = roleLabels[u.role] || u.role.toUpperCase();
 
     let html = `
-      <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center; padding:16px;">
-        <div style="width:64px; height:64px; border-radius:50%; background:#F59E0B; color:#000; font-size:1.8rem; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 8px auto; border:3px solid #FFFFFF;">
+      <div class="md-card" style="background: linear-gradient(135deg, #1A73E8 0%, #1557B0 100%); text-align:center; padding:16px;">
+        <div style="width:64px; height:64px; border-radius:50%; background:#FFFFFF; color:#1A73E8; font-size:1.8rem; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 8px auto; border:3px solid #E8F0FE;">
           ${u.name ? u.name.charAt(0).toUpperCase() : 'U'}
         </div>
         <h2 style="font-size:1.2rem; font-weight:800; color:#FFFFFF; margin:0;" class="text-truncate">${u.name}</h2>
-        <div style="font-size:0.8rem; color:#94A3B8; margin-top:2px;">@${u.username} • ${u.email}</div>
+        <div style="font-size:0.8rem; color:#E8F0FE; margin-top:2px;">@${u.username} • ${u.email}</div>
         
         <div style="margin-top:8px;">
-          <span class="md-chip active" style="font-size:0.75rem; padding:4px 12px;">${roleTitle}</span>
+          <span class="md-chip active" style="font-size:0.75rem; padding:4px 12px; background:#FFFFFF; color:#1A73E8;">${roleTitle}</span>
         </div>
 
         ${u.assigned_team_name ? `
-          <div style="font-size:0.8rem; color:#F59E0B; font-weight:700; margin-top:8px;" class="text-truncate">
+          <div style="font-size:0.8rem; color:#FFFFFF; font-weight:700; margin-top:8px;" class="text-truncate">
             🛡️ Club Asignado: ${u.assigned_team_name}
           </div>
         ` : ''}
@@ -2185,12 +2185,12 @@ const App = {
 
       <!-- Quick Action Buttons -->
       <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-        <button class="md-btn md-btn-gold" style="width:100%; justify-content:flex-start;" onclick="App.closeUserProfileModal(); App.installPwa();">
+        <button class="md-btn md-btn-primary" style="width:100%; justify-content:flex-start;" onclick="App.closeUserProfileModal(); App.installPwa();">
           <span class="material-icons-round">get_app</span> Instalar App Oficial (PWA)
         </button>
 
         <button class="md-btn md-btn-outlined" style="width:100%; justify-content:flex-start;" onclick="App.toggleChangePasswordForm()">
-          <span class="material-icons-round" style="color:#F59E0B;">key</span> Cambiar Mi Contraseña
+          <span class="material-icons-round" style="color:#1A73E8;">key</span> Cambiar Mi Contraseña
         </button>
 
         <!-- Change Password Form (Accordion) -->
@@ -3015,13 +3015,13 @@ const App = {
     }
 
     let html = `
-      <div style="font-size:0.85rem; font-weight:800; color:#F59E0B;" class="text-truncate">
+      <div style="font-size:0.85rem; font-weight:800; color:#1A73E8;" class="text-truncate">
         Plantel: ${teamName} (${roster.length} jugadores)
       </div>
 
       <!-- BATTING STATS FORM TABLE -->
       <div class="md-card">
-        <div style="font-weight:800; font-size:0.85rem; color:#FFFFFF; margin-bottom:6px;">📊 Estadísticas de Bateo (Ofensiva)</div>
+        <div style="font-weight:800; font-size:0.85rem; color:#202124; margin-bottom:6px;">📊 Estadísticas de Bateo (Ofensiva)</div>
         <div class="md-table-wrapper" style="border:none;">
           <table class="md-table">
             <thead>
@@ -3683,7 +3683,7 @@ const App = {
     }
 
     body.innerHTML = `
-      <div style="font-size:0.85rem; font-weight:800; color:#F59E0B;" class="text-truncate">
+      <div style="font-size:0.85rem; font-weight:800; color:#1A73E8;" class="text-truncate">
         Selecciona los jugadores activos para ${teamName} (${activePlayers.length} en plantel)
       </div>
 

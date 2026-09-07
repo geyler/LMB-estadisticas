@@ -167,45 +167,45 @@ const LiveScorer = {
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span class="md-chip active">🔴 ANOTADOR EN VIVO</span>
             <div style="display:flex; gap:6px;">
-              <button class="md-btn md-btn-gold" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup de Partido</button>
+              <button class="md-btn md-btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup de Partido</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
             </div>
           </div>
 
           <div style="display:flex; justify-content:space-around; align-items:center; margin:14px 0;">
             <div style="text-align:center;">
-              <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;">${this.game.away_short}</div>
-              <div style="font-size:2.4rem; font-weight:800; color:#F59E0B;" id="live-away-score">${this.game.away_score}</div>
+              <div style="font-weight:800; font-size:1.1rem; color:#202124;">${this.game.away_short}</div>
+              <div style="font-size:2.4rem; font-weight:800; color:#1A73E8;" id="live-away-score">${this.game.away_score}</div>
             </div>
 
             <div style="text-align:center;">
-              <div style="font-size:1.1rem; font-weight:800; color:#FFFFFF;">${isTop ? '▲ Top' : '▼ Bot'} ${this.game.current_inning}°</div>
-              <div style="font-size:0.85rem; font-weight:700; color:#EF4444; margin-top:4px;">Outs: ${'●'.repeat(this.outsCount)}${'○'.repeat(3 - this.outsCount)}</div>
+              <div style="font-size:1.1rem; font-weight:800; color:#202124;">${isTop ? '▲ Top' : '▼ Bot'} ${this.game.current_inning}°</div>
+              <div style="font-size:0.85rem; font-weight:700; color:#EA4335; margin-top:4px;">Outs: ${'●'.repeat(this.outsCount)}${'○'.repeat(3 - this.outsCount)}</div>
             </div>
 
             <div style="text-align:center;">
-              <div style="font-weight:800; font-size:1.1rem; color:#FFFFFF;">${this.game.home_short}</div>
-              <div style="font-size:2.4rem; font-weight:800; color:#F59E0B;" id="live-home-score">${this.game.home_score}</div>
+              <div style="font-weight:800; font-size:1.1rem; color:#202124;">${this.game.home_short}</div>
+              <div style="font-size:2.4rem; font-weight:800; color:#1A73E8;" id="live-home-score">${this.game.home_score}</div>
             </div>
           </div>
 
-          <div style="font-size:0.78rem; color:#94A3B8; margin-top:4px;">📍 ${this.game.stadium_name ? this.game.stadium_name + ' (' + (this.game.stadium_field || 'Cancha Principal') + ')' : this.game.field_location}</div>
+          <div style="font-size:0.78rem; color:#5F6368; margin-top:4px;">📍 ${this.game.stadium_name ? this.game.stadium_name + ' (' + (this.game.stadium_field || 'Cancha Principal') + ')' : this.game.field_location}</div>
         </div>
 
         <!-- Active Batter & Pitcher Cards (Automated) -->
-        <div class="md-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);">
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+        <div class="md-card" style="background: #F8F9FA; border: 1px solid #DADCE0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #DADCE0; padding-bottom:8px;">
             <div>
-              <div style="font-size:0.72rem; font-weight:700; color:#F59E0B; text-transform:uppercase;">⚡ Bateador Actual (Turno ${(isTop ? this.awayLineupIndex : this.homeLineupIndex) + 1}/9)</div>
-              <div style="font-size:1rem; font-weight:800; color:#FFFFFF;" class="text-truncate">${batterName}</div>
+              <div style="font-size:0.72rem; font-weight:700; color:#1A73E8; text-transform:uppercase;">⚡ Bateador Actual (Turno ${(isTop ? this.awayLineupIndex : this.homeLineupIndex) + 1}/9)</div>
+              <div style="font-size:1rem; font-weight:800; color:#202124;" class="text-truncate">${batterName}</div>
             </div>
             <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('batter')">🔄 Sustituir</button>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px;">
             <div>
-              <div style="font-size:0.72rem; font-weight:700; color:#3B82F6; text-transform:uppercase;">⚾ Lanzador Actual</div>
-              <div style="font-size:1rem; font-weight:800; color:#FFFFFF;" class="text-truncate">${pitcherName}</div>
+              <div style="font-size:0.72rem; font-weight:700; color:#1A73E8; text-transform:uppercase;">⚾ Lanzador Actual</div>
+              <div style="font-size:1rem; font-weight:800; color:#202124;" class="text-truncate">${pitcherName}</div>
             </div>
             <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('pitcher')">🔄 Cambiar Pitcher</button>
           </div>
@@ -222,7 +222,7 @@ const LiveScorer = {
             <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('2B', 'Doble (2B)')">2B Doble</button>
             <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('3B', 'Triple (3B)')">3B Triple</button>
 
-            <button class="md-btn md-btn-gold" style="grid-column: span 3;" onclick="LiveScorer.recordPlay('HR', '¡JONRÓN! Quadrangular (HR)')">💥 JONRÓN (HR)</button>
+            <button class="md-btn md-btn-primary" style="grid-column: span 3;" onclick="LiveScorer.recordPlay('HR', '¡JONRÓN! Quadrangular (HR)')">💥 JONRÓN (HR)</button>
 
             <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('BB', 'Base por Bolas (BB)')">BB (Base)</button>
             <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('K', 'Ponche (SO)')">SO (Ponche)</button>
