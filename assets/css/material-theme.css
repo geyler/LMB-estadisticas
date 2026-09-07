@@ -33,6 +33,8 @@
   --md-sys-color-on-surface: #202124;
   --md-sys-color-on-surface-variant: #5F6368;
   --md-sys-color-outline: #DADCE0;
+
+  --max-app-width: 768px;
   
   --radius-xs: 6px;
   --radius-sm: 8px;
@@ -815,7 +817,7 @@ body {
   height: 100vh;
   background: rgba(32, 33, 36, 0.6);
   z-index: 1000;
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: flex-end;
   opacity: 0;
@@ -824,6 +826,7 @@ body {
 }
 
 .md-modal-backdrop.open {
+  display: flex !important;
   opacity: 1;
   pointer-events: auto;
 }

@@ -1881,9 +1881,14 @@ const App = {
         </div>
       `;
     } else if (this.adminTab === 'stadiums') {
-      const res = await fetch('api/leagues.php?action=stadiums');
-      const data = await res.json();
-      const stadia = data.stadiums || [];
+      let stadia = [];
+      try {
+        const res = await fetch('api/leagues.php?action=stadiums');
+        if (res.ok) {
+          const data = await res.json();
+          stadia = data.stadiums || [];
+        }
+      } catch(e) { console.warn("Could not fetch stadiums", e); }
 
       tabContainer.innerHTML = `
         <div class="md-card">
@@ -1917,9 +1922,14 @@ const App = {
         </div>
       `;
     } else if (this.adminTab === 'teams') {
-      const res = await fetch('api/teams.php?action=list');
-      const data = await res.json();
-      const teams = data.teams || [];
+      let teams = [];
+      try {
+        const res = await fetch('api/teams.php?action=list');
+        if (res.ok) {
+          const data = await res.json();
+          teams = data.teams || [];
+        }
+      } catch(e) { console.warn("Could not fetch teams", e); }
 
       tabContainer.innerHTML = `
         <div class="md-card">
@@ -1953,10 +1963,16 @@ const App = {
         </div>
       `;
     } else if (this.adminTab === 'unassigned') {
-      const res = await fetch('api/leagues.php?action=unassigned');
-      const data = await res.json();
-      const uTeams = data.unassigned_teams || [];
-      const uPlayers = data.unassigned_players || [];
+      let uTeams = [];
+      let uPlayers = [];
+      try {
+        const res = await fetch('api/leagues.php?action=unassigned');
+        if (res.ok) {
+          const data = await res.json();
+          uTeams = data.unassigned_teams || [];
+          uPlayers = data.unassigned_players || [];
+        }
+      } catch(e) { console.warn("Could not fetch unassigned items", e); }
 
       tabContainer.innerHTML = `
         <div class="md-card" style="border:1px solid #1A73E8; background:#E8F0FE;">
@@ -2012,9 +2028,14 @@ const App = {
         </div>
       `;
     } else if (this.adminTab === 'stages') {
-      const res = await fetch('api/leagues.php?action=stages');
-      const data = await res.json();
-      const stages = data.stages || [];
+      let stages = [];
+      try {
+        const res = await fetch('api/leagues.php?action=stages');
+        if (res.ok) {
+          const data = await res.json();
+          stages = data.stages || [];
+        }
+      } catch(e) { console.warn("Could not fetch stages", e); }
 
       tabContainer.innerHTML = `
         <div class="md-card">
@@ -2045,9 +2066,14 @@ const App = {
         </div>
       `;
     } else if (this.adminTab === 'audit') {
-      const res = await fetch('api/leagues.php?action=audit_logs');
-      const data = await res.json();
-      const logs = data.logs || [];
+      let logs = [];
+      try {
+        const res = await fetch('api/leagues.php?action=audit_logs');
+        if (res.ok) {
+          const data = await res.json();
+          logs = data.logs || [];
+        }
+      } catch(e) { console.warn("Could not fetch audit logs", e); }
       const isSuperAdmin = (this.currentUser && this.currentUser.role === 'super_admin');
 
       tabContainer.innerHTML = `
@@ -2387,7 +2413,15 @@ const App = {
 
   async showCreateStadiumModal() {
     const modal = document.getElementById('create-stadium-modal');
-    if (modal) modal.classList.add('open');
+    if (modal) {
+      const nameInput = document.getElementById('cs-name');
+      const fieldInput = document.getElementById('cs-field');
+      const addrInput = document.getElementById('cs-address');
+      if (nameInput) nameInput.value = '';
+      if (fieldInput) fieldInput.value = 'Cancha 1';
+      if (addrInput) addrInput.value = '';
+      modal.classList.add('open');
+    }
   },
 
   closeCreateStadiumModal() {
@@ -2396,11 +2430,19 @@ const App = {
   },
 
   async handleSaveNewStadium(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const name = document.getElementById('cs-name').value.trim();
     const fieldName = document.getElementById('cs-field').value.trim() || 'Cancha 1';
     const address = document.getElementById('cs-address').value.trim();
-    if (!name) return;
+    if (!name) {
+      this.showAlert("Atención", "Por favor ingresa el nombre de la sede.", "warning", "#F59E0B");
+      return;
+    }
+
+    const btn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando...'; }
+    this.showLoading('Registrando sede...');
 
     try {
       const res = await fetch('api/leagues.php?action=create_stadium', {
@@ -2418,12 +2460,21 @@ const App = {
       }
     } catch(err) {
       this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '💾 Guardar Sede'; }
+      this.hideLoading();
     }
   },
 
   async showCreateSeasonModal() {
     const modal = document.getElementById('create-season-modal');
-    if (modal) modal.classList.add('open');
+    if (modal) {
+      const nameInput = document.getElementById('cn-season-name');
+      const yearInput = document.getElementById('cn-season-year');
+      if (nameInput) nameInput.value = '';
+      if (yearInput) yearInput.value = new Date().getFullYear();
+      modal.classList.add('open');
+    }
   },
 
   closeCreateSeasonModal() {
@@ -2432,9 +2483,19 @@ const App = {
   },
 
   async handleSaveNewSeason(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const name = document.getElementById('cn-season-name').value.trim();
     const year = document.getElementById('cn-season-year').value.trim() || new Date().getFullYear().toString();
+
+    if (!name) {
+      this.showAlert("Atención", "Por favor ingresa el nombre de la temporada.", "warning", "#F59E0B");
+      return;
+    }
+
+    const btn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando...'; }
+    this.showLoading('Creando e iniciando temporada...');
 
     try {
       const res = await fetch('api/leagues.php?action=create_season', {
@@ -2453,20 +2514,33 @@ const App = {
       }
     } catch(err) {
       this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '🚀 Crear e Iniciar Temporada'; }
+      this.hideLoading();
     }
   },
 
   async showCreateTeamModal() {
+    this.showLoading('Cargando formulario...');
     try {
-      const [resCat, resStadia] = await Promise.all([
-        fetch('api/leagues.php?action=categories'),
-        fetch('api/leagues.php?action=stadiums')
-      ]);
-      const dataCat = await resCat.json();
-      const dataStadia = await resStadia.json();
+      let categories = this.categories || [];
+      let stadia = [];
 
-      const categories = dataCat.categories || this.categories || [];
-      const stadia = dataStadia.stadiums || [];
+      try {
+        const resCat = await fetch('api/leagues.php?action=categories');
+        if (resCat.ok) {
+          const dataCat = await resCat.json();
+          if (dataCat.categories && dataCat.categories.length) categories = dataCat.categories;
+        }
+      } catch(e) {}
+
+      try {
+        const resStadia = await fetch('api/leagues.php?action=stadiums');
+        if (resStadia.ok) {
+          const dataStadia = await resStadia.json();
+          if (dataStadia.stadiums) stadia = dataStadia.stadiums;
+        }
+      } catch(e) {}
 
       const catSelect = document.getElementById('ct-team-category');
       if (catSelect) {
@@ -2480,10 +2554,18 @@ const App = {
           stadia.map(s => `<option value="${s.id}">${s.name} (${s.field_name || 'Principal'})</option>`).join('');
       }
 
+      const nameInput = document.getElementById('ct-team-name');
+      const shortInput = document.getElementById('ct-team-short');
+      if (nameInput) nameInput.value = '';
+      if (shortInput) shortInput.value = '';
+
       const modal = document.getElementById('create-team-modal');
       if (modal) modal.classList.add('open');
     } catch(e) {
       console.error("Error al abrir modal de crear equipo", e);
+      this.showAlert("Error", "Error al abrir el formulario de registro de equipo.", "error", "#EF4444");
+    } finally {
+      this.hideLoading();
     }
   },
 
@@ -2519,34 +2601,37 @@ const App = {
   },
 
   async showCreateGameModal() {
+    this.showLoading('Cargando programador...');
     try {
-      const [resCat, resStadia, resStages] = await Promise.all([
-        fetch('api/leagues.php?action=categories'),
-        fetch('api/leagues.php?action=stadiums'),
-        fetch('api/leagues.php?action=stages')
-      ]);
-      const dataCat = await resCat.json();
-      const dataStadia = await resStadia.json();
-      const dataStages = await resStages.json();
+      let categories = this.categories || [];
+      let stadia = [];
+      let stages = [];
 
-      const categories = dataCat.categories || [];
-      const stadia = dataStadia.stadiums || [];
-      const stages = dataStages.stages || [];
+      try {
+        const resCat = await fetch('api/leagues.php?action=categories');
+        if (resCat.ok) { const dataCat = await resCat.json(); if (dataCat.categories) categories = dataCat.categories; }
+      } catch(e) {}
 
-      if (!stadia.length) {
-        const go = await this.showConfirm("Sedes Requeridas", "No hay sedes deportivas registradas. ¿Ir a configurarlas?", "help", "#F59E0B");
-        if (go) this.showView('admin');
-        return;
-      }
+      try {
+        const resStadia = await fetch('api/leagues.php?action=stadiums');
+        if (resStadia.ok) { const dataStadia = await resStadia.json(); if (dataStadia.stadiums) stadia = dataStadia.stadiums; }
+      } catch(e) {}
+
+      try {
+        const resStages = await fetch('api/leagues.php?action=stages');
+        if (resStages.ok) { const dataStages = await resStages.json(); if (dataStages.stages) stages = dataStages.stages; }
+      } catch(e) {}
 
       const catSelect = document.getElementById('schedule-game-category');
       if (catSelect) {
-        catSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name} (${c.code})</option>`).join('');
+        catSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name} (${c.code || ''})</option>`).join('');
       }
 
       const stadSelect = document.getElementById('schedule-game-stadium');
       if (stadSelect) {
-        stadSelect.innerHTML = stadia.map(s => `<option value="${s.id}">📍 ${s.name} (${s.field_name || 'Principal'})</option>`).join('');
+        stadSelect.innerHTML = stadia.length 
+          ? stadia.map(s => `<option value="${s.id}">📍 ${s.name} (${s.field_name || 'Principal'})</option>`).join('')
+          : `<option value="1">📍 Estadio Ezeiza (Cancha 1)</option>`;
       }
 
       const stageSelect = document.getElementById('schedule-game-stage');
@@ -2568,6 +2653,9 @@ const App = {
       if (modal) modal.classList.add('open');
     } catch(e) {
       console.error("Error al abrir modal de programar partido", e);
+      this.showAlert("Error", "Error al abrir la pantalla de programar partido.", "error", "#EF4444");
+    } finally {
+      this.hideLoading();
     }
   },
 
@@ -3361,7 +3449,13 @@ const App = {
   // CATEGORY CRUD
   async showCreateCategoryModal() {
     const modal = document.getElementById('create-category-modal');
-    if (modal) modal.classList.add('open');
+    if (modal) {
+      const nameInput = document.getElementById('cc-name');
+      const codeInput = document.getElementById('cc-code');
+      if (nameInput) nameInput.value = '';
+      if (codeInput) codeInput.value = '';
+      modal.classList.add('open');
+    }
   },
 
   closeCreateCategoryModal() {
@@ -3370,10 +3464,18 @@ const App = {
   },
 
   async handleSaveNewCategory(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const name = document.getElementById('cc-name').value.trim();
     const code = document.getElementById('cc-code').value.trim();
-    if (!name || !code) return;
+    if (!name || !code) {
+      this.showAlert("Atención", "Por favor completa el nombre y código de la categoría.", "warning", "#F59E0B");
+      return;
+    }
+
+    const btn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando...'; }
+    this.showLoading('Creando categoría...');
 
     try {
       const res = await fetch('api/leagues.php?action=create_category', {
@@ -3392,13 +3494,19 @@ const App = {
       }
     } catch(e) {
       this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '💾 Guardar Categoría'; }
+      this.hideLoading();
     }
   },
 
   async showEditCategoryModal(catId, currentName = '', currentCode = '') {
-    document.getElementById('ec-id').value = catId;
-    document.getElementById('ec-name').value = currentName || '';
-    document.getElementById('ec-code').value = currentCode || '';
+    const idInput = document.getElementById('ec-id');
+    const nameInput = document.getElementById('ec-name');
+    const codeInput = document.getElementById('ec-code');
+    if (idInput) idInput.value = catId;
+    if (nameInput) nameInput.value = currentName || '';
+    if (codeInput) codeInput.value = currentCode || '';
     const modal = document.getElementById('edit-category-modal');
     if (modal) modal.classList.add('open');
   },
@@ -3461,22 +3569,27 @@ const App = {
   },
 
   async showCrownChampionModal(categoryId, categoryName) {
+    this.showLoading('Cargando equipos...');
     try {
-      const resTeams = await fetch(`api/teams.php?action=list&category_id=${categoryId}`);
-      const dataTeams = await resTeams.json();
-      const teams = dataTeams.teams || [];
-
-      if (!teams.length) {
-        this.showAlert("Atención", `No hay equipos registrados en la categoría "${categoryName}". Registra al menos un equipo antes de coronar.`, "warning", "#F59E0B");
-        return;
-      }
+      let teams = [];
+      try {
+        const resTeams = await fetch(`api/teams.php?action=list&category_id=${categoryId}`);
+        if (resTeams.ok) {
+          const dataTeams = await resTeams.json();
+          teams = dataTeams.teams || [];
+        }
+      } catch(e) {}
 
       document.getElementById('crown-category-id').value = categoryId;
       document.getElementById('crown-category-name').value = categoryName;
 
       const teamSelect = document.getElementById('crown-team-id');
       if (teamSelect) {
-        teamSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.name} (${t.short_name})</option>`).join('');
+        if (teams.length) {
+          teamSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.name} (${t.short_name})</option>`).join('');
+        } else {
+          teamSelect.innerHTML = `<option value="0">⚠️ Sin equipos en esta categoría</option>`;
+        }
       }
 
       const modal = document.getElementById('crown-champion-modal');
@@ -3484,6 +3597,8 @@ const App = {
     } catch(e) {
       console.error("Error al abrir modal de coronación de campeón", e);
       this.showAlert("Error", "No se pudieron obtener los equipos de la categoría.", "error", "#EF4444");
+    } finally {
+      this.hideLoading();
     }
   },
 
@@ -4036,7 +4151,19 @@ const App = {
     }
   },
 
-  setupEventListeners() {}
+  setupEventListeners() {
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('md-modal-backdrop')) {
+        e.target.classList.remove('open');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.md-modal-backdrop.open').forEach(m => m.classList.remove('open'));
+      }
+    });
+  }
 
 };
 
