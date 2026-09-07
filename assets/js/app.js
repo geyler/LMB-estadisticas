@@ -533,11 +533,17 @@ const App = {
   },
 
   refreshCurrentView() {
-    this.showView(this.currentView);
+    this.showView(this.currentView, this.currentParam);
   },
 
   showView(viewName, param = null) {
+    if (param !== null && param !== undefined) {
+      this.currentParam = param;
+    } else if (this.currentView !== viewName) {
+      this.currentParam = null;
+    }
     this.currentView = viewName;
+    const activeParam = (param !== null && param !== undefined) ? param : this.currentParam;
 
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const activeNav = document.getElementById(`nav-${viewName}`);
@@ -567,16 +573,16 @@ const App = {
         this.renderTeamsView(container);
         break;
       case 'team_detail':
-        this.renderTeamDetailView(container, param);
+        this.renderTeamDetailView(container, activeParam);
         break;
       case 'player_detail':
-        this.renderPlayerDetailView(container, param);
+        this.renderPlayerDetailView(container, activeParam);
         break;
       case 'game_detail':
-        this.renderGameDetailView(container, param);
+        this.renderGameDetailView(container, activeParam);
         break;
       case 'leaders':
-        this.renderLeadersView(container);
+        this.renderLeadersView(container, this.leadersType || 'batting', this.leadersStat || 'avg');
         break;
       case 'admin':
         this.renderAdminView(container);
@@ -1698,6 +1704,8 @@ const App = {
 
   // 7. LEADERS VIEW (Batting & Pitching Departmental Lists)
   async renderLeadersView(container, type = 'batting', stat = 'avg') {
+    this.leadersType = type;
+    this.leadersStat = stat;
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando líderes de estadísticas...</div></div>`;
 
     const res = await fetch(`api/leaderboards.php?type=${type}&stat=${stat}&category_id=${this.currentCategory}`);
