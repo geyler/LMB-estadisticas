@@ -815,46 +815,165 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(32, 33, 36, 0.6);
-  z-index: 1000;
-  display: none;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
   justify-content: center;
   align-items: flex-end;
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .md-modal-backdrop.open {
-  display: flex !important;
-  opacity: 1;
-  pointer-events: auto;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 .md-bottom-sheet {
   width: 100%;
-  max-width: var(--max-app-width);
+  max-width: 500px;
   background: #FFFFFF;
-  border-radius: 16px 16px 0 0;
-  padding: 16px;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
-  border-top: 1px solid #DADCE0;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+  border-top: 1px solid #E2E8F0;
   transform: translateY(100%);
-  transition: transform 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
-  color: #202124;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #0F172A;
+  margin: 0 auto;
 }
 
 .md-modal-backdrop.open .md-bottom-sheet {
-  transform: translateY(0);
+  transform: translateY(0) !important;
 }
 
 .sheet-handle {
   width: 40px;
   height: 4px;
-  background: #DADCE0;
+  background: #CBD5E1;
   border-radius: 2px;
-  margin: 0 auto 12px auto;
+  margin: 0 auto 14px auto;
   cursor: pointer;
+}
+
+/* Google Material 3 Modern Action Buttons */
+.btn-m3-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #1A73E8 0%, #1557B0 100%);
+  color: #FFFFFF !important;
+  font-weight: 700;
+  font-size: 0.82rem;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-m3-primary:hover {
+  background: linear-gradient(135deg, #1765CC 0%, #1047A0 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.4);
+}
+
+.btn-m3-outlined {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 15px;
+  background: #FFFFFF;
+  color: #1A73E8 !important;
+  border: 1.5px solid #1A73E8;
+  font-weight: 700;
+  font-size: 0.82rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-m3-outlined:hover {
+  background: #E8F0FE;
+  transform: translateY(-1px);
+}
+
+.btn-m3-gold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+  color: #FFFFFF !important;
+  font-weight: 800;
+  font-size: 0.78rem;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-m3-gold:hover {
+  background: linear-gradient(135deg, #B45309 0%, #92400E 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(217, 119, 6, 0.4);
+}
+
+.btn-m3-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #F1F5F9;
+  color: #334155 !important;
+  border: 1px solid #CBD5E1;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-m3-edit:hover {
+  background: #E2E8F0;
+  color: #0F172A !important;
+}
+
+.btn-m3-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: #FEF2F2;
+  color: #DC2626 !important;
+  border: 1px solid #FCA5A5;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-m3-danger:hover {
+  background: #FEE2E2;
+  border-color: #EF4444;
 }
 
 /* Forms & Input Controls */

@@ -1850,8 +1850,8 @@ const App = {
           <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
             <div class="md-card-header-actions">
-              <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateCategoryModal()">➕ Nueva Categoría</button>
-              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateSeasonModal()">➕ Nueva Temporada</button>
+              <button class="btn-m3-primary" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateCategoryModal()"><span class="material-icons-round" style="font-size:16px;">add</span> Nueva Categoría</button>
+              <button class="btn-m3-outlined" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:16px;">add_circle_outline</span> Nueva Temporada</button>
             </div>
           </div>
           <p style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
@@ -1868,10 +1868,10 @@ const App = {
                   <td style="font-weight:700;">${c.name}</td>
                   <td><span class="md-chip" style="padding:2px 6px;">${c.code}</span></td>
                   <td>
-                    <div style="display:flex; gap:4px;">
-                      <button class="md-btn md-btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showCrownChampionModal(${c.id}, '${c.name}')">👑 Coronar</button>
-                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditCategoryModal(${c.id}, '${c.name}', '${c.code}')">✏️ Editar</button>
-                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteCategory(${c.id}, '${c.name}')">🗑️ Borrar</button>
+                    <div style="display:flex; gap:6px;">
+                      <button class="btn-m3-gold" onclick="App.showCrownChampionModal(${c.id}, '${c.name}')"><span class="material-icons-round" style="font-size:15px;">emoji_events</span> Coronar</button>
+                      <button class="btn-m3-edit" onclick="App.showEditCategoryModal(${c.id}, '${c.name}', '${c.code}')"><span class="material-icons-round" style="font-size:15px; color:#1A73E8;">edit</span> Editar</button>
+                      <button class="btn-m3-danger" onclick="App.deleteCategory(${c.id}, '${c.name}')"><span class="material-icons-round" style="font-size:15px;">delete</span></button>
                     </div>
                   </td>
                 </tr>
@@ -1894,7 +1894,7 @@ const App = {
         <div class="md-card">
           <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Gestor de Sedes y Campos</h3>
-            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStadiumModal()">➕ Nueva Sede / Cancha</button>
+            <button class="btn-m3-primary" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateStadiumModal()"><span class="material-icons-round" style="font-size:16px;">add_location</span> Nueva Sede / Cancha</button>
           </div>
           <p style="font-size:0.8rem; color:#5F6368;">Configura predios principales (ej. Ezeiza Canchas 1, 2, 3, 4) o campos propios de clubes.</p>
         </div>
@@ -1910,9 +1910,9 @@ const App = {
                   <td style="font-weight:800;">📍 ${s.name}</td>
                   <td style="font-size:0.8rem; color:#5F6368;">${s.city} • ${s.address}</td>
                   <td>
-                    <div style="display:flex; gap:4px;">
-                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditStadiumModal(${s.id}, '${s.name}', '${s.address}')">✏️ Editar</button>
-                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteStadium(${s.id}, '${s.name}')">🗑️ Borrar</button>
+                    <div style="display:flex; gap:6px;">
+                      <button class="btn-m3-edit" onclick="App.showEditStadiumModal(${s.id}, '${s.name}', '${s.address}')"><span class="material-icons-round" style="font-size:15px; color:#1A73E8;">edit</span> Editar</button>
+                      <button class="btn-m3-danger" onclick="App.deleteStadium(${s.id}, '${s.name}')"><span class="material-icons-round" style="font-size:15px;">delete</span></button>
                     </div>
                   </td>
                 </tr>
@@ -1935,9 +1935,9 @@ const App = {
         <div class="md-card">
           <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">Equipos de la Liga</h3>
-            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateTeamModal()">➕ Registrar Equipo</button>
+            <button class="btn-m3-primary" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateTeamModal()"><span class="material-icons-round" style="font-size:16px;">shield</span> Registrar Equipo</button>
           </div>
-          <button class="md-btn md-btn-primary" style="width:100%; margin-top:8px;" onclick="App.showMoveTeamModal()">🔄 Mover Equipo (Ascenso / Descenso)</button>
+          <button class="btn-m3-outlined" style="width:100%; margin-top:8px; display:inline-flex; align-items:center; justify-content:center; gap:6px;" onclick="App.showMoveTeamModal()"><span class="material-icons-round" style="font-size:16px;">swap_horiz</span> Mover Equipo (Ascenso / Descenso)</button>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -1951,9 +1951,9 @@ const App = {
                   <td style="font-weight:800; cursor:pointer;" onclick="App.showView('team_detail', ${t.id})">${t.name} (${t.short_name})</td>
                   <td><span class="md-chip">${t.category_name}</span></td>
                   <td>
-                    <div style="display:flex; gap:4px;">
-                      <button class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.showEditTeamModal(${t.id}, '${t.name}', '${t.short_name}', ${t.home_stadium_id || 0})">✏️ Editar</button>
-                      <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteTeam(${t.id}, '${t.name}')">🗑️ Borrar</button>
+                    <div style="display:flex; gap:6px;">
+                      <button class="btn-m3-edit" onclick="App.showEditTeamModal(${t.id}, '${t.name}', '${t.short_name}', ${t.home_stadium_id || 0})"><span class="material-icons-round" style="font-size:15px; color:#1A73E8;">edit</span> Editar</button>
+                      <button class="btn-m3-danger" onclick="App.deleteTeam(${t.id}, '${t.name}')"><span class="material-icons-round" style="font-size:15px;">delete</span></button>
                     </div>
                   </td>
                 </tr>
@@ -1994,7 +1994,7 @@ const App = {
                     <td style="font-weight:800;">${t.name}</td>
                     <td><span class="md-chip">${t.short_name}</span></td>
                     <td>
-                      <button class="md-btn md-btn-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignTeamModal(${t.id}, '${t.name}')">🔄 Asignar Categoría</button>
+                      <button class="btn-m3-primary" style="padding:4px 10px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.reassignTeamModal(${t.id}, '${t.name}')"><span class="material-icons-round" style="font-size:15px;">category</span> Asignar Categoría</button>
                     </td>
                   </tr>
                 `).join('') : '<tr><td colspan="3" style="text-align:center; padding:12px; color:#188038;">✅ Todos los equipos están asignados a una categoría.</td></tr>'}
@@ -2018,7 +2018,7 @@ const App = {
                     <td style="font-weight:700;">${p.first_name} ${p.last_name}</td>
                     <td><span class="md-chip" style="padding:2px 6px;">${p.position_primary}</span></td>
                     <td>
-                      <button class="md-btn md-btn-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="App.reassignPlayerModal(${p.id}, '${p.first_name} ${p.last_name}')">🧢 Asignar a Equipo</button>
+                      <button class="btn-m3-primary" style="padding:4px 10px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.reassignPlayerModal(${p.id}, '${p.first_name} ${p.last_name}')"><span class="material-icons-round" style="font-size:15px;">sports_baseball</span> Asignar a Equipo</button>
                     </td>
                   </tr>
                 `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px; color:#188038;">✅ Todos los jugadores activos están integrados en un equipo.</td></tr>'}
@@ -2041,7 +2041,7 @@ const App = {
         <div class="md-card">
           <div class="md-card-header">
             <h3 style="font-size:1rem; font-weight:800;">🏆 Etapas y Tipos de Partido</h3>
-            <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showCreateStageModal()">➕ Nueva Etapa / Rol</button>
+            <button class="btn-m3-primary" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateStageModal()"><span class="material-icons-round" style="font-size:16px;">add</span> Nueva Etapa / Rol</button>
           </div>
           <p style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Crea etiquetas personalizadas para el calendario de partidos (ej. 8vos de final, Comodín, Amistoso Internacional, Juego de Exhibición).</p>
         </div>
@@ -2057,7 +2057,7 @@ const App = {
                   <td style="font-weight:800; color:#1A73E8;">⚾ ${s.name}</td>
                   <td><span class="md-chip">${s.code}</span></td>
                   <td>
-                    <button class="md-btn md-btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="App.deleteStage(${s.id}, '${s.name}')">🗑️ Eliminar</button>
+                    <button class="btn-m3-danger" onclick="App.deleteStage(${s.id}, '${s.name}')"><span class="material-icons-round" style="font-size:15px;">delete</span></button>
                   </td>
                 </tr>
               `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px;">Sin etapas registradas.</td></tr>'}
@@ -2083,8 +2083,8 @@ const App = {
             <p style="font-size:0.8rem; color:#5F6368; margin:4px 0 0 0;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
           </div>
           ${isSuperAdmin ? `
-            <button class="md-btn md-btn-danger" style="padding:6px 12px; font-size:0.75rem; background:#D93025; border-color:#D93025;" onclick="App.showFactoryResetModal()">
-              💥 Resetear Base de Datos desde Cero
+            <button class="btn-m3-danger" style="padding:6px 14px; font-size:0.75rem; background:#D93025; border-color:#D93025; color:#fff; display:inline-flex; align-items:center; gap:6px;" onclick="App.showFactoryResetModal()">
+              <span class="material-icons-round" style="font-size:16px;">restart_alt</span> Resetear Base de Datos desde Cero
             </button>
           ` : ''}
         </div>
@@ -2144,7 +2144,7 @@ const App = {
               <textarea id="setting-site-desc" class="form-control" rows="2">${this.settings.site_description || 'Plataforma oficial de la Liga Metropolitana de Béisbol de Buenos Aires.'}</textarea>
             </div>
 
-            <button class="md-btn md-btn-primary" style="margin-top:6px;" onclick="App.updateSettings()">💾 Guardar Ajustes de Branding</button>
+            <button class="btn-m3-primary" style="margin-top:6px; display:inline-flex; align-items:center; justify-content:center; gap:6px;" onclick="App.updateSettings()"><span class="material-icons-round" style="font-size:16px;">save</span> Guardar Ajustes de Branding</button>
           </div>
         </div>
       `;
@@ -2193,7 +2193,7 @@ const App = {
                 <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
                 <td style="font-size:0.8rem; color:#1A73E8;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
                 <td>
-                  <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.7rem;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})">✏️ Permisos</button>
+                  <button class="btn-m3-outlined" style="padding:4px 10px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})"><span class="material-icons-round" style="font-size:15px;">tune</span> Permisos</button>
                 </td>
               </tr>
             `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px;">No se encontraron usuarios.</td></tr>'}
