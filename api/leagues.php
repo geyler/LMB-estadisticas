@@ -421,6 +421,65 @@ if ($action === 'audit_logs') {
     exit;
 }
 
+if ($action === 'factory_reset_database' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado. Solo el Super Administrador puede reiniciar la base de datos.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $confirm = trim($input['confirm'] ?? '');
+
+    if ($confirm !== 'RESET') {
+        echo json_encode(['success' => false, 'message' => 'Confirmación inválida. Debe escribir "RESET".']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $pdo->exec("DELETE FROM game_play_by_play");
+        $pdo->exec("DELETE FROM game_line_scores");
+        $pdo->exec("DELETE FROM game_batting_stats");
+        $pdo->exec("DELETE FROM game_pitching_stats");
+        $pdo->exec("DELETE FROM games");
+        $pdo->exec("DELETE FROM season_champions");
+        $pdo->exec("DELETE FROM audit_logs");
+
+        $stmtSeason = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1");
+        $seasonId = $stmtSeason->fetchColumn();
+        if (!$seasonId) {
+            $pdo->exec("UPDATE seasons SET is_active = 0");
+            $pdo->exec("INSERT INTO seasons (name, year, is_active) VALUES ('Temporada Oficial 2026', 2026, 1)");
+            $seasonId = $pdo->lastInsertId();
+        }
+
+        $stmtCatCount = $pdo->prepare("SELECT COUNT(*) FROM categories WHERE season_id = ?");
+        $stmtCatCount->execute([$seasonId]);
+        if ($stmtCatCount->fetchColumn() == 0) {
+            $stmtCat = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)");
+            $stmtCat->execute([$seasonId, 'Primera División A1', 'A1', 1]);
+            $a1Id = $pdo->lastInsertId();
+            $stmtCat->execute([$seasonId, 'Segunda División A2', 'A2', 2]);
+            $a2Id = $pdo->lastInsertId();
+
+            $pdo->prepare("UPDATE teams SET category_id = ? WHERE category_id = 0 OR category_id IS NULL")->execute([$a1Id]);
+        }
+
+        $pdo->commit();
+
+        logAuditAction($pdo, 'FACTORY_RESET', "Se ejecutó un reset total de la base de datos (partidos, jugadas, estadísticas y campeones eliminados).");
+
+        echo json_encode(['success' => true, 'message' => 'Base de datos reiniciada desde cero exitosamente.']);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        echo json_encode(['success' => false, 'message' => 'Error al reiniciar la base de datos: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'move_team' && $method === 'POST') {
     if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
         echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);

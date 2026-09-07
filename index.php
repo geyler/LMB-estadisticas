@@ -1010,6 +1010,39 @@ session_start();
       </div>
     </div>
 
+    <!-- Factory Reset DB Modal (Super Admin) -->
+    <div id="factory-reset-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:440px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:1.1rem; font-weight:800; color:#D93025; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round">warning</span> Resetear Base de Datos
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeFactoryResetModal()">✕</button>
+        </div>
+        <div style="background:#FCE8E6; color:#C5221F; padding:12px; border-radius:8px; font-size:0.85rem; margin-bottom:12px; line-height:1.4;">
+          <strong>⚠️ ATENCIÓN: ACCIÓN DESTRUCTIVA E IRREVERSIBLE</strong><br>
+          Esta opción eliminará todos los partidos, jugadas, marcador en vivo y estadísticas de bateo/pitcheo acumuladas.<br>
+          Se reajustarán las categorías y la temporada 2026 en estado limpio.
+        </div>
+        <form onsubmit="App.handleExecuteFactoryReset(event);">
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.8rem; font-weight:700; color:#202124;">Para confirmar, escribe "RESET" en mayúsculas:</label>
+            <input type="text" id="fr-confirm-input" class="form-control" placeholder="RESET" required autocomplete="off">
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeFactoryResetModal()">Cancelar</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1; background:#D93025; border-color:#D93025;">💥 Confirmar Reset</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Global Loader Overlay -->
+    <div id="global-loader" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:9999; flex-direction:column; justify-content:center; align-items:center; color:#fff;">
+      <div style="width: 3rem; height: 3rem; border: 4px solid rgba(255,255,255,0.3); border-top-color: #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+      <div id="global-loader-text" style="margin-top:16px; font-weight:700; font-size:1rem; text-shadow:0 1px 3px rgba(0,0,0,0.8);">Procesando...</div>
+    </div>
+
   </div>
 
 

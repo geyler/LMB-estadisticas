@@ -2048,11 +2048,19 @@ const App = {
       const res = await fetch('api/leagues.php?action=audit_logs');
       const data = await res.json();
       const logs = data.logs || [];
+      const isSuperAdmin = (this.currentUser && this.currentUser.role === 'super_admin');
 
       tabContainer.innerHTML = `
-        <div class="md-card">
-          <h3 style="font-size:1rem; font-weight:800; color:#1A73E8;">📜 Histórico de Cambios y Auditoría</h3>
-          <p style="font-size:0.8rem; color:#5F6368;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
+        <div class="md-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:1rem; font-weight:800; color:#1A73E8; margin:0;">📜 Histórico de Cambios y Auditoría</h3>
+            <p style="font-size:0.8rem; color:#5F6368; margin:4px 0 0 0;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
+          </div>
+          ${isSuperAdmin ? `
+            <button class="md-btn md-btn-danger" style="padding:6px 12px; font-size:0.75rem; background:#D93025; border-color:#D93025;" onclick="App.showFactoryResetModal()">
+              💥 Resetear Base de Datos desde Cero
+            </button>
+          ` : ''}
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -2602,6 +2610,11 @@ const App = {
       return;
     }
 
+    const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Programando...'; }
+    this.showLoading('Programando encuentro deportivo...');
+
     try {
       const res = await fetch('api/games.php?action=create', {
         method: 'POST',
@@ -2625,6 +2638,10 @@ const App = {
       }
     } catch(e) {
       console.error("Error al programar partido", e);
+      this.showAlert("Error", "Error de conexión al programar partido.", "wifi_off", "#EF4444");
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '🗓️ Programar Partido'; }
+      this.hideLoading();
     }
   },
 
@@ -2900,6 +2917,83 @@ const App = {
     bar.innerText = msg;
     bar.style.display = 'block';
     setTimeout(() => { bar.style.display = 'none'; }, 3000);
+  },
+
+  showLoading(msg = 'Procesando...') {
+    const loader = document.getElementById('global-loader');
+    const loaderText = document.getElementById('global-loader-text');
+    if (loader) {
+      if (loaderText) loaderText.textContent = msg;
+      loader.style.display = 'flex';
+    }
+  },
+
+  hideLoading() {
+    const loader = document.getElementById('global-loader');
+    if (loader) {
+      loader.style.display = 'none';
+    }
+  },
+
+  showFactoryResetModal() {
+    const modal = document.getElementById('factory-reset-modal');
+    if (modal) {
+      const input = document.getElementById('fr-confirm-input');
+      if (input) input.value = '';
+      modal.classList.add('open');
+    }
+  },
+
+  closeFactoryResetModal() {
+    const modal = document.getElementById('factory-reset-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  async handleExecuteFactoryReset(e) {
+    e.preventDefault();
+    const confirmInput = document.getElementById('fr-confirm-input');
+    const confirmVal = confirmInput ? confirmInput.value.trim() : '';
+
+    if (confirmVal !== 'RESET') {
+      this.showAlert("Confirmación Inválida", "Debes escribir la palabra RESET en mayúsculas para continuar.", "warning", "#F59E0B");
+      return;
+    }
+
+    const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) {
+      origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Procesando Reset...';
+    }
+
+    this.showLoading('Limpiando base de datos y restableciendo temporada...');
+
+    try {
+      const res = await fetch('api/leagues.php?action=factory_reset_database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'RESET' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(data.message || 'Base de datos reiniciada desde cero.');
+        this.closeFactoryResetModal();
+        await this.loadLeagues();
+        this.showView('home');
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo reiniciar la base de datos.', "error", "#EF4444");
+      }
+    } catch(err) {
+      console.error("Error al ejecutar reset de base de datos", err);
+      this.showAlert("Error", "Error de conexión al procesar reset.", "wifi_off", "#EF4444");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origText || '💥 Confirmar Reset';
+      }
+      this.hideLoading();
+    }
   },
 
   openGameResultModal(game) {
@@ -3407,6 +3501,11 @@ const App = {
 
     if (!categoryId || !teamId) return;
 
+    const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Registrando...'; }
+    this.showLoading('Coronando equipo campeón...');
+
     try {
       const res = await fetch('api/leagues.php?action=set_champion', {
         method: 'POST',
@@ -3429,6 +3528,9 @@ const App = {
       }
     } catch(e) {
       this.showAlert('Error', 'Error de conexión al coronar campeón.', 'wifi_off', '#EF4444');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '👑 Registrar Campeón'; }
+      this.hideLoading();
     }
   },
 

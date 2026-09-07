@@ -1078,3 +1078,8 @@ div, span, p, h1, h2, h3, h4, h5, th, td, button, label, input, select {
   font-weight: 800 !important;
   box-shadow: 0 1px 3px rgba(26, 115, 232, 0.15) !important;
 }
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
