@@ -1,7 +1,7 @@
 /**
  * Live Match Scorekeeper Engine ("En Partido" / "Piloto Automático")
  * Liga Metropolitana de Béisbol (LMB)
- * Automated Lineup Rotation & Fast One-Tap Play-by-Play Recording
+ * Automated Lineup Rotation & Fast Play-by-Play Recording with Safety Guard & Diamond Graphic
  */
 
 const LiveScorer = {
@@ -11,13 +11,14 @@ const LiveScorer = {
   homePitchers: [],
   awayPitchers: [],
 
-  // Automated Lineup Index Pointers
   awayLineupIndex: 0,
   homeLineupIndex: 0,
 
   activeBatterId: null,
   activePitcherId: null,
   outsCount: 0,
+
+  baseRunners: { b1: false, b2: false, b3: false },
 
   init(gameDetailData) {
     this.game = gameDetailData.game;
@@ -30,7 +31,6 @@ const LiveScorer = {
     let awayActive = this.awayRoster.filter(p => !p.role_type || p.role_type === 'player' || p.role_type === 'jugador');
     if (!awayActive.length && this.awayRoster.length) awayActive = this.awayRoster;
 
-    // If homeBatters / awayBatters from game_batting_stats are empty, populate from team rosters
     if (!gameDetailData.home_batters || gameDetailData.home_batters.length === 0) {
       this.homeBatters = homeActive.map((p, idx) => ({
         player_id: p.player_id,
@@ -79,23 +79,22 @@ const LiveScorer = {
       this.awayPitchers = gameDetailData.away_pitchers;
     }
 
-    // Check if either team has ZERO players in roster
     if (this.homeBatters.length === 0 || this.awayBatters.length === 0) {
       const container = document.getElementById('view-container');
       if (container) {
         container.innerHTML = `
           <div class="view-content">
-            <div class="md-card" style="background: linear-gradient(135deg, #7F1D1D 0%, #070D1B 100%); text-align:center;">
+            <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center;">
               <div style="font-size:2.5rem; margin-bottom:8px;">⚠️</div>
-              <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;">Plantel Sin Jugadores Registrados</h2>
-              <p style="font-size:0.85rem; color:#94A3B8; margin-top:8px;">
+              <h2 style="font-size:1.3rem; font-weight:800; color:#202124; margin:0;">Plantel Sin Jugadores Registrados</h2>
+              <p style="font-size:0.85rem; color:#5F6368; margin-top:8px;">
                 Para poder iniciar la consola de anotación en vivo, debes registrar al menos un jugador activo en el plantel de cada club.<br><br>
                 • <strong>${this.game.away_short}</strong>: ${this.awayBatters.length} jugadores<br>
                 • <strong>${this.game.home_short}</strong>: ${this.homeBatters.length} jugadores
               </p>
               <div style="display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
-                <button class="md-btn md-btn-gold" onclick="App.showView('team_detail', ${this.game.away_team_id})">👥 Plantel ${this.game.away_short}</button>
-                <button class="md-btn md-btn-gold" onclick="App.showView('team_detail', ${this.game.home_team_id})">👥 Plantel ${this.game.home_short}</button>
+                <button class="md-btn md-btn-primary" onclick="App.showView('team_detail', ${this.game.away_team_id})">👥 Plantel ${this.game.away_short}</button>
+                <button class="md-btn md-btn-primary" onclick="App.showView('team_detail', ${this.game.home_team_id})">👥 Plantel ${this.game.home_short}</button>
                 <button class="md-btn md-btn-outlined" onclick="App.showView('onboarding')">📖 Guía de Inicio</button>
               </div>
             </div>
@@ -108,8 +107,19 @@ const LiveScorer = {
     this.outsCount = 0;
     this.awayLineupIndex = 0;
     this.homeLineupIndex = 0;
+    this.baseRunners = { b1: false, b2: false, b3: false };
 
     this.autoSelectActivePlayers();
+    this.renderScorerInterface();
+  },
+
+  toggleRunner(base) {
+    this.baseRunners[base] = !this.baseRunners[base];
+    this.renderScorerInterface();
+  },
+
+  clearRunners() {
+    this.baseRunners = { b1: false, b2: false, b3: false };
     this.renderScorerInterface();
   },
 
@@ -117,7 +127,6 @@ const LiveScorer = {
     const isTop = this.game.half_inning === 'top';
     const battingList = isTop ? this.awayBatters : this.homeBatters;
     const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
-
     const activeIndex = isTop ? this.awayLineupIndex : this.homeLineupIndex;
 
     if (battingList.length > 0) {
@@ -162,44 +171,79 @@ const LiveScorer = {
 
     let html = `
       <div class="view-content">
-        <!-- Live Header Box -->
-        <div class="md-card" style="background: linear-gradient(135deg, #070D1B 0%, #1E3A8A 100%); text-align:center;">
+        <!-- Live Header Box (Light Theme) -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; padding:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="md-chip active">🔴 ANOTADOR EN VIVO</span>
+            <span class="md-chip active" style="background:#E8F0FE; color:#1A73E8; font-weight:800;">🔴 ANOTADOR EN VIVO</span>
             <div style="display:flex; gap:6px;">
-              <button class="md-btn md-btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup de Partido</button>
+              <button class="md-btn md-btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup</button>
               <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
             </div>
           </div>
 
+          <!-- Scoreboard Header -->
           <div style="display:flex; justify-content:space-around; align-items:center; margin:14px 0;">
-            <div style="text-align:center;">
+            <div style="text-align:center; flex:1;">
               <div style="font-weight:800; font-size:1.1rem; color:#202124;">${this.game.away_short}</div>
-              <div style="font-size:2.4rem; font-weight:800; color:#1A73E8;" id="live-away-score">${this.game.away_score}</div>
+              <div style="font-size:2.4rem; font-weight:900; color:#1A73E8;" id="live-away-score">${this.game.away_score}</div>
             </div>
 
-            <div style="text-align:center;">
-              <div style="font-size:1.1rem; font-weight:800; color:#202124;">${isTop ? '▲ Top' : '▼ Bot'} ${this.game.current_inning}°</div>
-              <div style="font-size:0.85rem; font-weight:700; color:#EA4335; margin-top:4px;">Outs: ${'●'.repeat(this.outsCount)}${'○'.repeat(3 - this.outsCount)}</div>
+            <div style="text-align:center; flex:1; border-left:1px solid #DADCE0; border-right:1px solid #DADCE0; padding:0 8px;">
+              <div style="font-size:1.1rem; font-weight:900; color:#202124;">${isTop ? '▲ Top' : '▼ Bot'} ${this.game.current_inning}°</div>
+              <div style="font-size:1.05rem; font-weight:900; color:#EA4335; margin-top:4px;">
+                OUTS: <span style="font-size:1.4rem;">${'●'.repeat(this.outsCount)}</span><span style="color:#DADCE0; font-size:1.4rem;">${'○'.repeat(Math.max(0, 3 - this.outsCount))}</span>
+              </div>
             </div>
 
-            <div style="text-align:center;">
+            <div style="text-align:center; flex:1;">
               <div style="font-weight:800; font-size:1.1rem; color:#202124;">${this.game.home_short}</div>
-              <div style="font-size:2.4rem; font-weight:800; color:#1A73E8;" id="live-home-score">${this.game.home_score}</div>
+              <div style="font-size:2.4rem; font-weight:900; color:#1A73E8;" id="live-home-score">${this.game.home_score}</div>
             </div>
           </div>
 
-          <div style="font-size:0.78rem; color:#5F6368; margin-top:4px;">📍 ${this.game.stadium_name ? this.game.stadium_name + ' (' + (this.game.stadium_field || 'Cancha Principal') + ')' : this.game.field_location}</div>
+          <!-- Base Runner Diamond Graphic -->
+          <div style="background:#F8F9FA; border:1px solid #DADCE0; border-radius:12px; padding:10px; margin-top:10px;">
+            <div style="font-size:0.72rem; font-weight:800; color:#5F6368; margin-bottom:4px;">CORREDORES EN BASE</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:16px;">
+              <div style="position:relative; width:120px; height:100px;">
+                <svg viewBox="0 0 100 80" style="width:100%; height:100%;">
+                  <!-- Base Paths -->
+                  <polygon points="50,65 80,40 50,15 20,40" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2" />
+                  <!-- Home Plate -->
+                  <polygon points="50,65 47,68 53,68" fill="#5F6368" />
+                  
+                  <!-- 1B -->
+                  <polygon points="80,40 84,36 80,32 76,36" fill="${this.baseRunners.b1 ? '#188038' : '#FFFFFF'}" stroke="${this.baseRunners.b1 ? '#188038' : '#5F6368'}" stroke-width="2.5" cursor="pointer" onclick="LiveScorer.toggleRunner('b1')" />
+                  <!-- 2B -->
+                  <polygon points="50,15 54,11 50,7 46,11" fill="${this.baseRunners.b2 ? '#188038' : '#FFFFFF'}" stroke="${this.baseRunners.b2 ? '#188038' : '#5F6368'}" stroke-width="2.5" cursor="pointer" onclick="LiveScorer.toggleRunner('b2')" />
+                  <!-- 3B -->
+                  <polygon points="20,40 24,36 20,32 16,36" fill="${this.baseRunners.b3 ? '#188038' : '#FFFFFF'}" stroke="${this.baseRunners.b3 ? '#188038' : '#5F6368'}" stroke-width="2.5" cursor="pointer" onclick="LiveScorer.toggleRunner('b3')" />
+                </svg>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                <button class="md-chip" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:${this.baseRunners.b1 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b1 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b1 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b1')">
+                  1ª Base: ${this.baseRunners.b1 ? '🏃 SI' : '○ NO'}
+                </button>
+                <button class="md-chip" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:${this.baseRunners.b2 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b2 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b2 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b2')">
+                  2ª Base: ${this.baseRunners.b2 ? '🏃 SI' : '○ NO'}
+                </button>
+                <button class="md-chip" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:${this.baseRunners.b3 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b3 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b3 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b3')">
+                  3ª Base: ${this.baseRunners.b3 ? '🏃 SI' : '○ NO'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Active Batter & Pitcher Cards (Automated) -->
-        <div class="md-card" style="background: #F8F9FA; border: 1px solid #DADCE0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #DADCE0; padding-bottom:8px;">
+        <!-- Active Batter & Pitcher Cards -->
+        <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F3F4; padding-bottom:8px;">
             <div>
               <div style="font-size:0.72rem; font-weight:700; color:#1A73E8; text-transform:uppercase;">⚡ Bateador Actual (Turno ${(isTop ? this.awayLineupIndex : this.homeLineupIndex) + 1}/9)</div>
               <div style="font-size:1rem; font-weight:800; color:#202124;" class="text-truncate">${batterName}</div>
             </div>
-            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('batter')">🔄 Sustituir</button>
+            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('batter')">🔄 Cambiar</button>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px;">
@@ -211,29 +255,37 @@ const LiveScorer = {
           </div>
         </div>
 
-        <!-- One-Tap Action Buttons -->
+        <!-- Categorized Action Buttons -->
         <div class="view-section">
-          <div class="section-header">
-            <h3 class="section-title">⚡ Registrar Jugada (Avanza Bateador Automáticamente)</h3>
+          <!-- POSITIVE / OFFENSIVE PLAYS (GREEN #188038) -->
+          <div style="font-size:0.8rem; font-weight:800; color:#188038; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-icons-round" style="font-size:16px;">trending_up</span> JUGADAS DE HIT & OFENSIVA (VERDE)
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px;">
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('1B', '1B Sencillo', 0)">1B Sencillo</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('2B', '2B Doble', 0)">2B Doble</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('3B', '3B Triple', 0)">3B Triple</button>
+
+            <button class="md-btn" style="grid-column: span 2; background:#0F9D58; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('HR', '💥 JONRÓN (HR)', 0)">💥 JONRÓN (HR)</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base)</button>
+            
+            <button class="md-btn" style="grid-column: span 3; background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.confirmPlay('RUN', '+1 Carrera Anotada', 0)">⚽ +1 Carrera Anotada</button>
           </div>
 
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
-            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('1B', 'Sencillo (1B)')">1B Sencillo</button>
-            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('2B', 'Doble (2B)')">2B Doble</button>
-            <button class="md-btn md-btn-primary" onclick="LiveScorer.recordPlay('3B', 'Triple (3B)')">3B Triple</button>
-
-            <button class="md-btn md-btn-primary" style="grid-column: span 3;" onclick="LiveScorer.recordPlay('HR', '¡JONRÓN! Quadrangular (HR)')">💥 JONRÓN (HR)</button>
-
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('BB', 'Base por Bolas (BB)')">BB (Base)</button>
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('K', 'Ponche (SO)')">SO (Ponche)</button>
-            <button class="md-btn md-btn-outlined" onclick="LiveScorer.recordPlay('OUT', 'Out en elevación/rodado')">Out (F/G)</button>
-
-            <button class="md-btn md-btn-danger" style="grid-column: span 3;" onclick="LiveScorer.recordRunScored()">⚽ +1 Carrera Anotada</button>
+          <!-- OUTS & DEFENSIVE PLAYS (RED #EA4335) -->
+          <div style="font-size:0.8rem; font-weight:800; color:#EA4335; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-icons-round" style="font-size:16px;">do_not_disturb_on</span> OUTS Y DEFENSIVA (ROJO)
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;">
+            <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SO', 'Ponche (SO / K)', 1)">SO (Ponche)</button>
+            <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('FO', 'Fly Out (Elevado)', 1)">Fly Out (F)</button>
+            <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('GO', 'Ground Out (Rodado)', 1)">Ground Out (G)</button>
+            <button class="md-btn" style="background:#C5221F; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('DP', 'Double Play (2 Outs)', 2)">Double Play (DP - 2 Outs)</button>
           </div>
         </div>
 
         <!-- Change Inning Button -->
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; margin-top:10px;">
           <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.toggleHalfInning()">🔁 Cambiar de Entrada / Inning</button>
           <button class="md-btn md-btn-primary" style="flex:1;" onclick="LiveScorer.finishGame()">🏁 Finalizar Partido</button>
         </div>
@@ -243,18 +295,63 @@ const LiveScorer = {
     container.innerHTML = html;
   },
 
-  recordPlay(code, label) {
+  async confirmPlay(code, label, outsAdded = 0) {
     if (!this.activeBatterId || !this.activePitcherId) {
       App.showAlert("Anotación en Vivo", "Por favor asegúrate de tener seleccionados un bateador y un lanzador activos.", "warning", "#EF4444");
       return;
     }
 
+    const isTop = (this.game.half_inning === 'top');
+    const battingList = isTop ? this.awayBatters : this.homeBatters;
+    const currentBatter = battingList.find(b => b.player_id == this.activeBatterId);
+    const batterName = currentBatter ? `#${currentBatter.jersey_number} ${currentBatter.first_name} ${currentBatter.last_name}` : 'Bateador Actual';
+
+    const isPositive = ['1B', '2B', '3B', 'HR', 'BB', 'RUN'].includes(code);
+    const icon = isPositive ? 'check_circle' : 'do_not_disturb_on';
+    const color = isPositive ? '#188038' : '#EA4335';
+
+    const confirmed = await App.showConfirm(
+      `Confirmar Jugada (${code})`,
+      `¿Registrar "${label}" para el bateador ${batterName}?`,
+      icon,
+      color
+    );
+
+    if (confirmed) {
+      if (code === 'RUN') {
+        this.recordRunScored();
+      } else {
+        this.recordPlay(code, label, outsAdded);
+      }
+    }
+  },
+
+  recordPlay(code, label, outsAdded = 0) {
     const runs = (code === 'HR') ? 1 : 0;
-    if (code === 'OUT' || code === 'K') {
-      this.outsCount++;
+    
+    // Automatic Base Runner Progression
+    if (code === '1B') {
+      this.baseRunners = { b1: true, b2: this.baseRunners.b1, b3: this.baseRunners.b2 };
+    } else if (code === '2B') {
+      this.baseRunners = { b1: false, b2: true, b3: this.baseRunners.b1 };
+    } else if (code === '3B') {
+      this.baseRunners = { b1: false, b2: false, b3: true };
+    } else if (code === 'HR') {
+      this.baseRunners = { b1: false, b2: false, b3: false };
+    } else if (code === 'BB') {
+      if (this.baseRunners.b1) {
+        if (this.baseRunners.b2) this.baseRunners.b3 = true;
+        this.baseRunners.b2 = true;
+      }
+      this.baseRunners.b1 = true;
+    }
+
+    if (outsAdded > 0) {
+      this.outsCount += outsAdded;
       if (this.outsCount >= 3) {
         App.showSnackbar("¡3 Outs completados! Cambio automático de media entrada.");
         this.outsCount = 0;
+        this.baseRunners = { b1: false, b2: false, b3: false };
         this.toggleHalfInning();
         return;
       }
@@ -267,6 +364,7 @@ const LiveScorer = {
       batter_id: this.activeBatterId,
       pitcher_id: this.activePitcherId,
       outs_before: this.outsCount,
+      outs_added: outsAdded,
       result_code: code,
       description: label,
       runs_scored: runs
@@ -279,7 +377,6 @@ const LiveScorer = {
     }).then(res => res.json()).then(data => {
       if (data.success) {
         App.showSnackbar(`Jugada registrada: ${label}`);
-        // PILOTO AUTOMÁTICO: Avanza al siguiente bateador del lineup automáticamente
         this.advanceBatterLineup();
         this.renderScorerInterface();
       } else {
@@ -307,6 +404,7 @@ const LiveScorer = {
       this.game.current_inning++;
     }
     this.outsCount = 0;
+    this.baseRunners = { b1: false, b2: false, b3: false };
     this.autoSelectActivePlayers();
     this.renderScorerInterface();
   },

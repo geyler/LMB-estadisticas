@@ -76,7 +76,7 @@ if ($action === 'record_play') {
     $description = trim($input['description'] ?? '');
     $runsScored = intval($input['runs_scored'] ?? 0);
     $rbiCount = intval($input['rbi_count'] ?? 0);
-    $isOut = !empty($input['is_out']);
+    $outsAdded = intval($input['outs_added'] ?? (($resultCode === 'DP') ? 2 : (in_array($resultCode, ['SO', 'FO', 'GO', 'OUT', 'K']) || !empty($input['is_out']) ? 1 : 0)));
     $outsBefore = intval($input['outs_before'] ?? 0);
 
     if (!$batterId || !$pitcherId) {
@@ -109,7 +109,7 @@ if ($action === 'record_play') {
     $is3B = ($resultCode === '3B') ? 1 : 0;
     $isHR = ($resultCode === 'HR') ? 1 : 0;
     $isBB = ($resultCode === 'BB') ? 1 : 0;
-    $isSO = ($resultCode === 'SO') ? 1 : 0;
+    $isSO = in_array($resultCode, ['SO', 'K']) ? 1 : 0;
     $isSB = ($resultCode === 'SB') ? 1 : 0;
     $isHBP = ($resultCode === 'HBP') ? 1 : 0;
     $isSF = ($resultCode === 'SF') ? 1 : 0;
@@ -130,7 +130,7 @@ if ($action === 'record_play') {
     $stmtPCheck->execute([$gameId, $pitcherId]);
     $pStat = $stmtPCheck->fetch();
 
-    $ipOut = $isOut ? 1 : 0;
+    $ipOut = $outsAdded;
 
     if ($pStat) {
         $pdo->prepare("UPDATE game_pitching_stats SET 

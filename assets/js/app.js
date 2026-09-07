@@ -1712,6 +1712,12 @@ const App = {
     const data = await res.json();
     const leaders = data.leaders || [];
 
+    const statLabels = {
+      avg: 'AVG', hr: 'HR', rbi: 'RBI', h: 'H', ops: 'OPS',
+      era: 'ERA', so: 'SO', wins: 'W', saves: 'SV', whip: 'WHIP'
+    };
+    const statLabel = statLabels[stat] || stat.toUpperCase();
+
     let html = `
       <div class="view-content">
         <div class="section-header">
@@ -1749,22 +1755,22 @@ const App = {
         <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow:hidden;">
           <table class="md-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
             <thead>
-              <tr style="border-bottom:1px solid #DADCE0; color:#5F6368;">
-                <th style="width:45px; text-align:center; padding:8px 4px;">Lugar</th>
+              <tr style="border-bottom:1px solid #DADCE0; color:#5F6368; font-weight:700;">
+                <th style="width:32px; text-align:center; padding:8px 2px;">#</th>
                 <th style="text-align:left; padding:8px 4px;">Jugador</th>
                 <th style="text-align:center; padding:8px 4px;">Equipo</th>
-                <th style="text-align:center; padding:8px 4px; width:65px;">Valor</th>
+                <th style="text-align:center; padding:8px 4px; width:65px; font-weight:900; color:#1A73E8;">${statLabel}</th>
               </tr>
             </thead>
             <tbody>
               ${leaders.length ? leaders.map((l, idx) => `
                 <tr onclick="App.showView('player_detail', ${l.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
-                  <td style="width:45px; text-align:center; font-weight:800; color:${idx === 0 ? '#1A73E8' : '#5F6368'}; font-size:0.9rem; padding:8px 4px;">#${idx + 1}</td>
+                  <td style="width:32px; text-align:center; font-weight:800; color:${idx === 0 ? '#1A73E8' : '#5F6368'}; font-size:0.85rem; padding:8px 2px;">#${idx + 1}</td>
                   <td style="font-weight:700; color:#202124; text-align:left; padding:8px 4px;" class="text-truncate">
                     <span style="color:#5F6368; font-weight:600; margin-right:4px;">#${l.jersey_number}</span> ${l.first_name} ${l.last_name}
                   </td>
                   <td style="text-align:center; padding:8px 4px;">
-                    <span class="md-chip" style="padding:3px 8px; font-size:0.75rem; font-weight:700; background:#F8F9FA; color:#202124; border:1px solid #DADCE0;">${l.team_short || l.team_name}</span>
+                    <span class="md-chip" style="padding:3px 8px; font-size:0.8rem; font-weight:800; background:#F8F9FA; color:#202124; border:1px solid #DADCE0;">${l.team_short || l.team_name}</span>
                   </td>
                   <td class="highlight-val" style="text-align:center; font-size:1.05rem; font-weight:900; color:#1A73E8; padding:8px 4px;">
                     ${type === 'batting' ? (l[stat] || l.avg) : (stat === 'era' ? l.era : (stat === 'so' ? l.so : (stat === 'wins' ? l.wins : (stat === 'saves' ? l.saves : l.whip))))}
@@ -2955,6 +2961,7 @@ const App = {
   async openManualStatsModal(game) {
     this.currentManualGame = game;
     this.currentManualTeamKey = 'away';
+    this.currentManualPlayerId = null;
 
     try {
       const [resAway, resHome, resDetail] = await Promise.all([
@@ -2987,6 +2994,7 @@ const App = {
 
   switchManualStatsTeam(teamKey) {
     this.currentManualTeamKey = teamKey;
+    this.currentManualPlayerId = null;
     const tabAway = document.getElementById('ms-tab-away');
     const tabHome = document.getElementById('ms-tab-home');
 
@@ -2998,6 +3006,11 @@ const App = {
       if (tabHome) { tabHome.className = 'md-btn md-btn-primary'; tabHome.innerText = `Local: ${this.currentManualGame.home_short || 'Local'}`; }
     }
 
+    this.renderManualStatsContent();
+  },
+
+  selectManualPlayer(playerId) {
+    this.currentManualPlayerId = playerId;
     this.renderManualStatsContent();
   },
 
@@ -3016,105 +3029,212 @@ const App = {
       body.innerHTML = `
         <div class="md-card" style="text-align:center; padding:16px;">
           <div style="font-weight:700;">No hay jugadores registrados en el plantel de ${teamName}</div>
-          <div style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Agrega jugadores al equipo desde la vista Equipos para cargar sus estadísticas.</div>
+          <div style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Agrega jugadores al equipo desde la vista Equipos para cargar sus estadísticas.</div>
         </div>
       `;
       return;
     }
 
+    if (!this.currentManualPlayerId || !roster.find(p => p.id == this.currentManualPlayerId)) {
+      this.currentManualPlayerId = roster[0].id;
+    }
+
+    const playerIdx = roster.findIndex(p => p.id == this.currentManualPlayerId);
+    const p = roster[playerIdx >= 0 ? playerIdx : 0];
+    const exBat = existingBat.find(b => b.player_id == p.id) || {};
+    const exPitch = existingPitch.find(pt => pt.player_id == p.id) || {};
+
     let html = `
-      <div style="font-size:0.85rem; font-weight:800; color:#1A73E8;" class="text-truncate">
-        Plantel: ${teamName} (${roster.length} jugadores)
+      <!-- Player Dropdown Selector -->
+      <div class="md-card" style="background:#F8F9FA; border:1px solid #DADCE0; margin-bottom:4px;">
+        <div style="font-size:0.75rem; font-weight:800; color:#1A73E8; margin-bottom:4px;">
+          👤 JUGADOR DE ${teamName.toUpperCase()} (${playerIdx + 1} de ${roster.length}):
+        </div>
+        <select id="ms-player-select" class="form-control" style="font-weight:700; color:#202124;" onchange="App.selectManualPlayer(this.value)">
+          ${roster.map(rk => `
+            <option value="${rk.id}" ${rk.id == p.id ? 'selected' : ''}>
+              #${rk.jersey_number} ${rk.first_name} ${rk.last_name} (${rk.position_primary || 'Jugador'})
+            </option>
+          `).join('')}
+        </select>
       </div>
 
-      <!-- BATTING STATS FORM TABLE -->
-      <div class="md-card">
-        <div style="font-weight:800; font-size:0.85rem; color:#202124; margin-bottom:6px;">📊 Estadísticas de Bateo (Ofensiva)</div>
-        <div class="md-table-wrapper" style="border:none;">
-          <table class="md-table">
-            <thead>
-              <tr>
-                <th>Jugador</th>
-                <th>AB</th><th>C</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>CI</th><th>BB</th><th>SO</th><th>BR</th><th>E</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${roster.map(p => {
-                const ex = existingBat.find(b => b.player_id == p.id) || {};
-                return `
-                  <tr>
-                    <td style="font-weight:700;" class="text-truncate">
-                      #${p.jersey_number} ${p.first_name} ${p.last_name}
-                      <input type="hidden" class="ms-bat-player-id" value="${p.id}">
-                    </td>
-                    <td><input type="number" min="0" class="form-control ms-bat-ab" style="padding:4px; width:45px; text-align:center;" value="${ex.ab || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-r" style="padding:4px; width:45px; text-align:center;" value="${ex.r || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-h" style="padding:4px; width:45px; text-align:center;" value="${ex.h || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-doubles" style="padding:4px; width:40px; text-align:center;" value="${ex.doubles || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-triples" style="padding:4px; width:40px; text-align:center;" value="${ex.triples || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-hr" style="padding:4px; width:40px; text-align:center;" value="${ex.hr || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-rbi" style="padding:4px; width:45px; text-align:center;" value="${ex.rbi || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-bb" style="padding:4px; width:40px; text-align:center;" value="${ex.bb || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-so" style="padding:4px; width:40px; text-align:center;" value="${ex.so || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-sb" style="padding:4px; width:40px; text-align:center;" value="${ex.sb || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-bat-e" style="padding:4px; width:40px; text-align:center;" value="${ex.e || 0}"></td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+      <!-- BATTING STATS FORM CARD -->
+      <div class="md-card" style="border:1px solid #1A73E8; border-left:4px solid #1A73E8; background:#FFFFFF;">
+        <div style="font-weight:800; font-size:0.85rem; color:#1A73E8; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span class="material-icons-round" style="font-size:18px;">sports_cricket</span> Bateo (Ofensiva)
+        </div>
+        
+        <input type="hidden" id="ms-player-id" value="${p.id}">
+        
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; font-size:0.8rem;">
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">AB (Turnos)</label>
+            <input type="number" min="0" id="ms-bat-ab" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.ab || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">C (Carreras)</label>
+            <input type="number" min="0" id="ms-bat-r" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.r || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">H (Hits)</label>
+            <input type="number" min="0" id="ms-bat-h" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.h || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">2B (Dobles)</label>
+            <input type="number" min="0" id="ms-bat-doubles" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.doubles || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">3B (Triples)</label>
+            <input type="number" min="0" id="ms-bat-triples" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.triples || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#1A73E8;">HR (Jonrón)</label>
+            <input type="number" min="0" id="ms-bat-hr" class="form-control" style="text-align:center; font-weight:800; padding:4px; border-color:#1A73E8;" value="${exBat.hr || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">CI (Impulsadas)</label>
+            <input type="number" min="0" id="ms-bat-rbi" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.rbi || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">BB (Bolas)</label>
+            <input type="number" min="0" id="ms-bat-bb" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.bb || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#EA4335;">SO (Ponches)</label>
+            <input type="number" min="0" id="ms-bat-so" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.so || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">BR (Robos)</label>
+            <input type="number" min="0" id="ms-bat-sb" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.sb || 0}">
+          </div>
+          <div style="grid-column: span 2;">
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">E (Errores)</label>
+            <input type="number" min="0" id="ms-bat-e" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.e || 0}">
+          </div>
         </div>
       </div>
 
-      <!-- PITCHING STATS FORM TABLE -->
-      <div class="md-card">
-        <div style="font-weight:800; font-size:0.85rem; color:#3B82F6; margin-bottom:6px;">⚾ Estadísticas de Pitcheo (Lanzadores)</div>
-        <div class="md-table-wrapper" style="border:none;">
-          <table class="md-table">
-            <thead>
-              <tr>
-                <th>Lanzador</th>
-                <th>Outs (3=1IP)</th><th>H</th><th>C</th><th>CL (ER)</th><th>BB</th><th>SO</th><th>Decisión</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${roster.map(p => {
-                const ex = existingPitch.find(pt => pt.player_id == p.id) || {};
-                return `
-                  <tr>
-                    <td style="font-weight:700;" class="text-truncate">
-                      #${p.jersey_number} ${p.first_name} ${p.last_name}
-                      <input type="hidden" class="ms-pitch-player-id" value="${p.id}">
-                    </td>
-                    <td><input type="number" min="0" class="form-control ms-pitch-outs" style="padding:4px; width:50px; text-align:center;" value="${ex.ip_outs || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-pitch-h" style="padding:4px; width:45px; text-align:center;" value="${ex.h || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-pitch-r" style="padding:4px; width:45px; text-align:center;" value="${ex.r || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-pitch-er" style="padding:4px; width:45px; text-align:center;" value="${ex.er || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-pitch-bb" style="padding:4px; width:40px; text-align:center;" value="${ex.bb || 0}"></td>
-                    <td><input type="number" min="0" class="form-control ms-pitch-so" style="padding:4px; width:40px; text-align:center;" value="${ex.so || 0}"></td>
-                    <td>
-                      <select class="form-control ms-pitch-decision" style="padding:4px; width:70px; font-size:0.75rem;">
-                        <option value="NONE" ${ex.decision === 'NONE' ? 'selected' : ''}>-</option>
-                        <option value="W" ${ex.decision === 'W' ? 'selected' : ''}>G (W)</option>
-                        <option value="L" ${ex.decision === 'L' ? 'selected' : ''}>P (L)</option>
-                        <option value="SV" ${ex.decision === 'SV' ? 'selected' : ''}>S (SV)</option>
-                        <option value="H" ${ex.decision === 'H' ? 'selected' : ''}>H (Hold)</option>
-                      </select>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+      <!-- PITCHING STATS FORM CARD -->
+      <div class="md-card" style="border:1px solid #34A853; border-left:4px solid #34A853; background:#FFFFFF;">
+        <div style="font-weight:800; font-size:0.85rem; color:#34A853; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span class="material-icons-round" style="font-size:18px;">sports_baseball</span> Pitcheo (Lanzador)
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; font-size:0.8rem;">
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">Outs (3=1IP)</label>
+            <input type="number" min="0" id="ms-pitch-outs" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exPitch.ip_outs || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">H (Hits)</label>
+            <input type="number" min="0" id="ms-pitch-h" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exPitch.h || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">C (Carreras)</label>
+            <input type="number" min="0" id="ms-pitch-r" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exPitch.r || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">CL (Limpias)</label>
+            <input type="number" min="0" id="ms-pitch-er" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exPitch.er || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">BB (Bolas)</label>
+            <input type="number" min="0" id="ms-pitch-bb" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exPitch.bb || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">SO (Ponches)</label>
+            <input type="number" min="0" id="ms-pitch-so" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exPitch.so || 0}">
+          </div>
+          <div style="grid-column: span 2;">
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">Decisión</label>
+            <select id="ms-pitch-decision" class="form-control" style="font-size:0.8rem; font-weight:800; padding:4px;">
+              <option value="NONE" ${exPitch.decision === 'NONE' ? 'selected' : ''}>Sin Decisión (-)</option>
+              <option value="W" ${exPitch.decision === 'W' ? 'selected' : ''}>Victoria (G / W)</option>
+              <option value="L" ${exPitch.decision === 'L' ? 'selected' : ''}>Derrota (P / L)</option>
+              <option value="SV" ${exPitch.decision === 'SV' ? 'selected' : ''}>Salvado (S / SV)</option>
+              <option value="H" ${exPitch.decision === 'H' ? 'selected' : ''}>Hold (H)</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <button class="md-btn md-btn-gold" style="width:100%; margin-top:4px;" onclick="App.handleSaveManualStats()">
-        💾 Guardar Estadísticas del Equipo ${teamName}
-      </button>
+      <!-- ACTIONS BAR -->
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+        <button class="md-btn md-btn-primary" style="width:100%; font-size:0.9rem; font-weight:800; padding:10px;" onclick="App.handleSaveAndNextManualStat()">
+          💾 Guardar y Siguiente Jugador (➡️)
+        </button>
+        <button class="md-btn md-btn-outlined" style="width:100%; font-size:0.8rem;" onclick="App.handleSaveManualStats()">
+          💾 Finalizar y Cerrar (${teamName})
+        </button>
+      </div>
     `;
 
     body.innerHTML = html;
+  },
+
+  async handleSaveAndNextManualStat() {
+    if (!this.currentManualGame) return;
+
+    const isAway = (this.currentManualTeamKey === 'away');
+    const teamId = isAway ? this.currentManualGame.away_team_id : this.currentManualGame.home_team_id;
+    const roster = isAway ? this.awayRoster : this.homeRoster;
+    const pId = document.getElementById('ms-player-id')?.value;
+
+    if (!pId) return;
+
+    const ab = parseInt(document.getElementById('ms-bat-ab')?.value || 0);
+    const r = parseInt(document.getElementById('ms-bat-r')?.value || 0);
+    const h = parseInt(document.getElementById('ms-bat-h')?.value || 0);
+    const doubles = parseInt(document.getElementById('ms-bat-doubles')?.value || 0);
+    const triples = parseInt(document.getElementById('ms-bat-triples')?.value || 0);
+    const hr = parseInt(document.getElementById('ms-bat-hr')?.value || 0);
+    const rbi = parseInt(document.getElementById('ms-bat-rbi')?.value || 0);
+    const bb = parseInt(document.getElementById('ms-bat-bb')?.value || 0);
+    const so = parseInt(document.getElementById('ms-bat-so')?.value || 0);
+    const sb = parseInt(document.getElementById('ms-bat-sb')?.value || 0);
+    const e = parseInt(document.getElementById('ms-bat-e')?.value || 0);
+
+    const ip_outs = parseInt(document.getElementById('ms-pitch-outs')?.value || 0);
+    const pitch_h = parseInt(document.getElementById('ms-pitch-h')?.value || 0);
+    const pitch_r = parseInt(document.getElementById('ms-pitch-r')?.value || 0);
+    const pitch_er = parseInt(document.getElementById('ms-pitch-er')?.value || 0);
+    const pitch_bb = parseInt(document.getElementById('ms-pitch-bb')?.value || 0);
+    const pitch_so = parseInt(document.getElementById('ms-pitch-so')?.value || 0);
+    const decision = document.getElementById('ms-pitch-decision')?.value || 'NONE';
+
+    if (!this.manualGameDetail) this.manualGameDetail = {};
+    const batArray = isAway ? (this.manualGameDetail.away_batters = this.manualGameDetail.away_batters || []) : (this.manualGameDetail.home_batters = this.manualGameDetail.home_batters || []);
+    const pitchArray = isAway ? (this.manualGameDetail.away_pitchers = this.manualGameDetail.away_pitchers || []) : (this.manualGameDetail.home_pitchers = this.manualGameDetail.home_pitchers || []);
+
+    const existingBatIdx = batArray.findIndex(b => b.player_id == pId);
+    const batObj = { player_id: pId, ab, r, h, singles: Math.max(0, h - doubles - triples - hr), doubles, triples, hr, rbi, bb, so, sb, e };
+    if (existingBatIdx >= 0) batArray[existingBatIdx] = batObj;
+    else batArray.push(batObj);
+
+    const existingPitchIdx = pitchArray.findIndex(pt => pt.player_id == pId);
+    const pitchObj = { player_id: pId, ip_outs, h: pitch_h, r: pitch_r, er: pitch_er, bb: pitch_bb, so: pitch_so, decision };
+    if (existingPitchIdx >= 0) pitchArray[existingPitchIdx] = pitchObj;
+    else pitchArray.push(pitchObj);
+
+    try {
+      await fetch('api/games.php?action=save_manual_stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          game_id: this.currentManualGame.id,
+          team_id: teamId,
+          batting_stats: batArray,
+          pitching_stats: pitchArray
+        })
+      });
+    } catch(e) {}
+
+    const currIdx = roster.findIndex(p => p.id == pId);
+    const nextPlayer = roster[(currIdx + 1) % roster.length];
+    
+    this.showSnackbar(`✓ Guardado. Avanzando a #${nextPlayer.jersey_number} ${nextPlayer.first_name} ${nextPlayer.last_name}`);
+    this.currentManualPlayerId = nextPlayer.id;
+    this.renderManualStatsContent();
   },
 
   async handleSaveManualStats() {
@@ -3123,74 +3243,16 @@ const App = {
     const isAway = (this.currentManualTeamKey === 'away');
     const teamId = isAway ? this.currentManualGame.away_team_id : this.currentManualGame.home_team_id;
 
-    // Collect Batting Stats
-    const battingStats = [];
-    document.querySelectorAll('.ms-bat-player-id').forEach(el => {
-      const row = el.closest('tr');
-      const pId = el.value;
-      const ab = parseInt(row.querySelector('.ms-bat-ab')?.value || 0);
-      const r = parseInt(row.querySelector('.ms-bat-r')?.value || 0);
-      const h = parseInt(row.querySelector('.ms-bat-h')?.value || 0);
-      const doubles = parseInt(row.querySelector('.ms-bat-doubles')?.value || 0);
-      const triples = parseInt(row.querySelector('.ms-bat-triples')?.value || 0);
-      const hr = parseInt(row.querySelector('.ms-bat-hr')?.value || 0);
-      const rbi = parseInt(row.querySelector('.ms-bat-rbi')?.value || 0);
-      const bb = parseInt(row.querySelector('.ms-bat-bb')?.value || 0);
-      const so = parseInt(row.querySelector('.ms-bat-so')?.value || 0);
-      const sb = parseInt(row.querySelector('.ms-bat-sb')?.value || 0);
-      const e = parseInt(row.querySelector('.ms-bat-e')?.value || 0);
+    // Collect active inputs if editing a specific player right now
+    const pId = document.getElementById('ms-player-id')?.value;
+    if (pId) {
+      await this.handleSaveAndNextManualStat();
+    }
 
-      if (ab > 0 || r > 0 || h > 0 || rbi > 0 || bb > 0 || so > 0 || e > 0) {
-        battingStats.push({
-          player_id: pId,
-          ab, r, h, singles: Math.max(0, h - doubles - triples - hr), doubles, triples, hr, rbi, bb, so, sb, e
-        });
-      }
-    });
-
-    // Collect Pitching Stats
-    const pitchingStats = [];
-    document.querySelectorAll('.ms-pitch-player-id').forEach(el => {
-      const row = el.closest('tr');
-      const pId = el.value;
-      const ip_outs = parseInt(row.querySelector('.ms-pitch-outs')?.value || 0);
-      const h = parseInt(row.querySelector('.ms-pitch-h')?.value || 0);
-      const r = parseInt(row.querySelector('.ms-pitch-r')?.value || 0);
-      const er = parseInt(row.querySelector('.ms-pitch-er')?.value || 0);
-      const bb = parseInt(row.querySelector('.ms-pitch-bb')?.value || 0);
-      const so = parseInt(row.querySelector('.ms-pitch-so')?.value || 0);
-      const decision = row.querySelector('.ms-pitch-decision')?.value || 'NONE';
-
-      if (ip_outs > 0 || h > 0 || r > 0 || er > 0 || bb > 0 || so > 0 || decision !== 'NONE') {
-        pitchingStats.push({
-          player_id: pId,
-          ip_outs, h, r, er, bb, so, decision
-        });
-      }
-    });
-
-    try {
-      const res = await fetch('api/games.php?action=save_manual_stats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          game_id: this.currentManualGame.id,
-          team_id: teamId,
-          batting_stats: battingStats,
-          pitching_stats: pitchingStats
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.showSnackbar(data.message || 'Estadísticas guardadas con éxito.');
-        const resDetail = await fetch(`api/games.php?action=detail&id=${this.currentManualGame.id}`);
-        this.manualGameDetail = await resDetail.json();
-        this.renderManualStatsContent();
-      } else {
-        this.showAlert('Atención', data.message || 'Error al guardar estadísticas.', 'error', '#EF4444');
-      }
-    } catch (err) {
-      this.showAlert('Error', 'Error de conexión al guardar estadísticas.', 'wifi_off', '#EF4444');
+    this.showSnackbar("Estadísticas guardadas exitosamente.");
+    this.closeManualStatsModal();
+    if (this.currentView === 'game_detail') {
+      this.renderGameDetailView(document.getElementById('view-container'), this.currentManualGame.id);
     }
   },
 

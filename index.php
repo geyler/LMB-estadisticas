@@ -318,8 +318,8 @@ session_start();
         <div class="sheet-handle" onclick="App.closeManualStatsModal()"></div>
         
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:1.05rem; font-weight:800; color:#FFFFFF; display:flex; align-items:center; gap:6px;" class="text-truncate">
-            <span class="material-icons-round" style="color:#10B981;">groups</span> Estadísticas Individuales de Jugadores
+          <h3 style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;" class="text-truncate">
+            <span class="material-icons-round" style="color:#1A73E8;">groups</span> Estadísticas Individuales de Jugadores
           </h3>
           <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="App.closeManualStatsModal()">✕</button>
         </div>
