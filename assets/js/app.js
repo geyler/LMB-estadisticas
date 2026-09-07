@@ -999,119 +999,132 @@ const App = {
     `).join('');
   },
 
-  // 2. DEDICATED STANDINGS VIEW (GOOGLE SPORTS FORMAT)
   async renderStandingsView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tabla de posiciones...</div></div>`;
 
-    const res = await fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`);
-    const data = await res.json();
-    const standings = data.standings || [];
+    try {
+      const res = await fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const standings = data.standings || [];
 
-    let html = `
-      <div class="view-content">
-        <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">format_list_numbered</span> Tabla de Posiciones Oficial</h2>
-        </div>
+      let html = `
+        <div class="view-content">
+          <div class="section-header">
+            <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">format_list_numbered</span> Tabla de Posiciones Oficial</h2>
+          </div>
 
-        <div class="md-card" style="padding:0; overflow:hidden;">
-          <div class="md-table-wrapper" style="border:none;">
-            <table class="md-table" style="text-align:center;">
-              <thead>
-                <tr>
-                  <th style="text-align:left;">Club</th>
-                  <th>PJ</th>
-                  <th>PG</th>
-                  <th>PP</th>
-                  <th>PCT</th>
-                  <th>DIF</th>
-                  <th class="highlight-val">CF</th>
-                  <th>CC</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${standings.length ? standings.map((s, idx) => `
-                  <tr onclick="App.showView('team_detail', ${s.team_id})" style="cursor:pointer;">
-                    <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:8px;" class="text-truncate">
-                      <span style="color:#94A3B8; font-size:0.8rem; font-weight:800; width:16px;">${idx + 1}</span>
-                      <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
-                      <span class="text-truncate">${s.name}</span>
-                    </td>
-                    <td>${s.gp}</td>
-                    <td style="color:#10B981; font-weight:800;">${s.wins}</td>
-                    <td style="color:#EF4444; font-weight:800;">${s.losses}</td>
-                    <td class="highlight-val">${s.pct}</td>
-                    <td style="font-size:0.78rem; color:#94A3B8;">${s.gb}</td>
-                    <td>${s.cf}</td>
-                    <td>${s.cc}</td>
+          <div class="md-card" style="padding:0; overflow:hidden;">
+            <div class="md-table-wrapper" style="border:none;">
+              <table class="md-table" style="text-align:center;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left;">Club</th>
+                    <th>PJ</th>
+                    <th>PG</th>
+                    <th>PP</th>
+                    <th>PCT</th>
+                    <th>DIF</th>
+                    <th class="highlight-val">CF</th>
+                    <th>CC</th>
                   </tr>
-                `).join('') : '<tr><td colspan="8" style="text-align:center; padding:16px;">Sin equipos registrados en esta categoría.</td></tr>'}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${standings.length ? standings.map((s, idx) => `
+                    <tr onclick="App.showView('team_detail', ${s.team_id})" style="cursor:pointer;">
+                      <td style="text-align:left; font-weight:700; display:flex; align-items:center; gap:8px;" class="text-truncate">
+                        <span style="color:#94A3B8; font-size:0.8rem; font-weight:800; width:16px;">${idx + 1}</span>
+                        <img src="${s.logo_url || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
+                        <span class="text-truncate">${s.name}</span>
+                      </td>
+                      <td>${s.gp}</td>
+                      <td style="color:#10B981; font-weight:800;">${s.wins}</td>
+                      <td style="color:#EF4444; font-weight:800;">${s.losses}</td>
+                      <td class="highlight-val">${s.pct}</td>
+                      <td style="font-size:0.78rem; color:#94A3B8;">${s.gb}</td>
+                      <td>${s.cf}</td>
+                      <td>${s.cc}</td>
+                    </tr>
+                  `).join('') : '<tr><td colspan="8" style="text-align:center; padding:16px;">Sin equipos registrados en esta categoría.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
 
-    container.innerHTML = html;
+      container.innerHTML = html;
+    } catch(err) {
+      console.error('Error al cargar posiciones', err);
+      container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar la tabla de posiciones</div><div style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Verifica tu conexión y vuelve a intentarlo.</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.refreshCurrentView()">🔄 Reintentar</button></div></div>`;
+    }
   },
+
 
   // 3. CALENDAR & SCHEDULE VIEW (GOOGLE SPORTS FORMAT)
   async renderCalendarView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando calendario...</div></div>`;
 
-    const res = await fetch(`api/games.php?action=list&category_id=${this.currentCategory}`);
-    const data = await res.json();
-    const games = data.games || [];
-    const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+    try {
+      const res = await fetch(`api/games.php?action=list&category_id=${this.currentCategory}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const games = data.games || [];
+      const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
 
-    let html = `
-      <div class="view-content">
-        <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">calendar_month</span> Calendario de Partidos</h2>
-          ${canEdit ? 
-            `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
-        </div>
+      let html = `
+        <div class="view-content">
+          <div class="section-header">
+            <h2 class="section-title"><span class="material-icons-round" style="color:#3B82F6;">calendar_month</span> Calendario de Partidos</h2>
+            ${canEdit ? 
+              `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
+          </div>
 
-        <div class="google-match-grid">
-          ${games.length ? games.map(g => `
-            <div class="google-match-card" onclick="App.showView('game_detail', ${g.id})">
-              <div class="google-match-teams">
-                <div style="font-size:0.68rem; font-weight:700; color:#1A73E8;" class="text-truncate">
-                  🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name}
-                </div>
-                <div class="google-team-row">
-                  <div class="google-team-info text-truncate">
-                    <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
-                    <span class="google-team-name text-truncate">${g.away_team_name}</span>
+          <div class="google-match-grid">
+            ${games.length ? games.map(g => `
+              <div class="google-match-card" onclick="App.showView('game_detail', ${g.id})">
+                <div class="google-match-teams">
+                  <div style="font-size:0.68rem; font-weight:700; color:#1A73E8;" class="text-truncate">
+                    🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name}
                   </div>
-                  <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
-                </div>
-                <div class="google-team-row">
-                  <div class="google-team-info text-truncate">
-                    <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
-                    <span class="google-team-name text-truncate">${g.home_team_name}</span>
+                  <div class="google-team-row">
+                    <div class="google-team-info text-truncate">
+                      <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
+                      <span class="google-team-name text-truncate">${g.away_team_name}</span>
+                    </div>
+                    <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
                   </div>
-                  <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
+                  <div class="google-team-row">
+                    <div class="google-team-info text-truncate">
+                      <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
+                      <span class="google-team-name text-truncate">${g.home_team_name}</span>
+                    </div>
+                    <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
+                  </div>
+                </div>
+                <div class="google-match-status">
+                  ${App.getStatusBadge(g.status)}
+                  <span style="font-size:0.7rem; color:#5F6368; margin-top:2px;">${App.formatDateTime(g.game_date)}</span>
                 </div>
               </div>
-              <div class="google-match-status">
-                ${App.getStatusBadge(g.status)}
-                <span style="font-size:0.7rem; color:#5F6368; margin-top:2px;">${App.formatDateTime(g.game_date)}</span>
+            `).join('') : `
+              <div class="md-card" style="grid-column: 1 / -1; text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
+                <span class="material-icons-round" style="font-size:36px; color:#1A73E8;">event_available</span>
+                <div style="font-weight:700; font-size:0.95rem; margin-top:6px; color:#202124;">No hay partidos en el calendario</div>
+                <div style="font-size:0.8rem; color:#5F6368;">Los partidos programados de esta categoría se mostrarán aquí.</div>
               </div>
-            </div>
-          `).join('') : `
-            <div class="md-card" style="grid-column: 1 / -1; text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
-              <span class="material-icons-round" style="font-size:36px; color:#1A73E8;">event_available</span>
-              <div style="font-weight:700; font-size:0.95rem; margin-top:6px; color:#202124;">No hay partidos en el calendario</div>
-              <div style="font-size:0.8rem; color:#5F6368;">Los partidos programados de esta categoría se mostrarán aquí.</div>
-            </div>
-          `}
+            `}
+          </div>
         </div>
-      </div>
-    `;
+      `;
 
-    container.innerHTML = html;
+      container.innerHTML = html;
+    } catch(err) {
+      console.error('Error al cargar calendario', err);
+      container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar el calendario</div><div style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Verifica tu conexión y vuelve a intentarlo.</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.refreshCurrentView()">🔄 Reintentar</button></div></div>`;
+    }
   },
+
 
   // 3. GAME DETAIL VIEW
   async renderGameDetailView(container, gameId) {
@@ -1466,45 +1479,55 @@ const App = {
   async renderTeamsView(container) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando equipos...</div></div>`;
 
-    const res = await fetch(`api/teams.php?action=list&category_id=${this.currentCategory}`);
-    const data = await res.json();
-    const teams = data.teams || [];
+    try {
+      const res = await fetch(`api/teams.php?action=list&category_id=${this.currentCategory}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const teams = data.teams || [];
 
-    const canCreate = (this.currentUser && ['super_admin', 'admin'].includes(this.currentUser.role));
+      const canCreate = (this.currentUser && ['super_admin', 'admin'].includes(this.currentUser.role));
 
-    let html = `
-      <div class="view-content">
-        <div class="section-header">
-          <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">groups</span> Equipos de la Liga</h2>
-          ${canCreate ? `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateTeamModal()">➕ Crear Equipo</button>` : ''}
+      let html = `
+        <div class="view-content">
+          <div class="section-header">
+            <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">groups</span> Equipos de la Liga</h2>
+            ${canCreate ? `<button class="md-btn md-btn-primary" style="padding:6px 14px; font-size:0.8rem;" onclick="App.showCreateTeamModal()">➕ Crear Equipo</button>` : ''}
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+            ${teams.length ? teams.map(t => `
+              <div class="md-card md-card-interactive" onclick="App.showView('team_detail', ${t.id})" style="text-align:center; align-items:center;">
+                <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:60px; height:60px; border-radius:50%; border:2px solid ${t.color_primary};">
+                <div style="font-weight:800; font-size:0.95rem; margin-top:4px;" class="text-truncate">${t.name}</div>
+                <span class="md-chip" style="padding:2px 8px; font-size:0.65rem;">${t.category_name}</span>
+                <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;" class="text-truncate">📍 Sede: ${t.home_stadium_name || 'Neutral'}</div>
+              </div>
+            `).join('') : '<div style="grid-column:span 2; text-align:center; padding:24px; color:#94A3B8;">No hay equipos registrados en esta categoría.</div>'}
+          </div>
         </div>
-
-        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
-          ${teams.length ? teams.map(t => `
-            <div class="md-card md-card-interactive" onclick="App.showView('team_detail', ${t.id})" style="text-align:center; align-items:center;">
-              <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:60px; height:60px; border-radius:50%; border:2px solid ${t.color_primary};">
-              <div style="font-weight:800; font-size:0.95rem; margin-top:4px;" class="text-truncate">${t.name}</div>
-              <span class="md-chip" style="padding:2px 8px; font-size:0.65rem;">${t.category_name}</span>
-              <div style="font-size:0.7rem; color:#94A3B8; margin-top:4px;" class="text-truncate">📍 Sede: ${t.home_stadium_name || 'Neutral'}</div>
-            </div>
-          `).join('') : '<div style="grid-column:span 2; text-align:center; padding:24px; color:#94A3B8;">No hay equipos registrados en esta categoría.</div>'}
-        </div>
-      </div>
-    `;
-    container.innerHTML = html;
+      `;
+      container.innerHTML = html;
+    } catch(err) {
+      console.error('Error al cargar equipos', err);
+      container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar los equipos</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.refreshCurrentView()">🔄 Reintentar</button></div></div>`;
+    }
   },
+
 
   // 5. TEAM DETAIL VIEW
   async renderTeamDetailView(container, teamId) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando plantel del equipo...</div></div>`;
 
-    const res = await fetch(`api/teams.php?action=detail&id=${teamId}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`api/teams.php?action=detail&id=${teamId}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
 
-    if (!data.success) {
-      container.innerHTML = `<div class="view-content">Equipo no encontrado.</div>`;
-      return;
-    }
+      if (!data.success) {
+        container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><div style="font-size:2rem;">⚠️</div><div style="font-weight:700; margin-top:8px;">Equipo no encontrado.</div></div></div>`;
+        return;
+      }
+
 
     const t = data.team;
     const allMembers = data.players || [];
@@ -1615,16 +1638,23 @@ const App = {
       </div>
     `;
     container.innerHTML = html;
+    } catch(err) {
+      console.error('Error al cargar detalle de equipo', err);
+      container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar el equipo</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.refreshCurrentView()">🔄 Reintentar</button></div></div>`;
+    }
   },
 
   // 6. PLAYER DETAIL VIEW (Batting & Pitching Stats)
   async renderPlayerDetailView(container, playerId) {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tarjeta del jugador...</div></div>`;
 
-    const res = await fetch(`api/players.php?action=detail&id=${playerId}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`api/players.php?action=detail&id=${playerId}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
 
-    if (!data.success) {
+      if (!data.success) {
+
       container.innerHTML = `<div class="view-content">Jugador no encontrado.</div>`;
       return;
     }
@@ -1708,17 +1738,26 @@ const App = {
       </div>
     `;
     container.innerHTML = html;
+    } catch(err) {
+      console.error('Error al cargar detalle de jugador', err);
+      container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar el jugador</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.refreshCurrentView()">🔄 Reintentar</button></div></div>`;
+    }
   },
 
   // 7. LEADERS VIEW (Batting & Pitching Departmental Lists)
   async renderLeadersView(container, type = 'batting', stat = 'avg') {
     this.leadersType = type;
+
     this.leadersStat = stat;
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando líderes de estadísticas...</div></div>`;
 
-    const res = await fetch(`api/leaderboards.php?type=${type}&stat=${stat}&category_id=${this.currentCategory}`);
-    const data = await res.json();
-    const leaders = data.leaders || [];
+    try {
+      const res = await fetch(`api/leaderboards.php?type=${type}&stat=${stat}&category_id=${this.currentCategory}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const leaders = data.leaders || [];
+
+
 
     const statLabels = {
       avg: 'AVG', hr: 'HR', rbi: 'RBI', h: 'H', ops: 'OPS',
@@ -1790,7 +1829,11 @@ const App = {
         </div>
       </div>
     `;
-    container.innerHTML = html;
+      container.innerHTML = html;
+    } catch(err) {
+      console.error('Error al cargar líderes', err);
+      container.innerHTML = `<div class="view-content"><div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar los líderes</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.refreshCurrentView()">🔄 Reintentar</button></div></div>`;
+    }
   },
 
   // 8. FULL AUTONOMOUS ADMIN SUITE
@@ -2159,9 +2202,12 @@ const App = {
     }
 
     const q = document.getElementById('user-search-input')?.value || '';
-    const res = await fetch(`api/auth.php?action=users_list&q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    const users = data.users || [];
+    try {
+      const res = await fetch(`api/auth.php?action=users_list&q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const users = data.users || [];
+
 
     let html = `
       <div class="md-card">
@@ -2201,7 +2247,11 @@ const App = {
         </table>
       </div>
     `;
-    container.innerHTML = html;
+      container.innerHTML = html;
+    } catch(err) {
+      console.error("Error al cargar usuarios", err);
+      container.innerHTML = `<div class="md-card" style="text-align:center; padding:24px;"><span class="material-icons-round" style="font-size:36px; color:#EF4444;">wifi_off</span><div style="font-weight:700; margin-top:8px;">Error al cargar usuarios</div><button class="md-btn md-btn-primary" style="margin-top:12px;" onclick="App.switchAdminTab(\"users\")">🔄 Reintentar</button></div>`;
+    }
   },
 
   showUserModal() {
@@ -2581,6 +2631,10 @@ const App = {
     const category_id = document.getElementById('ct-team-category').value;
     const home_stadium_id = document.getElementById('ct-team-stadium').value;
 
+    const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando...'; }
+
     try {
       const res = await fetch('api/teams.php?action=create', {
         method: 'POST',
@@ -2597,6 +2651,8 @@ const App = {
       }
     } catch(err) {
       this.showAlert("Error", "Error de conexión al crear equipo.", "wifi_off", "#EF4444");
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '💾 Crear Equipo'; }
     }
   },
 
@@ -2771,6 +2827,10 @@ const App = {
     const jersey = document.getElementById('cp-jersey').value;
     const position = document.getElementById('cp-position').value;
 
+    const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    let origText = '';
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Registrando...'; }
+
     try {
       const res = await fetch('api/players.php?action=create', {
         method: 'POST',
@@ -2794,6 +2854,8 @@ const App = {
       }
     } catch(err) {
       this.showAlert('Error', 'Error de conexión.', 'wifi_off', '#EF4444');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '✅ Registrar Jugador'; }
     }
   },
 
@@ -2948,7 +3010,9 @@ const App = {
           this.showSnackbar('Postal eliminada.');
           this.loadEntityGalleryPhotos(entityType, entityId);
         }
-      } catch(e){}
+      } catch(e) {
+        this.showSnackbar("Error de conexión al eliminar la postal.");
+      }
     }
   },
 
@@ -2972,6 +3036,8 @@ const App = {
     }).then(res => res.json()).then(data => {
       this.showAlert("Ajustes de Marca", data.message || 'Branding actualizado.', "palette", "#3B82F6");
       this.loadSettings();
+    }).catch(() => {
+      this.showSnackbar('Error de conexión al guardar los ajustes.');
     });
   },
 
@@ -3407,7 +3473,7 @@ const App = {
     else pitchArray.push(pitchObj);
 
     try {
-      await fetch('api/games.php?action=save_manual_stats', {
+      const saveRes = await fetch('api/games.php?action=save_manual_stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3417,7 +3483,13 @@ const App = {
           pitching_stats: pitchArray
         })
       });
-    } catch(e) {}
+      const saveData = await saveRes.json();
+      if (!saveData.success) {
+        console.warn('Manual stats save returned error:', saveData.message);
+      }
+    } catch(e) {
+      console.error('Error al guardar estadísticas manuales', e);
+    }
 
     const currIdx = roster.findIndex(p => p.id == pId);
     const nextPlayer = roster[(currIdx + 1) % roster.length];
@@ -3703,8 +3775,12 @@ const App = {
         if (data.success) {
           this.showSnackbar('Sede eliminada.');
           this.refreshCurrentView();
+        } else {
+          this.showAlert('Error', data.message || 'No se pudo eliminar la sede.', 'error', '#EF4444');
         }
-      } catch(e) {}
+      } catch(e) {
+        this.showSnackbar("Error de conexión al eliminar la sede.");
+      }
     }
   },
 
@@ -3829,8 +3905,12 @@ const App = {
         if (data.success) {
           this.showSnackbar('Equipo eliminado.');
           this.refreshCurrentView();
+        } else {
+          this.showAlert('Error', data.message || 'No se pudo eliminar el equipo.', 'error', '#EF4444');
         }
-      } catch(e) {}
+      } catch(e) {
+        this.showSnackbar("Error de conexión al eliminar el equipo.");
+      }
     }
   },
 
@@ -3942,8 +4022,12 @@ const App = {
         if (data.success) {
           this.showSnackbar('Jugador dado de baja.');
           this.refreshCurrentView();
+        } else {
+          this.showAlert('Error', data.message || 'No se pudo eliminar al jugador.', 'error', '#EF4444');
         }
-      } catch(e) {}
+      } catch(e) {
+        this.showSnackbar("Error de conexión al dar de baja al jugador.");
+      }
     }
   },
 
@@ -3953,6 +4037,89 @@ const App = {
 
   async reassignPlayerModal(playerId, playerName = '') {
     await this.showEditPlayerModal(playerId);
+  },
+
+
+  // GALLERY LIGHTBOX MODAL - was missing, caused freeze when clicking game photos
+  openGalleryModal(photoUrl) {
+    if (!photoUrl) return;
+    const existing = document.getElementById('_gallery-lightbox');
+    if (existing) existing.remove();
+    const lightbox = document.createElement('div');
+    lightbox.id = '_gallery-lightbox';
+    lightbox.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; align-items:center; justify-content:center; cursor:zoom-out;';
+    lightbox.innerHTML = `
+      <img src="${photoUrl}" style="max-width:95%; max-height:90vh; object-fit:contain; border-radius:8px; box-shadow:0 4px 32px rgba(0,0,0,0.5);">
+      <button style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:1.5rem; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="document.getElementById('_gallery-lightbox').remove()">✕</button>
+    `;
+    lightbox.onclick = (e) => { if (e.target === lightbox) lightbox.remove(); };
+    document.body.appendChild(lightbox);
+  },
+
+  // UPLOAD PHOTO FOR GAME - was missing, caused freeze in game detail "Subir Foto"
+  showUploadPhotoModal(gameId) {
+    if (!gameId) return;
+    // Reuse the entity gallery modal pointing to the game entity
+    this.showEntityGalleryModal('game', gameId, '📷 Postales del Partido');
+  },
+
+
+  // MOVE TEAM MODAL (Ascenso/Descenso de Categoría) - was missing, caused freeze
+  async showMoveTeamModal() {
+    this.showLoading('Cargando equipos y categorías...');
+    try {
+      const [resTeams, resCats] = await Promise.all([
+        fetch('api/teams.php?action=list'),
+        fetch('api/leagues.php?action=categories')
+      ]);
+      const dataTeams = await resTeams.json();
+      const dataCats = await resCats.json();
+      const teams = dataTeams.teams || [];
+      const cats = dataCats.categories || [];
+
+      const name = await this.showPrompt(
+        'Mover Equipo (Ascenso / Descenso)',
+        'Selecciona el equipo a mover. A continuación se te pedirá la categoría destino.'
+      );
+      if (!name) return;
+
+      const team = teams.find(t => t.name.toLowerCase().includes(name.toLowerCase()) || t.short_name.toLowerCase().includes(name.toLowerCase())) || teams[0];
+      if (!team) {
+        this.showAlert('Atención', 'No se encontró el equipo. Edítalo directamente desde la tabla.', 'warning', '#F59E0B');
+        return;
+      }
+
+      const catNames = cats.map(c => `${c.name} (${c.code})`).join(', ');
+      const catName = await this.showPrompt(
+        `Mover "${team.name}" a categoría`,
+        `Categorías disponibles:\n${catNames}\n\nEscribe el código de la categoría destino (ej. A1, A2):`
+      );
+      if (!catName) return;
+
+      const targetCat = cats.find(c => c.code.toLowerCase() === catName.toLowerCase().trim() || c.name.toLowerCase().includes(catName.toLowerCase().trim()));
+      if (!targetCat) {
+        this.showAlert('Categoría no encontrada', `No se encontró la categoría "${catName}". Verifica el código e intenta de nuevo.`, 'warning', '#F59E0B');
+        return;
+      }
+
+      const res = await fetch('api/leagues.php?action=move_team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: team.id, category_id: targetCat.id, notes: `Movido a ${targetCat.name}` })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showSnackbar(`✅ ${team.name} movido a ${targetCat.name}.`);
+        this.refreshCurrentView();
+      } else {
+        this.showAlert('Error', data.message || 'No se pudo mover el equipo.', 'error', '#EF4444');
+      }
+    } catch(err) {
+      console.error('Error en showMoveTeamModal', err);
+      this.showAlert('Error', 'Error de conexión al procesar el cambio de categoría.', 'wifi_off', '#EF4444');
+    } finally {
+      this.hideLoading();
+    }
   },
 
   // MATCH LINEUP SELECTION MODAL
@@ -4130,7 +4297,9 @@ const App = {
       } else {
         this.showAlert('Error', data.message || 'No se pudo crear.', 'error', '#EF4444');
       }
-    } catch(e) {}
+    } catch(e) {
+      this.showSnackbar("Error de conexión al crear la etapa.");
+    }
   },
 
   async deleteStage(stageId, stageName) {
@@ -4147,7 +4316,9 @@ const App = {
           this.showSnackbar('Etapa eliminada.');
           this.refreshCurrentView();
         }
-      } catch(e) {}
+      } catch(e) {
+        this.showSnackbar("Error de conexión al eliminar la etapa.");
+      }
     }
   },
 

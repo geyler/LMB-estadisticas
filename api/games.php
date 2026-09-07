@@ -366,7 +366,7 @@ if ($action === 'update_result' && $method === 'POST') {
             $gData = $stmtG->fetch();
 
             if ($gData && stripos($gData['game_stage'], 'Final') !== false) {
-                $winningTeamId = ($homeScore > awayScore) ? $gData['home_team_id'] : (($awayScore > homeScore) ? $gData['away_team_id'] : 0);
+                $winningTeamId = ($homeScore > $awayScore) ? $gData['home_team_id'] : (($awayScore > $homeScore) ? $gData['away_team_id'] : 0);
                 if ($winningTeamId > 0) {
                     $pdo->prepare("DELETE FROM season_champions WHERE season_id = ? AND category_id = ?")->execute([$gData['season_id'], $gData['category_id']]);
                     $pdo->prepare("INSERT INTO season_champions (season_id, category_id, team_id, title_name, notes) VALUES (?, ?, ?, ?, ?)")
