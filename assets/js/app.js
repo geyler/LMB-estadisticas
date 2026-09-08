@@ -1963,8 +1963,9 @@ const App = {
               <button class="btn-m3-primary" style="padding:6px 12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:18px;">emoji_events</span> Iniciar Nuevo Campeonato</button>
             </div>
           </div>
-          <div style="font-size:0.82rem; color:#1E293B; background:#F8F9FA; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; margin-top:10px;">
-            Liga / Campeonato Activo Actualmente: <strong style="color:#1A73E8;">${this.activeSeason ? this.activeSeason.name : '2026'}</strong>
+          <div style="font-size:0.82rem; color:#1E293B; background:#F8F9FA; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; margin-top:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span>Liga / Campeonato Activo Actualmente: <strong style="color:${this.activeSeason ? '#1A73E8' : '#D93025'};">${this.activeSeason ? this.activeSeason.name : 'Ninguna (Sin Liga en Curso)'}</strong></span>
+            ${this.activeSeason ? `<button onclick="App.handleFinishActiveSeason()" class="md-btn md-btn-outlined" style="padding:3px 10px; font-size:0.75rem; color:#D93025; border-color:#FCA5A5; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><span class="material-icons-round" style="font-size:14px;">flag</span> Finalizar Liga Actual</button>` : ''}
           </div>
         </div>
 
@@ -2622,7 +2623,23 @@ const App = {
         await this.loadLeagues();
         this.refreshCurrentView();
       } else if (data.is_active_conflict) {
-        this.showAlert("⚠️ Liga en Curso", data.message, "sports_baseball", "#F59E0B");
+        if (confirm(`⚠️ Hay una liga en curso ('${data.active_season_name || 'Liga Activa'}').\n\n¿Deseas finalizar la liga actual e iniciar '${name}' como la nueva liga activa?`)) {
+          this.showLoading('Finalizando liga anterior e iniciando nueva liga...');
+          const resForce = await fetch('api/leagues.php?action=create_season', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, year, team_ids: selectedTeamIds, force_close: true })
+          });
+          const dataForce = await resForce.json();
+          if (dataForce.success) {
+            this.showSnackbar(dataForce.message || '✅ Nueva liga iniciada correctamente.');
+            this.closeCreateSeasonModal();
+            await this.loadLeagues();
+            this.refreshCurrentView();
+          } else {
+            this.showAlert("Error", dataForce.message || 'No se pudo registrar la liga.', "error", "#EF4444");
+          }
+        }
       } else {
         this.showAlert("Error", data.message || 'No se pudo registrar la liga.', "error", "#EF4444");
       }
@@ -3805,8 +3822,9 @@ const App = {
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar(data.message || '🏆 ¡Campeón registrado con éxito!');
+        this.showSnackbar(data.message || '🏆 ¡Campeón registrado y liga finalizada!');
         this.closeCrownChampionModal();
+        await this.loadLeagues();
         this.refreshCurrentView();
       } else {
         this.showAlert('Error', data.message || 'No se pudo registrar el campeón.', 'error', '#EF4444');
@@ -4605,10 +4623,11 @@ const App = {
 
         if (teams.length) {
           checklist.innerHTML = teams.map(t => `
-            <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:600; cursor:pointer; background:#FFFFFF; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0;">
-              <input type="checkbox" class="cs-team-check" value="${t.id}" ${t.selected !== false ? 'checked' : ''}>
-              <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
-              <span class="text-truncate">${t.name}</span>
+            <label style="display:flex; align-items:center; justify-content:flex-start; gap:12px; font-size:0.88rem; font-weight:700; cursor:pointer; background:#FFFFFF; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; width:100%; box-sizing:border-box; transition:all 0.15s ease;">
+              <input type="checkbox" class="cs-team-check" value="${t.id}" ${t.selected !== false ? 'checked' : ''} style="width:18px; height:18px; accent-color:#4F46E5; cursor:pointer; flex-shrink:0; margin:0;">
+              <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid #CBD5E1; flex-shrink:0;" onerror="this.src='assets/images/lmb_logo.png'">
+              <span style="flex:1; color:#1E293B; text-align:left; font-size:0.88rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.name}</span>
+              <span style="font-size:0.72rem; font-weight:700; color:#64748B; background:#F1F5F9; padding:2px 8px; border-radius:4px; flex-shrink:0;">${t.short_name || 'EQUIPO'}</span>
             </label>
           `).join('');
         } else {
@@ -4622,10 +4641,11 @@ const App = {
           const teams = fallbackData.teams || [];
           if (teams.length) {
             checklist.innerHTML = teams.map(t => `
-              <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:600; cursor:pointer; background:#FFFFFF; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0;">
-                <input type="checkbox" class="cs-team-check" value="${t.id}" checked>
-                <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
-                <span class="text-truncate">${t.name}</span>
+              <label style="display:flex; align-items:center; justify-content:flex-start; gap:12px; font-size:0.88rem; font-weight:700; cursor:pointer; background:#FFFFFF; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; width:100%; box-sizing:border-box; transition:all 0.15s ease;">
+                <input type="checkbox" class="cs-team-check" value="${t.id}" checked style="width:18px; height:18px; accent-color:#4F46E5; cursor:pointer; flex-shrink:0; margin:0;">
+                <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid #CBD5E1; flex-shrink:0;" onerror="this.src='assets/images/lmb_logo.png'">
+                <span style="flex:1; color:#1E293B; text-align:left; font-size:0.88rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.name}</span>
+                <span style="font-size:0.72rem; font-weight:700; color:#64748B; background:#F1F5F9; padding:2px 8px; border-radius:4px; flex-shrink:0;">${t.short_name || 'EQUIPO'}</span>
               </label>
             `).join('');
           } else {
@@ -4638,6 +4658,32 @@ const App = {
     }
 
     modal.classList.add('open');
+  },
+
+  async handleFinishActiveSeason() {
+    if (!this.activeSeason) return;
+    if (confirm(`¿Estás seguro de que deseas finalizar la liga activa '${this.activeSeason.name}'?\n\nAl finalizarla, los partidos y estadísticas pasarán al Archivo Histórico para que puedas iniciar un nuevo campeonato.`)) {
+      this.showLoading('Finalizando liga actual...');
+      try {
+        const res = await fetch('api/leagues.php?action=finish_season', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ season_id: this.activeSeason.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showSnackbar(data.message || '🏁 Liga finalizada correctamente.');
+          await this.loadLeagues();
+          this.refreshCurrentView();
+        } else {
+          this.showAlert("Error", data.message || 'No se pudo finalizar la liga.', "error", "#EF4444");
+        }
+      } catch(e) {
+        this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
+      } finally {
+        this.hideLoading();
+      }
+    }
   },
 
   closeCreateSeasonModal() {

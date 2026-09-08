@@ -651,10 +651,37 @@ if ($action === 'set_champion' && $method === 'POST') {
         $stmtIns = $pdo->prepare("INSERT INTO season_champions (season_id, category_id, team_id, title_name, notes) VALUES (?, ?, ?, ?, ?)");
         $stmtIns->execute([$seasonId, $categoryId, $teamId, $titleName, $notes]);
 
-        logAuditAction($pdo, 'SET_CHAMPION', "Coronó al equipo ID {$teamId} como {$titleName} de la categoría ID {$categoryId} (Temporada ID {$seasonId}).");
-        echo json_encode(['success' => true, 'message' => '¡Campeón registrado exitosamente en el Histórico de la LMB!']);
+        // Auto-finalize the active season when a champion is crowned
+        $stmtFin = $pdo->prepare("UPDATE seasons SET is_active = 0 WHERE id = ?");
+        $stmtFin->execute([$seasonId]);
+
+        logAuditAction($pdo, 'SET_CHAMPION', "Coronó al equipo ID {$teamId} como {$titleName} y finalizó el torneo (Temporada ID {$seasonId}).");
+        echo json_encode(['success' => true, 'message' => '🏆 ¡Campeón registrado y liga finalizada exitosamente! Todos los datos pasaron al Histórico.']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error al registrar el campeón: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'finish_season' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $seasonId = intval($input['season_id'] ?? 0);
+    if (!$seasonId) {
+        $stmtAct = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1");
+        $seasonId = $stmtAct->fetchColumn() ?: 0;
+    }
+
+    if ($seasonId > 0) {
+        $pdo->prepare("UPDATE seasons SET is_active = 0 WHERE id = ?")->execute([$seasonId]);
+        logAuditAction($pdo, 'FINISH_SEASON', "Finalizó la liga activa ID {$seasonId}.");
+        echo json_encode(['success' => true, 'message' => 'Liga finalizada exitosamente. Ya puedes iniciar un nuevo campeonato.']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'No hay ninguna liga activa para finalizar.']);
     }
     exit;
 }
