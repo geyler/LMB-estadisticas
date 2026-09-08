@@ -149,14 +149,146 @@ if ($action === 'detail') {
         ];
     };
 
-    // Official Season Stats (excludes friendly/exhibitions)
-    $officialWhere = " AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
-    $player['batting_stats'] = $calcBatting($officialWhere);
-    $player['pitching_stats'] = $calcPitching($officialWhere);
+    // Active season stats
+    $activeSeason = $pdo->query("SELECT id, name FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
+    $activeSeasonId = $activeSeason ? intval($activeSeason['id']) : 0;
 
-    // Lifetime / De Por Vida Stats (includes all games: regular + friendly + exhibitions + playoffs)
-    $player['lifetime_batting_stats'] = $calcBatting('');
-    $player['lifetime_pitching_stats'] = $calcPitching('');
+    if ($activeSeasonId > 0) {
+        $activeWhere = " AND g.season_id = {$activeSeasonId} AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
+        $player['batting_stats'] = $calcBatting($activeWhere);
+        $player['pitching_stats'] = $calcPitching($activeWhere);
+    } else {
+        $player['batting_stats'] = $calcBatting(" AND 1=0 ");
+        $player['pitching_stats'] = $calcPitching(" AND 1=0 ");
+    }
+
+    // Lifetime / De Por Vida Stats (all official games across all seasons)
+    $officialLifetimeWhere = " AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
+    $player['lifetime_batting_stats'] = $calcBatting($officialLifetimeWhere);
+    $player['lifetime_pitching_stats'] = $calcPitching($officialLifetimeWhere);
+
+    // Batting breakdown per season
+    $stmtBatBreak = $pdo->prepare("
+        SELECT 
+            s.id as season_id,
+            COALESCE(s.name, 'Temporada Archivo') as season_name,
+            s.year as season_year,
+            COALESCE(t.name, 'Equipo') as team_name,
+            COUNT(DISTINCT bs.game_id) as gp,
+            SUM(bs.ab) as ab, SUM(bs.r) as r, SUM(bs.h) as h,
+            SUM(bs.doubles) as doubles, SUM(bs.triples) as triples, SUM(bs.hr) as hr,
+            SUM(bs.rbi) as rbi, SUM(bs.bb) as bb, SUM(bs.so) as so, SUM(bs.sb) as sb, SUM(bs.hbp) as hbp, SUM(bs.sf) as sf
+        FROM game_batting_stats bs
+        JOIN games g ON bs.game_id = g.id
+        LEFT JOIN seasons s ON g.season_id = s.id
+        LEFT JOIN teams t ON bs.team_id = t.id
+        WHERE bs.player_id = ? AND g.status = 'finished' AND bs.ab > 0 
+          AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
+        GROUP BY g.season_id, bs.team_id
+        ORDER BY s.year DESC, s.id DESC
+    ");
+    $stmtBatBreak->execute([$id]);
+    $batBreakRows = $stmtBatBreak->fetchAll() ?: [];
+
+    $seasonBattingBreakdown = [];
+    foreach ($batBreakRows as $row) {
+        $ab = intval($row['ab']);
+        $h = intval($row['h']);
+        $bb = intval($row['bb']);
+        $hbp = intval($row['hbp']);
+        $sf = intval($row['sf']);
+        $d2 = intval($row['doubles']);
+        $d3 = intval($row['triples']);
+        $hr = intval($row['hr']);
+        $avg = ($ab > 0) ? number_format($h / $ab, 3) : '.000';
+        $obpDen = ($ab + $bb + $hbp + $sf);
+        $obpVal = ($obpDen > 0) ? (($h + $bb + $hbp) / $obpDen) : 0;
+        $tb = ($h - $d2 - $d3 - $hr) + ($d2 * 2) + ($d3 * 3) + ($hr * 4);
+        $slgVal = ($ab > 0) ? ($tb / $ab) : 0;
+        $ops = number_format($obpVal + $slgVal, 3);
+
+        $seasonBattingBreakdown[] = [
+            'season_id' => intval($row['season_id'] ?? 0),
+            'season_name' => $row['season_name'],
+            'season_year' => $row['season_year'] ?: '',
+            'team_name' => $row['team_name'],
+            'gp' => intval($row['gp']),
+            'ab' => $ab,
+            'r' => intval($row['r']),
+            'h' => $h,
+            'doubles' => $d2,
+            'triples' => $d3,
+            'hr' => $hr,
+            'rbi' => intval($row['rbi']),
+            'bb' => $bb,
+            'so' => intval($row['so']),
+            'sb' => intval($row['sb']),
+            'avg' => $avg,
+            'ops' => $ops
+        ];
+    }
+
+    // Pitching breakdown per season
+    $stmtPitchBreak = $pdo->prepare("
+        SELECT 
+            s.id as season_id,
+            COALESCE(s.name, 'Temporada Archivo') as season_name,
+            s.year as season_year,
+            COALESCE(t.name, 'Equipo') as team_name,
+            COUNT(DISTINCT ps.game_id) as gp,
+            SUM(ps.ip_outs) as ip_outs,
+            SUM(ps.h) as h, SUM(ps.r) as r, SUM(ps.er) as er,
+            SUM(ps.bb) as bb, SUM(ps.so) as so, SUM(ps.hr) as hr,
+            SUM(CASE WHEN ps.decision = 'W' THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN ps.decision = 'L' THEN 1 ELSE 0 END) as losses,
+            SUM(CASE WHEN ps.decision = 'SV' THEN 1 ELSE 0 END) as saves
+        FROM game_pitching_stats ps
+        JOIN games g ON ps.game_id = g.id
+        LEFT JOIN seasons s ON g.season_id = s.id
+        LEFT JOIN teams t ON ps.team_id = t.id
+        WHERE ps.player_id = ? AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0)
+          AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
+        GROUP BY g.season_id, ps.team_id
+        ORDER BY s.year DESC, s.id DESC
+    ");
+    $stmtPitchBreak->execute([$id]);
+    $pitchBreakRows = $stmtPitchBreak->fetchAll() ?: [];
+
+    $seasonPitchingBreakdown = [];
+    foreach ($pitchBreakRows as $row) {
+        $ipOuts = intval($row['ip_outs']);
+        $ipFull = floor($ipOuts / 3);
+        $ipRem = $ipOuts % 3;
+        $ipDisplay = $ipFull . '.' . $ipRem;
+        $ipFloat = $ipFull + ($ipRem / 3);
+        $er = intval($row['er']);
+        $pHits = intval($row['h']);
+        $pBB = intval($row['bb']);
+        $era = ($ipFloat > 0) ? number_format(($er * 9) / $ipFloat, 2) : '0.00';
+        $whip = ($ipFloat > 0) ? number_format(($pHits + $pBB) / $ipFloat, 2) : '0.00';
+
+        $seasonPitchingBreakdown[] = [
+            'season_id' => intval($row['season_id'] ?? 0),
+            'season_name' => $row['season_name'],
+            'season_year' => $row['season_year'] ?: '',
+            'team_name' => $row['team_name'],
+            'gp' => intval($row['gp']),
+            'wins' => intval($row['wins']),
+            'losses' => intval($row['losses']),
+            'saves' => intval($row['saves']),
+            'ip' => $ipDisplay,
+            'h' => $pHits,
+            'r' => intval($row['r']),
+            'er' => $er,
+            'bb' => $pBB,
+            'so' => intval($row['so']),
+            'era' => $era,
+            'whip' => $whip
+        ];
+    }
+
+    $player['season_batting_breakdown'] = $seasonBattingBreakdown;
+    $player['season_pitching_breakdown'] = $seasonPitchingBreakdown;
 
     echo json_encode(['success' => true, 'player' => $player]);
     exit;

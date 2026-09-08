@@ -4684,8 +4684,113 @@ const App = {
       const pCur = p.pitching_stats || {};
       const bLife = p.lifetime_batting_stats || {};
       const pLife = p.lifetime_pitching_stats || {};
+      const bBreak = p.season_batting_breakdown || [];
+      const pBreak = p.season_pitching_breakdown || [];
 
       const canEdit = (this.currentUser && ['super_admin', 'admin', 'team_admin'].includes(this.currentUser.role));
+
+      let breakdownBattingHtml = '';
+      if (bBreak.length) {
+        breakdownBattingHtml = `
+          <div style="margin-top:10px; overflow-x:auto;">
+            <div style="font-size:0.75rem; font-weight:800; color:#334155; margin-bottom:4px;">🏏 Bateo por Temporada</div>
+            <table class="md-table" style="font-size:0.72rem; width:100%; text-align:center;">
+              <thead>
+                <tr style="background:#F1F5F9; color:#475569;">
+                  <th style="text-align:left; padding:4px 6px;">Temporada</th>
+                  <th style="text-align:left; padding:4px 6px;">Equipo</th>
+                  <th>JJ</th>
+                  <th>AB</th>
+                  <th>H</th>
+                  <th>2B</th>
+                  <th>3B</th>
+                  <th>HR</th>
+                  <th>CI</th>
+                  <th>AVG</th>
+                  <th>OPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bBreak.map(b => `
+                  <tr>
+                    <td style="text-align:left; font-weight:700; color:#1E293B; padding:4px 6px;">${b.season_name}</td>
+                    <td style="text-align:left; color:#64748B; padding:4px 6px;">${b.team_name}</td>
+                    <td>${b.gp}</td>
+                    <td>${b.ab}</td>
+                    <td>${b.h}</td>
+                    <td>${b.doubles}</td>
+                    <td>${b.triples}</td>
+                    <td style="font-weight:700;">${b.hr}</td>
+                    <td>${b.rbi}</td>
+                    <td style="color:#1A73E8; font-weight:800;">${b.avg}</td>
+                    <td style="font-weight:800;">${b.ops}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      let breakdownPitchingHtml = '';
+      if (pBreak.length) {
+        breakdownPitchingHtml = `
+          <div style="margin-top:10px; overflow-x:auto;">
+            <div style="font-size:0.75rem; font-weight:800; color:#334155; margin-bottom:4px;">⚾ Pitcheo por Temporada</div>
+            <table class="md-table" style="font-size:0.72rem; width:100%; text-align:center;">
+              <thead>
+                <tr style="background:#F1F5F9; color:#475569;">
+                  <th style="text-align:left; padding:4px 6px;">Temporada</th>
+                  <th style="text-align:left; padding:4px 6px;">Equipo</th>
+                  <th>JJ</th>
+                  <th>G-P</th>
+                  <th>SV</th>
+                  <th>IP</th>
+                  <th>K</th>
+                  <th>BB</th>
+                  <th>ERA</th>
+                  <th>WHIP</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pBreak.map(pb => `
+                  <tr>
+                    <td style="text-align:left; font-weight:700; color:#1E293B; padding:4px 6px;">${pb.season_name}</td>
+                    <td style="text-align:left; color:#64748B; padding:4px 6px;">${pb.team_name}</td>
+                    <td>${pb.gp}</td>
+                    <td>${pb.wins}-${pb.losses}</td>
+                    <td>${pb.saves}</td>
+                    <td>${pb.ip}</td>
+                    <td style="font-weight:700;">${pb.so}</td>
+                    <td>${pb.bb}</td>
+                    <td style="color:#DC2626; font-weight:800;">${pb.era}</td>
+                    <td style="font-weight:800;">${pb.whip}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      let breakdownSectionHtml = '';
+      if (bBreak.length || pBreak.length) {
+        breakdownSectionHtml = `
+          <div style="margin-top:14px; border-top:1px dashed #CBD5E1; padding-top:10px;">
+            <div style="font-size:0.82rem; font-weight:800; color:#0F172A; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+              <span class="material-icons-round" style="font-size:16px;">view_list</span> Desglose Histórico por Temporada
+            </div>
+            ${breakdownBattingHtml}
+            ${breakdownPitchingHtml}
+          </div>
+        `;
+      } else {
+        breakdownSectionHtml = `
+          <div style="margin-top:14px; border-top:1px dashed #CBD5E1; padding-top:10px; text-align:center; font-size:0.78rem; color:#64748B;">
+            Sin temporadas concluidas registradas en el historial.
+          </div>
+        `;
+      }
 
       container.innerHTML = `
         <div style="background:linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color:#FFFFFF; border-radius:12px; padding:16px; margin-bottom:14px; display:flex; align-items:center; gap:14px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
@@ -4755,6 +4860,9 @@ const App = {
             </div>
           </div>
         </div>
+
+        <!-- Section 3: Desglose Por Temporadas -->
+        ${breakdownSectionHtml}
       `;
     } catch(e) {
       console.error("Error al cargar perfil de jugador", e);
