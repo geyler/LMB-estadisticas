@@ -179,17 +179,83 @@ if ($action === 'create_season' && $method === 'POST') {
     $stmt->execute([$name, $year]);
     $seasonId = $pdo->lastInsertId();
 
+    $teamIds = is_array($input['team_ids'] ?? null) ? array_map('intval', $input['team_ids']) : [];
+
     // Auto-provision default main category for the new season
     $stmtCat = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)");
     $stmtCat->execute([$seasonId, $name, 'LIGA', 1]);
     $newA1Id = $pdo->lastInsertId();
 
-    // Reassign existing active teams to the new season's main category
-    $pdo->prepare("UPDATE teams SET category_id = ?")->execute([$newA1Id]);
+    // Insert selected teams into season_teams join table
+    if (!empty($teamIds)) {
+        $stmtST = $pdo->prepare("INSERT INTO season_teams (season_id, team_id) VALUES (?, ?)");
+        foreach ($teamIds as $tId) {
+            if ($tId > 0) {
+                try {
+                    $stmtST->execute([$seasonId, $tId]);
+                } catch(Exception $ex) {}
+            }
+        }
+        $pdo->prepare("UPDATE teams SET category_id = ? WHERE id IN (" . implode(',', $teamIds) . ")")->execute([$newA1Id]);
+    } else {
+        // If no team_ids specified, assign all existing teams to season_teams by default
+        $pdo->prepare("INSERT INTO season_teams (season_id, team_id) SELECT ?, id FROM teams")->execute([$seasonId]);
+        $pdo->prepare("UPDATE teams SET category_id = ?")->execute([$newA1Id]);
+    }
 
     logAuditAction($pdo, 'CREATE_SEASON', "Inició la nueva liga / torneo '{$name}' ({$year}).");
 
     echo json_encode(['success' => true, 'season_id' => $seasonId, 'category_id' => $newA1Id, 'message' => "Liga / Torneo '{$name}' creada e iniciada exitosamente."]);
+    exit;
+}
+
+if ($action === 'season_teams') {
+    $seasonId = intval($_GET['season_id'] ?? 0);
+    if (!$seasonId) {
+        $stmtAct = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1");
+        $seasonId = $stmtAct->fetchColumn() ?: 1;
+    }
+
+    if ($method === 'POST') {
+        if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['super_admin', 'admin'])) {
+            echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $sId = intval($input['season_id'] ?? $seasonId);
+        $teamIds = is_array($input['team_ids'] ?? null) ? array_map('intval', $input['team_ids']) : [];
+
+        $pdo->prepare("DELETE FROM season_teams WHERE season_id = ?")->execute([$sId]);
+        if (!empty($teamIds)) {
+            $stmtST = $pdo->prepare("INSERT INTO season_teams (season_id, team_id) VALUES (?, ?)");
+            foreach ($teamIds as $tId) {
+                if ($tId > 0) {
+                    try {
+                        $stmtST->execute([$sId, $tId]);
+                    } catch(Exception $ex) {}
+                }
+            }
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Equipos participantes de la liga actualizados.']);
+        exit;
+    }
+
+    $stmtT = $pdo->query("SELECT t.id, t.name, t.short_name, t.logo_url FROM teams t ORDER BY t.name ASC");
+    $allTeams = $stmtT->fetchAll();
+
+    $stmtSel = $pdo->prepare("SELECT team_id FROM season_teams WHERE season_id = ?");
+    $stmtSel->execute([$seasonId]);
+    $selectedIds = $stmtSel->fetchAll(PDO::FETCH_COLUMN);
+
+    $isDefaultAll = empty($selectedIds);
+
+    foreach ($allTeams as &$t) {
+        $t['selected'] = $isDefaultAll || in_array($t['id'], $selectedIds);
+    }
+
+    echo json_encode(['success' => true, 'season_id' => $seasonId, 'teams' => $allTeams]);
     exit;
 }
 

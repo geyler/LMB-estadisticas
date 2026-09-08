@@ -291,6 +291,12 @@ function initDatabaseSchemaAndSeed($pdo) {
             title_name VARCHAR(100) DEFAULT 'Campeón Oficial',
             notes VARCHAR(255) DEFAULT '',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+
+        "CREATE TABLE IF NOT EXISTS season_teams (
+            season_id INT NOT NULL,
+            team_id INT NOT NULL,
+            PRIMARY KEY (season_id, team_id)
         );"
     ];
 

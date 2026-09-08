@@ -16,22 +16,61 @@ if ($action === 'standings') {
     $categoryId = intval($_GET['category_id'] ?? 0);
     $seasonId = intval($_GET['season_id'] ?? 0);
 
-    $sqlTeams = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
-                 FROM teams t 
-                 LEFT JOIN categories c ON t.category_id = c.id
-                 LEFT JOIN stadiums s ON t.home_stadium_id = s.id";
-    $where = [];
-    if ($categoryId > 0) {
-        $where[] = "t.category_id = {$categoryId}";
-    } elseif ($seasonId > 0) {
-        $where[] = "c.season_id = {$seasonId}";
+    if ($seasonId === 0 && $categoryId === 0) {
+        $activeS = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
+        if ($activeS) {
+            $seasonId = intval($activeS['id']);
+        }
     }
-    if (!empty($where)) {
-        $sqlTeams .= " WHERE " . implode(' AND ', $where);
-    }
-    $sqlTeams .= " ORDER BY t.name ASC";
 
-    $teams = $pdo->query($sqlTeams)->fetchAll();
+    if ($seasonId > 0) {
+        $stmtST = $pdo->prepare("SELECT COUNT(*) FROM season_teams WHERE season_id = ?");
+        $stmtST->execute([$seasonId]);
+        $stCount = intval($stmtST->fetchColumn());
+
+        if ($stCount > 0) {
+            $stmtTeams = $pdo->prepare("
+                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+                FROM teams t 
+                JOIN season_teams st ON t.id = st.team_id
+                LEFT JOIN categories c ON t.category_id = c.id
+                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+                WHERE st.season_id = ?
+                ORDER BY t.name ASC
+            ");
+            $stmtTeams->execute([$seasonId]);
+            $teams = $stmtTeams->fetchAll();
+        } else {
+            $stmtTeams = $pdo->prepare("
+                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+                FROM teams t 
+                LEFT JOIN categories c ON t.category_id = c.id
+                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+                WHERE c.season_id = ?
+                ORDER BY t.name ASC
+            ");
+            $stmtTeams->execute([$seasonId]);
+            $teams = $stmtTeams->fetchAll();
+        }
+    } elseif ($categoryId > 0) {
+        $stmtTeams = $pdo->prepare("
+            SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+            FROM teams t 
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+            WHERE t.category_id = ?
+            ORDER BY t.name ASC
+        ");
+        $stmtTeams->execute([$categoryId]);
+        $teams = $stmtTeams->fetchAll();
+    } else {
+        $sqlTeams = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+                     FROM teams t 
+                     LEFT JOIN categories c ON t.category_id = c.id
+                     LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+                     ORDER BY t.name ASC";
+        $teams = $pdo->query($sqlTeams)->fetchAll();
+    }
 
     // Calculate standings from finished games
     $standings = [];
@@ -123,18 +162,57 @@ if ($action === 'standings') {
 // 2. Teams List
 if ($action === 'list') {
     $categoryId = intval($_GET['category_id'] ?? 0);
+    $seasonId = intval($_GET['season_id'] ?? 0);
 
-    $sql = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
+    if ($seasonId > 0) {
+        $stmtST = $pdo->prepare("SELECT COUNT(*) FROM season_teams WHERE season_id = ?");
+        $stmtST->execute([$seasonId]);
+        $stCount = intval($stmtST->fetchColumn());
+
+        if ($stCount > 0) {
+            $stmt = $pdo->prepare("
+                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
+                FROM teams t
+                JOIN season_teams st ON t.id = st.team_id
+                LEFT JOIN categories c ON t.category_id = c.id
+                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+                WHERE st.season_id = ?
+                ORDER BY c.level ASC, t.name ASC
+            ");
+            $stmt->execute([$seasonId]);
+            $teams = $stmt->fetchAll();
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
+                FROM teams t
+                LEFT JOIN categories c ON t.category_id = c.id
+                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+                WHERE c.season_id = ?
+                ORDER BY c.level ASC, t.name ASC
+            ");
+            $stmt->execute([$seasonId]);
+            $teams = $stmt->fetchAll();
+        }
+    } elseif ($categoryId > 0) {
+        $stmt = $pdo->prepare("
+            SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
             FROM teams t
             LEFT JOIN categories c ON t.category_id = c.id
-            LEFT JOIN stadiums s ON t.home_stadium_id = s.id";
-    if ($categoryId > 0) {
-        $sql .= " WHERE t.category_id = {$categoryId}";
+            LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+            WHERE t.category_id = ?
+            ORDER BY c.level ASC, t.name ASC
+        ");
+        $stmt->execute([$categoryId]);
+        $teams = $stmt->fetchAll();
+    } else {
+        $sql = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
+                FROM teams t
+                LEFT JOIN categories c ON t.category_id = c.id
+                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+                ORDER BY c.level ASC, t.name ASC";
+        $stmt = $pdo->query($sql);
+        $teams = $stmt->fetchAll();
     }
-    $sql .= " ORDER BY c.level ASC, t.name ASC";
-
-    $stmt = $pdo->query($sql);
-    $teams = $stmt->fetchAll();
 
     echo json_encode(['success' => true, 'teams' => $teams]);
     exit;

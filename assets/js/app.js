@@ -1955,13 +1955,17 @@ const App = {
       tabContainer.innerHTML = `
         <div class="md-card">
           <div class="md-card-header">
-            <h3 style="font-size:1rem; font-weight:800;">Temporadas y Divisiones</h3>
+            <div>
+              <h3 style="font-size:1rem; font-weight:800; color:#1A73E8; margin:0;">🏆 Gestión de Campeonatos y Ligas</h3>
+              <p style="font-size:0.8rem; color:#5F6368; margin:4px 0 0 0;">Cada campeonato o torneo funciona como una unidad independiente con sus propios equipos y calendario.</p>
+            </div>
             <div class="md-card-header-actions">
-              <button class="btn-m3-primary" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateCategoryModal()"><span class="material-icons-round" style="font-size:16px;">add</span> Nueva Categoría</button>
-              <button class="btn-m3-outlined" style="padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:16px;">add_circle_outline</span> Nueva Temporada</button>
+              <button class="btn-m3-primary" style="padding:6px 14px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:18px;">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>
             </div>
           </div>
-          <p style="font-size:0.8rem; color:#5F6368; margin-top:4px;">Temporada Activa: <strong>${this.activeSeason ? this.activeSeason.name : '2026'}</strong></p>
+          <div style="font-size:0.82rem; color:#1E293B; background:#F8F9FA; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; margin-top:10px;">
+            Liga / Campeonato Activo Actualmente: <strong style="color:#1A73E8;">${this.activeSeason ? this.activeSeason.name : '2026'}</strong>
+          </div>
         </div>
 
         <div class="md-table-wrapper" style="margin-top:12px;">
@@ -2602,6 +2606,8 @@ const App = {
     const name = document.getElementById('cn-season-name').value.trim();
     const year = document.getElementById('cn-season-year').value.trim() || new Date().getFullYear().toString();
 
+    const selectedTeamIds = Array.from(document.querySelectorAll('.cs-team-check:checked')).map(c => parseInt(c.value));
+
     if (!name) {
       this.showAlert("Atención", "Por favor ingresa el nombre de la temporada.", "warning", "#F59E0B");
       return;
@@ -2610,27 +2616,29 @@ const App = {
     const btn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
     let origText = '';
     if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando...'; }
-    this.showLoading('Creando e iniciando temporada...');
+    this.showLoading('Creando e iniciando torneo...');
 
     try {
       const res = await fetch('api/leagues.php?action=create_season', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, year })
+        body: JSON.stringify({ name, year, team_ids: selectedTeamIds })
       });
       const data = await res.json();
       if (data.success) {
-        this.showSnackbar(data.message || '✅ Temporada registrada e iniciada.');
+        this.showSnackbar(data.message || '✅ Liga / Torneo registrado e iniciado.');
         this.closeCreateSeasonModal();
         await this.loadLeagues();
         this.refreshCurrentView();
+      } else if (data.is_active_conflict) {
+        this.showAlert("⚠️ Liga en Curso", data.message, "sports_baseball", "#F59E0B");
       } else {
-        this.showAlert("Error", data.message || 'No se pudo registrar la temporada.', "error", "#EF4444");
+        this.showAlert("Error", data.message || 'No se pudo registrar la liga.', "error", "#EF4444");
       }
     } catch(err) {
       this.showAlert("Error", "Error de conexión.", "wifi_off", "#EF4444");
     } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = origText || '🚀 Crear e Iniciar Temporada'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = origText || '🚀 Crear e Iniciar Liga'; }
       this.hideLoading();
     }
   },
@@ -4578,6 +4586,48 @@ const App = {
   closePlayerProfileModal() {
     const modal = document.getElementById('player-profile-modal');
     if (modal) modal.classList.remove('open');
+  },
+
+  async showCreateSeasonModal() {
+    const modal = document.getElementById('create-season-modal');
+    const checklist = document.getElementById('cs-teams-checklist');
+    if (!modal) return;
+
+    if (checklist) {
+      checklist.innerHTML = `<div style="font-size:0.8rem; color:#5F6368; text-align:center; padding:10px;">Cargando lista de equipos...</div>`;
+      try {
+        const res = await fetch('api/leagues.php?action=season_teams');
+        const data = await res.json();
+        const teams = data.teams || [];
+        if (teams.length) {
+          checklist.innerHTML = teams.map(t => `
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:600; cursor:pointer; background:#FFFFFF; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0;">
+              <input type="checkbox" class="cs-team-check" value="${t.id}" ${t.selected !== false ? 'checked' : ''}>
+              <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+              <span class="text-truncate">${t.name}</span>
+            </label>
+          `).join('');
+        } else {
+          checklist.innerHTML = `<div style="font-size:0.8rem; color:#5F6368; text-align:center;">No hay equipos registrados. Registra equipos primero.</div>`;
+        }
+      } catch(e) {
+        checklist.innerHTML = `<div style="font-size:0.8rem; color:#D93025; text-align:center;">Error cargando equipos.</div>`;
+      }
+    }
+
+    modal.classList.add('open');
+  },
+
+  closeCreateSeasonModal() {
+    const modal = document.getElementById('create-season-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  toggleAllSeasonTeamsCheck() {
+    const checks = document.querySelectorAll('.cs-team-check');
+    if (!checks.length) return;
+    const allChecked = Array.from(checks).every(c => c.checked);
+    checks.forEach(c => c.checked = !allChecked);
   },
 
   setupEventListeners() {

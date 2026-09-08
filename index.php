@@ -974,25 +974,34 @@ session_start();
       </div>
     </div>
 
-    <!-- Create Season Modal -->
+    <!-- Create Season / Championship Modal -->
     <div id="create-season-modal" class="md-modal-backdrop">
-      <div class="md-bottom-sheet" style="max-width:440px;">
+      <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">🗓️ Nueva Temporada Oficial</h3>
+          <h3 style="font-size:1.1rem; font-weight:800; color:#202124;">🏆 Iniciar Nuevo Campeonato / Liga</h3>
           <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closeCreateSeasonModal()">✕</button>
         </div>
         <form onsubmit="App.handleSaveNewSeason(event);">
           <div class="form-group" style="margin-bottom:10px;">
-            <label style="font-size:0.78rem; font-weight:700;">Nombre de la Temporada</label>
-            <input type="text" id="cn-season-name" class="form-control" placeholder="Ej. Temporada Oficial 2026" required>
+            <label style="font-size:0.78rem; font-weight:700;">Nombre del Campeonato / Liga</label>
+            <input type="text" id="cn-season-name" class="form-control" placeholder="Ej. Torneo Apertura 2026" required>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">Año del Torneo</label>
+            <input type="number" id="cn-season-year" class="form-control" value="2026" required>
           </div>
           <div class="form-group" style="margin-bottom:14px;">
-            <label style="font-size:0.78rem; font-weight:700;">Año</label>
-            <input type="number" id="cn-season-year" class="form-control" value="2026" required>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="font-size:0.78rem; font-weight:700;">🛡️ Equipos Participantes en la Liga</label>
+              <button type="button" class="md-btn md-btn-outlined" style="padding:2px 6px; font-size:0.7rem;" onclick="App.toggleAllSeasonTeamsCheck()">Seleccionar Todos</button>
+            </div>
+            <div id="cs-teams-checklist" style="max-height:180px; overflow-y:auto; border:1px solid #DADCE0; border-radius:8px; padding:8px; background:#F8F9FA; display:flex; flex-direction:column; gap:6px;">
+              <div style="font-size:0.8rem; color:#5F6368; text-align:center;">Cargando lista de equipos...</div>
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateSeasonModal()">Cancelar</button>
-            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">🚀 Crear e Iniciar Temporada</button>
+            <button type="submit" class="md-btn md-btn-primary" style="flex:1;">🚀 Iniciar Campeonato</button>
           </div>
         </form>
       </div>
