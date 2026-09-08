@@ -701,7 +701,7 @@ session_start();
     </div>
 
     <!-- Custom System Alert & Confirm Dialog Modal -->
-    <div id="custom-alert-modal" class="md-modal-backdrop">
+    <div id="custom-alert-modal" class="md-modal-backdrop" style="z-index: 10050;">
       <div class="md-bottom-sheet" style="max-width:440px;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
           <span id="custom-alert-icon" class="material-icons-round" style="font-size:28px; color:#1A73E8;">info</span>
@@ -716,7 +716,7 @@ session_start();
     </div>
 
     <!-- Custom Prompt Dialog Modal -->
-    <div id="custom-prompt-modal" class="md-modal-backdrop">
+    <div id="custom-prompt-modal" class="md-modal-backdrop" style="z-index: 10050;">
       <div class="md-bottom-sheet" style="max-width:440px;">
         <div style="font-weight:800; font-size:1.1rem; color:#202124;" id="prompt-modal-title">Ingresar Valor</div>
         <p style="font-size:0.82rem; color:#5F6368; margin:4px 0 8px 0;" id="prompt-modal-msg">Ingrese el valor requerido:</p>
@@ -726,6 +726,8 @@ session_start();
           <button class="md-btn md-btn-primary" style="flex:1;" id="prompt-modal-ok">Aceptar</button>
         </div>
       </div>
+    </div>
+
     <!-- Full Create Team Modal -->
     <div id="create-team-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
