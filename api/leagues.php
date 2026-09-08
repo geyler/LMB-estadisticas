@@ -152,9 +152,24 @@ if ($action === 'create_season' && $method === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     $name = trim($input['name'] ?? '');
     $year = intval($input['year'] ?? date('Y'));
+    $forceClose = !empty($input['force_close']);
 
     if (empty($name)) {
-        echo json_encode(['success' => false, 'message' => 'Nombre de temporada requerido.']);
+        echo json_encode(['success' => false, 'message' => 'Nombre de torneo / liga requerido.']);
+        exit;
+    }
+
+    // Check if there is an active season currently in progress
+    $stmtActive = $pdo->query("SELECT * FROM seasons WHERE is_active = 1 LIMIT 1");
+    $activeSeason = $stmtActive->fetch();
+
+    if ($activeSeason && !$forceClose) {
+        echo json_encode([
+            'success' => false,
+            'is_active_conflict' => true,
+            'active_season_name' => $activeSeason['name'],
+            'message' => "⚠️ Hay una liga/temporada en curso ('" . $activeSeason['name'] . "'). Debes finalizarla y coronar un campeón antes de iniciar una nueva liga."
+        ]);
         exit;
     }
 
@@ -164,19 +179,17 @@ if ($action === 'create_season' && $method === 'POST') {
     $stmt->execute([$name, $year]);
     $seasonId = $pdo->lastInsertId();
 
-    // Auto-provision default categories for the new season
+    // Auto-provision default main category for the new season
     $stmtCat = $pdo->prepare("INSERT INTO categories (season_id, name, code, level) VALUES (?, ?, ?, ?)");
-    $stmtCat->execute([$seasonId, 'Primera División A1', 'A1', 1]);
+    $stmtCat->execute([$seasonId, $name, 'LIGA', 1]);
     $newA1Id = $pdo->lastInsertId();
-    $stmtCat->execute([$seasonId, 'Segunda División A2', 'A2', 2]);
-    $newA2Id = $pdo->lastInsertId();
 
     // Reassign existing active teams to the new season's main category
     $pdo->prepare("UPDATE teams SET category_id = ?")->execute([$newA1Id]);
 
-    logAuditAction($pdo, 'CREATE_SEASON', "Inició la nueva temporada '{$name}' ({$year}) con categorías A1 y A2 pre-cargadas.");
+    logAuditAction($pdo, 'CREATE_SEASON', "Inició la nueva liga / torneo '{$name}' ({$year}).");
 
-    echo json_encode(['success' => true, 'season_id' => $seasonId, 'category_id' => $newA1Id, 'message' => "Temporada '{$name}' creada e iniciada exitosamente con divisiones A1 y A2."]);
+    echo json_encode(['success' => true, 'season_id' => $seasonId, 'category_id' => $newA1Id, 'message' => "Liga / Torneo '{$name}' creada e iniciada exitosamente."]);
     exit;
 }
 

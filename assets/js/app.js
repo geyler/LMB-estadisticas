@@ -896,7 +896,7 @@ const App = {
               <div style="font-weight:800; font-size:0.85rem; color:#1A73E8; text-transform:uppercase; margin-bottom:8px;">🥇 Líderes de Bateo (AVG)</div>
               <div class="google-rank-list">
                 ${batLeaders.length ? batLeaders.map((p, idx) => `
-                  <div class="google-rank-item" onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                  <div class="google-rank-item" onclick="App.showPlayerProfileModal( ${p.player_id})" style="cursor:pointer;">
                     <div class="google-rank-number">${idx + 1}</div>
                     <div class="google-rank-player">
                       <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" class="google-player-avatar" onerror="this.src='assets/images/lmb_logo.png'">
@@ -919,7 +919,7 @@ const App = {
               <div style="font-weight:800; font-size:0.85rem; color:#1A73E8; text-transform:uppercase; margin-bottom:8px;">⚾ Líderes de Pitcheo (ERA)</div>
               <div class="google-rank-list">
                 ${pitchLeaders.length ? pitchLeaders.map((p, idx) => `
-                  <div class="google-rank-item" onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer;">
+                  <div class="google-rank-item" onclick="App.showPlayerProfileModal( ${p.player_id})" style="cursor:pointer;">
                     <div class="google-rank-number">${idx + 1}</div>
                     <div class="google-rank-player">
                       <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" class="google-player-avatar" onerror="this.src='assets/images/lmb_logo.png'">
@@ -1040,8 +1040,33 @@ const App = {
       const data = await res.json();
       const standings = data.standings || [];
 
+      let championHtml = '';
+      try {
+        const sId = this.selectedSeasonId || (this.activeSeason ? this.activeSeason.id : 0);
+        const resChamp = await fetch(`api/leagues.php?action=champions&season_id=${sId}`);
+        if (resChamp.ok) {
+          const dataChamp = await resChamp.json();
+          if (dataChamp.champions && dataChamp.champions.length > 0) {
+            const ch = dataChamp.champions[0];
+            championHtml = `
+              <div class="md-card" style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border:1.5px solid #F59E0B; padding:12px 16px; border-radius:12px; margin-bottom:14px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 8px rgba(245,158,11,0.2);">
+                <span class="material-icons-round" style="font-size:36px; color:#D97706;">emoji_events</span>
+                <div>
+                  <div style="font-size:0.75rem; font-weight:800; color:#B45309; text-transform:uppercase;">🏆 Campeón Oficial de la Liga</div>
+                  <div style="font-size:1.1rem; font-weight:900; color:#78350F; font-family:'Roboto',sans-serif;">
+                    ${ch.team_name} (${ch.title_name || 'Campeón de Liga'})
+                  </div>
+                  <div style="font-size:0.75rem; color:#92400E; margin-top:2px;">${ch.season_name} (${ch.season_year})</div>
+                </div>
+              </div>
+            `;
+          }
+        }
+      } catch(e) {}
+
       let html = `
         <div class="view-content">
+          ${championHtml}
           <div class="section-header">
             <h2 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">format_list_numbered</span> Tabla de Posiciones Oficial</h2>
           </div>
@@ -1355,7 +1380,7 @@ const App = {
               </thead>
               <tbody>
                 ${aBat.length ? aBat.map(b => `
-                  <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                  <tr onclick="App.showPlayerProfileModal( ${b.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
                     <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
                       <span style="color:#5F6368; margin-right:4px;">#${b.jersey_number}</span> ${b.first_name} ${b.last_name} <span style="font-size:0.75rem; color:#5F6368;">• ${b.position}</span>
                     </td>
@@ -1377,7 +1402,7 @@ const App = {
                 </thead>
                 <tbody>
                   ${data.away_pitchers.map(p => `
-                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                    <tr onclick="App.showPlayerProfileModal( ${p.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
                       <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
                         <span style="color:#5F6368; margin-right:4px;">#${p.jersey_number}</span> ${p.first_name} ${p.last_name}
                       </td>
@@ -1404,7 +1429,7 @@ const App = {
               </thead>
               <tbody>
                 ${hBat.length ? hBat.map(b => `
-                  <tr onclick="App.showView('player_detail', ${b.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                  <tr onclick="App.showPlayerProfileModal( ${b.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
                     <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
                       <span style="color:#5F6368; margin-right:4px;">#${b.jersey_number}</span> ${b.first_name} ${b.last_name} <span style="font-size:0.75rem; color:#5F6368;">• ${b.position}</span>
                     </td>
@@ -1426,7 +1451,7 @@ const App = {
                 </thead>
                 <tbody>
                   ${data.home_pitchers.map(p => `
-                    <tr onclick="App.showView('player_detail', ${p.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                    <tr onclick="App.showPlayerProfileModal( ${p.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
                       <td style="font-weight:600; color:#202124; text-align:left;" class="text-truncate">
                         <span style="color:#5F6368; margin-right:4px;">#${p.jersey_number}</span> ${p.first_name} ${p.last_name}
                       </td>
@@ -1655,8 +1680,8 @@ const App = {
               <tbody>
                 ${activePlayers.length ? activePlayers.map(p => `
                   <tr style="border-bottom:1px solid #F1F3F4;">
-                    <td style="width:40px; text-align:center; font-weight:800; color:#1A73E8; cursor:pointer; padding:8px 4px;" onclick="App.showView('player_detail', ${p.id})">#${p.jersey_number}</td>
-                    <td style="font-weight:700; color:#202124; cursor:pointer; text-align:left; padding:8px 4px;" class="text-truncate" onclick="App.showView('player_detail', ${p.id})">${p.first_name} ${p.last_name}</td>
+                    <td style="width:40px; text-align:center; font-weight:800; color:#1A73E8; cursor:pointer; padding:8px 4px;" onclick="App.showPlayerProfileModal( ${p.id})">#${p.jersey_number}</td>
+                    <td style="font-weight:700; color:#202124; cursor:pointer; text-align:left; padding:8px 4px;" class="text-truncate" onclick="App.showPlayerProfileModal( ${p.id})">${p.first_name} ${p.last_name}</td>
                     <td style="text-align:center; padding:8px 4px;"><span class="md-chip" style="padding:2px 8px; font-size:0.72rem; font-weight:700; background:#F1F3F4; color:#202124; border:1px solid #DADCE0;">${p.position_primary}</span></td>
                     <td style="text-align:center; font-size:0.8rem; color:#5F6368; padding:8px 4px;">B: ${p.bats} / L: ${p.throws}</td>
                     ${isAuthorizedForTeam ? `
@@ -1850,7 +1875,7 @@ const App = {
             </thead>
             <tbody>
               ${leaders.length ? leaders.map((l, idx) => `
-                <tr onclick="App.showView('player_detail', ${l.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
+                <tr onclick="App.showPlayerProfileModal( ${l.player_id})" style="cursor:pointer; border-bottom:1px solid #F1F3F4;">
                   <td style="width:32px; text-align:center; font-weight:800; color:${idx === 0 ? '#1A73E8' : '#5F6368'}; font-size:0.85rem; padding:8px 2px;">#${idx + 1}</td>
                   <td style="font-weight:700; color:#202124; text-align:left; padding:8px 4px;" class="text-truncate">
                     <span style="color:#5F6368; font-weight:600; margin-right:4px;">#${l.jersey_number}</span> ${l.first_name} ${l.last_name}
@@ -4448,6 +4473,111 @@ const App = {
     } else {
       throw new Error(data.message || 'Error al subir la imagen.');
     }
+  },
+
+  // PLAYER PROFILE MODAL (Tarjeta de Jugador con Stats Actuales y De Por Vida)
+  async showPlayerProfileModal(playerId) {
+    const modal = document.getElementById('player-profile-modal');
+    const container = document.getElementById('player-profile-modal-content');
+    if (!modal || !container) return;
+
+    modal.classList.add('open');
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:#5F6368;"><div style="width:2rem; height:2rem; border:3px solid #1A73E8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px auto;"></div>Cargando tarjeta del jugador...</div>`;
+
+    try {
+      const res = await fetch(`api/players.php?action=detail&id=${playerId}`);
+      const data = await res.json();
+      if (!data.success || !data.player) {
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:#D93025;">No se encontró información del jugador.</div>`;
+        return;
+      }
+
+      const p = data.player;
+      const bCur = p.batting_stats || {};
+      const pCur = p.pitching_stats || {};
+      const bLife = p.lifetime_batting_stats || {};
+      const pLife = p.lifetime_pitching_stats || {};
+
+      const canEdit = (this.currentUser && ['super_admin', 'admin', 'team_admin'].includes(this.currentUser.role));
+
+      container.innerHTML = `
+        <div style="background:linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color:#FFFFFF; border-radius:12px; padding:16px; margin-bottom:14px; display:flex; align-items:center; gap:14px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+          <img src="${p.photo_url || 'assets/images/lmb_logo.png'}" style="width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid #3B82F6; background:#070D1B;" onerror="this.src='assets/images/lmb_logo.png'">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:1.2rem; font-weight:900; color:#FFFFFF;" class="text-truncate">#${p.jersey_number} ${p.first_name} ${p.last_name}</div>
+            <div style="font-size:0.82rem; color:#94A3B8; font-weight:700; margin-top:2px;" class="text-truncate">🧢 ${p.team_name || 'Sin Equipo'} • ${p.position_primary || 'OF'}</div>
+            <div style="font-size:0.75rem; color:#64748B; margin-top:4px;">Batea: <strong>${p.bats || 'R'}</strong> • Lanza: <strong>${p.throws || 'R'}</strong> • Rol: <strong>${p.role_type === 'player' ? 'Jugador' : (p.role_type || 'Integrante')}</strong></div>
+          </div>
+          ${canEdit ? `
+            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem; color:#FFF; border-color:#94A3B8;" onclick="App.closePlayerProfileModal(); App.openEditPlayerModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">✏️ Editar</button>
+          ` : ''}
+        </div>
+
+        <!-- Section 1: Stats Liga Actual -->
+        <div style="margin-bottom:14px;">
+          <div style="font-size:0.82rem; font-weight:800; color:#1A73E8; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-icons-round" style="font-size:16px;">emoji_events</span> Estadísticas de la Liga Actual
+          </div>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <!-- Bateo Actual -->
+            <div style="background:#F8F9FA; border:1px solid #E2E8F0; border-radius:8px; padding:10px;">
+              <div style="font-size:0.75rem; font-weight:800; color:#475569; margin-bottom:4px;">🏏 BATEO</div>
+              <div style="font-size:0.78rem; color:#1E293B; line-height:1.4;">
+                <strong>JJ:</strong> ${bCur.gp || 0} | <strong>AB:</strong> ${bCur.ab || 0} | <strong>H:</strong> ${bCur.h || 0}<br>
+                <strong>2B:</strong> ${bCur.doubles || 0} | <strong>3B:</strong> ${bCur.triples || 0} | <strong>HR:</strong> ${bCur.hr || 0}<br>
+                <strong>CI:</strong> ${bCur.rbi || 0} | <strong>AVG:</strong> <span style="color:#1A73E8; font-weight:800;">${bCur.avg || '.000'}</span> | <strong>OPS:</strong> <strong>${bCur.ops || '.000'}</strong>
+              </div>
+            </div>
+            <!-- Pitcheo Actual -->
+            <div style="background:#F8F9FA; border:1px solid #E2E8F0; border-radius:8px; padding:10px;">
+              <div style="font-size:0.75rem; font-weight:800; color:#475569; margin-bottom:4px;">⚾ PITCHEO</div>
+              <div style="font-size:0.78rem; color:#1E293B; line-height:1.4;">
+                <strong>G-P:</strong> ${pCur.wins || 0}-${pCur.losses || 0} | <strong>SV:</strong> ${pCur.saves || 0}<br>
+                <strong>IP:</strong> ${pCur.ip || '0.0'} | <strong>K:</strong> ${pCur.so || 0} | <strong>BB:</strong> ${pCur.bb || 0}<br>
+                <strong>ERA:</strong> <span style="color:#D93025; font-weight:800;">${pCur.era || '0.00'}</span> | <strong>WHIP:</strong> <strong>${pCur.whip || '0.00'}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Stats De Por Vida (Histórico Acumulado) -->
+        <div>
+          <div style="font-size:0.82rem; font-weight:800; color:#0F172A; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+            <span class="material-icons-round" style="font-size:16px;">history_edu</span> Estadísticas De Por Vida (Histórico Carrera)
+          </div>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <!-- Bateo Historico -->
+            <div style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:10px;">
+              <div style="font-size:0.75rem; font-weight:800; color:#334155; margin-bottom:4px;">📜 BATEO HISTÓRICO</div>
+              <div style="font-size:0.78rem; color:#0F172A; line-height:1.4;">
+                <strong>JJ:</strong> ${bLife.gp || 0} | <strong>AB:</strong> ${bLife.ab || 0} | <strong>H:</strong> ${bLife.h || 0}<br>
+                <strong>HR:</strong> ${bLife.hr || 0} | <strong>CI:</strong> ${bLife.rbi || 0} | <strong>C:</strong> ${bLife.r || 0}<br>
+                <strong>AVG Total:</strong> <span style="color:#0284C7; font-weight:800;">${bLife.avg || '.000'}</span>
+              </div>
+            </div>
+            <!-- Pitcheo Historico -->
+            <div style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:10px;">
+              <div style="font-size:0.75rem; font-weight:800; color:#334155; margin-bottom:4px;">📜 PITCHEO HISTÓRICO</div>
+              <div style="font-size:0.78rem; color:#0F172A; line-height:1.4;">
+                <strong>G-P:</strong> ${pLife.wins || 0}-${pLife.losses || 0} | <strong>SV:</strong> ${pLife.saves || 0}<br>
+                <strong>IP:</strong> ${pLife.ip || '0.0'} | <strong>K:</strong> ${pLife.so || 0}<br>
+                <strong>ERA Total:</strong> <span style="color:#DC2626; font-weight:800;">${pLife.era || '0.00'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch(e) {
+      console.error("Error al cargar perfil de jugador", e);
+      container.innerHTML = `<div style="text-align:center; padding:20px; color:#D93025;">Error de conexión al cargar la tarjeta del jugador.</div>`;
+    }
+  },
+
+  closePlayerProfileModal() {
+    const modal = document.getElementById('player-profile-modal');
+    if (modal) modal.classList.remove('open');
   },
 
   setupEventListeners() {

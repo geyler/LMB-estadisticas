@@ -241,6 +241,21 @@ session_start();
       </div>
     </div>
 
+    <!-- Player Card / Profile Modal -->
+    <div id="player-profile-modal" class="md-modal-backdrop" style="z-index: 10040;">
+      <div class="md-bottom-sheet" style="max-width:520px; max-height:90vh; overflow-y:auto; padding:18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-weight:800; font-size:1.1rem; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">sports_baseball</span> Tarjeta Oficial del Integrante
+          </div>
+          <button class="md-btn md-btn-outlined" style="padding:2px 8px; font-size:0.75rem;" onclick="App.closePlayerProfileModal()">✕</button>
+        </div>
+        <div id="player-profile-modal-content">
+          <div style="text-align:center; padding:20px; color:#5F6368;">Cargando perfil...</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Direct Match Result & Status Modal -->
     <div id="game-result-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet">
