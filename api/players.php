@@ -236,8 +236,15 @@ if ($action === 'update' && $method === 'POST') {
         $teamId = $user['assigned_team_id'];
     }
 
-    $stmt = $pdo->prepare("UPDATE players SET team_id = ?, role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
-    $stmt->execute([$teamId, $roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
+    $photoUrl = isset($input['photo_url']) ? trim($input['photo_url']) : null;
+
+    if ($photoUrl !== null) {
+        $stmt = $pdo->prepare("UPDATE players SET team_id = ?, role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ?, photo_url = ? WHERE id = ?");
+        $stmt->execute([$teamId, $roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $photoUrl, $id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE players SET team_id = ?, role_type = ?, first_name = ?, last_name = ?, jersey_number = ?, position_primary = ?, position_secondary = ?, bats = ?, throws = ? WHERE id = ?");
+        $stmt->execute([$teamId, $roleType, $firstName, $lastName, $jerseyNumber, $positionPrimary, $positionSecondary, $bats, $throws, $id]);
+    }
 
     echo json_encode(['success' => true, 'message' => 'Datos del integrante y asignación de equipo actualizados correctamente.']);
     exit;

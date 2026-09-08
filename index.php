@@ -426,6 +426,11 @@ session_start();
               </select>
             </div>
           </div>
+          <div class="form-group">
+            <label style="font-size:0.78rem; font-weight:700;">📷 Foto del Integrante (Subir Imagen - Opcional)</label>
+            <input type="file" id="cp-photo-file" class="form-control" accept="image/*">
+          </div>
+
           <button type="submit" class="md-btn md-btn-primary" style="width:100%;">➕ Guardar en Plantel</button>
         </form>
       </div>
@@ -510,6 +515,11 @@ session_start();
                 <option value="L">Zurdo (L)</option>
               </select>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size:0.78rem; font-weight:700;">📷 Cambiar Foto del Integrante (Subir Imagen)</label>
+            <input type="file" id="ep-photo-file" class="form-control" accept="image/*">
           </div>
 
           <div style="display:flex; gap:10px; margin-top:6px;">
@@ -752,6 +762,10 @@ session_start();
             <label style="font-size:0.78rem; font-weight:700;">📍 Sede Deportiva / Campo Local</label>
             <select id="ct-team-stadium" class="form-control"></select>
           </div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.78rem; font-weight:700;">📷 Emblema / Logo del Equipo (Subir Imagen)</label>
+            <input type="file" id="ct-team-logo-file" class="form-control" accept="image/*">
+          </div>
           <div style="display:flex; gap:10px; margin-top:14px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeCreateTeamModal()">Cancelar</button>
             <button type="submit" class="md-btn md-btn-primary" style="flex:1;">➕ Guardar Equipo</button>
@@ -795,15 +809,14 @@ session_start();
               <input type="color" id="edit-team-color2" class="form-control" style="height:38px; padding:2px;">
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-            <div>
-              <label style="font-size:0.75rem;">Año de Fundación</label>
-              <input type="number" id="edit-team-foundation" class="form-control" placeholder="1950">
-            </div>
-            <div>
-              <label style="font-size:0.75rem;">URL del Logo (Opcional)</label>
-              <input type="text" id="edit-team-logo" class="form-control" placeholder="assets/images/logo.png">
-            </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:0.78rem; font-weight:700;">📷 Emblema / Logo del Equipo (Subir Imagen o URL)</label>
+            <input type="file" id="edit-team-logo-file" class="form-control" accept="image/*" style="margin-bottom:4px;">
+            <input type="text" id="edit-team-logo" class="form-control" placeholder="Ruta o URL (ej. uploads/logos/...)" style="font-size:0.75rem;">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.75rem;">Año de Fundación</label>
+            <input type="number" id="edit-team-foundation" class="form-control" placeholder="1950">
           </div>
           <div style="display:flex; gap:10px;">
             <button type="button" class="md-btn md-btn-outlined" style="flex:1;" onclick="App.closeEditTeamModal()">Cancelar</button>

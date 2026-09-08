@@ -2170,7 +2170,8 @@ const App = {
             </div>
 
             <div class="form-group">
-              <label style="font-size:0.78rem; font-weight:700;">Ruta o URL del Logotipo Oficial</label>
+              <label style="font-size:0.78rem; font-weight:700;">📷 Logotipo Oficial de la Liga (Subir Imagen o URL)</label>
+              <input type="file" id="setting-site-logo-file" class="form-control" accept="image/*" style="margin-bottom:4px;">
               <input type="text" id="setting-site-logo" class="form-control" value="${this.settings.site_logo || 'assets/images/lmb_logo.png'}">
             </div>
 
@@ -2630,16 +2631,26 @@ const App = {
     const short_name = document.getElementById('ct-team-short').value.trim();
     const category_id = document.getElementById('ct-team-category').value;
     const home_stadium_id = document.getElementById('ct-team-stadium').value;
+    const logoFileInput = document.getElementById('ct-team-logo-file');
 
     const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
     let origText = '';
-    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando...'; }
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Guardando e subiendo logo...'; }
 
     try {
+      let logo_url = '';
+      if (logoFileInput && logoFileInput.files && logoFileInput.files[0]) {
+        try {
+          logo_url = await this.uploadImageFile(logoFileInput, 'logo');
+        } catch(err) {
+          console.warn('Logo upload error', err);
+        }
+      }
+
       const res = await fetch('api/teams.php?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, short_name, category_id: parseInt(category_id), home_stadium_id: parseInt(home_stadium_id) })
+        body: JSON.stringify({ name, short_name, category_id: parseInt(category_id), home_stadium_id: parseInt(home_stadium_id), logo_url })
       });
       const data = await res.json();
       if (data.success) {
@@ -2826,12 +2837,22 @@ const App = {
     const lastName = document.getElementById('cp-last-name').value.trim();
     const jersey = document.getElementById('cp-jersey').value;
     const position = document.getElementById('cp-position').value;
+    const photoFileInput = document.getElementById('cp-photo-file');
 
     const btn = e.target ? e.target.querySelector('button[type="submit"]') : null;
     let origText = '';
-    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Registrando...'; }
+    if (btn) { origText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ Registrando integrante...'; }
 
     try {
+      let photo_url = '';
+      if (photoFileInput && photoFileInput.files && photoFileInput.files[0]) {
+        try {
+          photo_url = await this.uploadImageFile(photoFileInput, 'player');
+        } catch(err) {
+          console.warn('Player photo upload error', err);
+        }
+      }
+
       const res = await fetch('api/players.php?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2841,7 +2862,8 @@ const App = {
           first_name: firstName,
           last_name: lastName,
           jersey_number: jersey,
-          position_primary: position
+          position_primary: position,
+          photo_url: photo_url
         })
       });
       const data = await res.json();
@@ -3016,12 +3038,25 @@ const App = {
     }
   },
 
-  updateSettings() {
+  async updateSettings() {
     const siteName = document.getElementById('setting-site-name')?.value;
     const siteSubtitle = document.getElementById('setting-site-subtitle')?.value;
-    const siteLogo = document.getElementById('setting-site-logo')?.value;
+    let siteLogo = document.getElementById('setting-site-logo')?.value;
     const sitePrimaryColor = document.getElementById('setting-site-color')?.value;
     const siteDescription = document.getElementById('setting-site-desc')?.value;
+    const logoFileInput = document.getElementById('setting-site-logo-file');
+
+    if (logoFileInput && logoFileInput.files && logoFileInput.files[0]) {
+      try {
+        this.showLoading('Subiendo logotipo oficial a /uploads/...');
+        const uploadedUrl = await this.uploadImageFile(logoFileInput, 'branding');
+        if (uploadedUrl) siteLogo = uploadedUrl;
+      } catch(e) {
+        console.warn('Error subiendo logo de marca', e);
+      } finally {
+        this.hideLoading();
+      }
+    }
 
     fetch('api/auth.php?action=settings_update', {
       method: 'POST',
@@ -3871,7 +3906,18 @@ const App = {
     const color_primary = document.getElementById('edit-team-color1').value;
     const color_secondary = document.getElementById('edit-team-color2').value;
     const foundation_year = document.getElementById('edit-team-foundation') ? document.getElementById('edit-team-foundation').value : 1950;
-    const logo_url = document.getElementById('edit-team-logo') ? document.getElementById('edit-team-logo').value.trim() : '';
+    let logo_url = document.getElementById('edit-team-logo') ? document.getElementById('edit-team-logo').value.trim() : '';
+
+    const logoFileInput = document.getElementById('edit-team-logo-file');
+    if (logoFileInput && logoFileInput.files && logoFileInput.files[0]) {
+      try {
+        this.showSnackbar('⏳ Subiendo nuevo logo del equipo...');
+        const uploadedUrl = await this.uploadImageFile(logoFileInput, 'logo', { team_id: id });
+        if (uploadedUrl) logo_url = uploadedUrl;
+      } catch(err) {
+        console.warn('Logo upload error', err);
+      }
+    }
 
     try {
       const res = await fetch('api/teams.php?action=update', {
@@ -3979,22 +4025,36 @@ const App = {
     const posPrimary = document.getElementById('ep-position-primary').value;
     const bats = document.getElementById('ep-bats').value;
     const throws = document.getElementById('ep-throws').value;
+    const photoFileInput = document.getElementById('ep-photo-file');
 
     try {
+      let photo_url = undefined;
+      if (photoFileInput && photoFileInput.files && photoFileInput.files[0]) {
+        try {
+          this.showSnackbar('⏳ Subiendo nueva foto del integrante...');
+          photo_url = await this.uploadImageFile(photoFileInput, 'player', { player_id: id });
+        } catch(err) {
+          console.warn('Player photo upload error', err);
+        }
+      }
+
+      const payload = {
+        id: parseInt(id),
+        team_id: parseInt(teamId),
+        role_type: roleType,
+        first_name: firstName,
+        last_name: lastName,
+        jersey_number: parseInt(jersey),
+        position_primary: posPrimary,
+        bats: bats,
+        throws: throws
+      };
+      if (photo_url) payload.photo_url = photo_url;
+
       const res = await fetch('api/players.php?action=update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: parseInt(id),
-          team_id: parseInt(teamId),
-          role_type: roleType,
-          first_name: firstName,
-          last_name: lastName,
-          jersey_number: parseInt(jersey),
-          position_primary: posPrimary,
-          bats: bats,
-          throws: throws
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
@@ -4319,6 +4379,35 @@ const App = {
       } catch(e) {
         this.showSnackbar("Error de conexión al eliminar la etapa.");
       }
+    }
+  },
+
+  // IMAGE UPLOAD HELPER (Directly to uploads/ folder)
+  async uploadImageFile(fileInputOrFile, uploadType = 'general', extraData = {}) {
+    let file = fileInputOrFile;
+    if (fileInputOrFile && fileInputOrFile.files && fileInputOrFile.files[0]) {
+      file = fileInputOrFile.files[0];
+    }
+    if (!file || !(file instanceof File)) return null;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_type', uploadType);
+    for (const k in extraData) {
+      if (extraData[k] !== undefined && extraData[k] !== null) {
+        formData.append(k, extraData[k]);
+      }
+    }
+
+    const res = await fetch('api/media.php', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success && data.url) {
+      return data.url;
+    } else {
+      throw new Error(data.message || 'Error al subir la imagen.');
     }
   },
 

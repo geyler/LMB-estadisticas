@@ -80,13 +80,23 @@ if ($type === 'logo') {
 } else if ($type === 'player') {
     $targetFolder = $uploadDir . 'players/';
     $webFolder = $webDir . 'players/';
-} else {
+} else if ($type === 'branding' || $type === 'site_logo') {
+    $targetFolder = $uploadDir . 'branding/';
+    $webFolder = $webDir . 'branding/';
+} else if ($type === 'stadium') {
+    $targetFolder = $uploadDir . 'stadiums/';
+    $webFolder = $webDir . 'stadiums/';
+} else if ($type === 'entity_gallery' || $type === 'game_photo') {
     $targetFolder = $uploadDir . 'galleries/';
     $webFolder = $webDir . 'galleries/';
+} else {
+    $targetFolder = $uploadDir . 'general/';
+    $webFolder = $webDir . 'general/';
 }
 
 if (!is_dir($targetFolder)) {
-    mkdir($targetFolder, 0777, true);
+    @mkdir($targetFolder, 0777, true);
+    @chmod($targetFolder, 0777);
 }
 
 $filename = $type . '_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
@@ -103,6 +113,13 @@ if (move_uploaded_file($file['tmp_name'], $targetPath)) {
         $playerId = intval($_POST['player_id'] ?? 0);
         if ($playerId > 0) {
             $pdo->prepare("UPDATE players SET photo_url = ? WHERE id = ?")->execute([$webPath, $playerId]);
+        }
+    } else if ($type === 'site_logo' || $type === 'branding') {
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $pdo->prepare("INSERT OR REPLACE INTO site_settings (setting_key, setting_value) VALUES ('site_logo', ?)")->execute([$webPath]);
+        } else {
+            $pdo->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES ('site_logo', ?) ON DUPLICATE KEY UPDATE setting_value = ?")->execute([$webPath, $webPath]);
         }
     } else if ($type === 'game_photo') {
         $gameId = intval($_POST['game_id'] ?? 0);
