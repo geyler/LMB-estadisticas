@@ -1960,7 +1960,7 @@ const App = {
               <p style="font-size:0.8rem; color:#5F6368; margin:4px 0 0 0;">Cada campeonato o torneo funciona como una unidad independiente con sus propios equipos y calendario.</p>
             </div>
             <div class="md-card-header-actions">
-              <button class="btn-m3-primary" style="padding:6px 14px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:18px;">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>
+              <button class="btn-m3-primary" style="padding:6px 12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:18px;">emoji_events</span> Iniciar Nuevo Campeonato</button>
             </div>
           </div>
           <div style="font-size:0.82rem; color:#1E293B; background:#F8F9FA; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; margin-top:10px;">
@@ -2585,16 +2585,7 @@ const App = {
     }
   },
 
-  async showCreateSeasonModal() {
-    const modal = document.getElementById('create-season-modal');
-    if (modal) {
-      const nameInput = document.getElementById('cn-season-name');
-      const yearInput = document.getElementById('cn-season-year');
-      if (nameInput) nameInput.value = '';
-      if (yearInput) yearInput.value = new Date().getFullYear();
-      modal.classList.add('open');
-    }
-  },
+
 
   closeCreateSeasonModal() {
     const modal = document.getElementById('create-season-modal');
@@ -4591,14 +4582,27 @@ const App = {
   async showCreateSeasonModal() {
     const modal = document.getElementById('create-season-modal');
     const checklist = document.getElementById('cs-teams-checklist');
+    const nameInput = document.getElementById('cn-season-name');
+    const yearInput = document.getElementById('cn-season-year');
+
     if (!modal) return;
+
+    if (nameInput) nameInput.value = '';
+    if (yearInput) yearInput.value = new Date().getFullYear();
 
     if (checklist) {
       checklist.innerHTML = `<div style="font-size:0.8rem; color:#5F6368; text-align:center; padding:10px;">Cargando lista de equipos...</div>`;
       try {
         const res = await fetch('api/leagues.php?action=season_teams');
         const data = await res.json();
-        const teams = data.teams || [];
+        let teams = (data && data.success && data.teams) ? data.teams : [];
+        
+        if (!teams.length) {
+          const fallbackRes = await fetch('api/teams.php?action=list');
+          const fallbackData = await fallbackRes.json();
+          teams = (fallbackData.teams || []).map(t => ({ ...t, selected: true }));
+        }
+
         if (teams.length) {
           checklist.innerHTML = teams.map(t => `
             <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:600; cursor:pointer; background:#FFFFFF; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0;">
@@ -4611,7 +4615,25 @@ const App = {
           checklist.innerHTML = `<div style="font-size:0.8rem; color:#5F6368; text-align:center;">No hay equipos registrados. Registra equipos primero.</div>`;
         }
       } catch(e) {
-        checklist.innerHTML = `<div style="font-size:0.8rem; color:#D93025; text-align:center;">Error cargando equipos.</div>`;
+        console.error("Error cargando equipos en modal de temporada:", e);
+        try {
+          const fallbackRes = await fetch('api/teams.php?action=list');
+          const fallbackData = await fallbackRes.json();
+          const teams = fallbackData.teams || [];
+          if (teams.length) {
+            checklist.innerHTML = teams.map(t => `
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:600; cursor:pointer; background:#FFFFFF; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0;">
+                <input type="checkbox" class="cs-team-check" value="${t.id}" checked>
+                <img src="${t.logo_url || 'assets/images/lmb_logo.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
+                <span class="text-truncate">${t.name}</span>
+              </label>
+            `).join('');
+          } else {
+            checklist.innerHTML = `<div style="font-size:0.8rem; color:#5F6368; text-align:center;">No hay equipos registrados.</div>`;
+          }
+        } catch(err2) {
+          checklist.innerHTML = `<div style="font-size:0.8rem; color:#D93025; text-align:center;">Error cargando equipos.</div>`;
+        }
       }
     }
 
