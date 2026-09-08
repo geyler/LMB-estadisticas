@@ -757,7 +757,34 @@ const App = {
 
       this.renderScorebugCarousel(games);
 
-      const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+      if (!this.activeSeason && !this.selectedSeasonId) {
+        container.innerHTML = `
+          <div class="view-content">
+            <!-- Hero Header -->
+            <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; box-shadow:0 1px 3px rgba(60,64,67,0.08);">
+              <div style="font-size:0.75rem; font-weight:800; color:#1A73E8; text-transform:uppercase; letter-spacing:1px;">LIGA METROPOLITANA DE BÉISBOL</div>
+              <h2 style="font-size:1.4rem; font-weight:900; color:#202124; margin:4px 0;" class="text-truncate">${this.settings.site_name || 'Buenos Aires'}</h2>
+              <p style="font-size:0.82rem; color:#5F6368;">Estadísticas oficiales, calendario de partidos, tablas de posiciones y anotación en vivo.</p>
+
+              ${!this.currentUser ? `
+                <div style="margin-top:10px;">
+                  <button class="md-btn md-btn-primary" style="font-size:0.8rem; padding:6px 16px;" onclick="App.openAuthModal('register')">📝 Registrarse</button>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="md-card" style="text-align:center; padding:40px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; margin-top:12px;">
+              <div style="font-size:3.5rem; margin-bottom:10px;">🏆</div>
+              <h3 style="font-size:1.3rem; font-weight:800; color:#1E293B; margin-bottom:6px;">No hay ninguna liga en curso en este momento</h3>
+              <p style="font-size:0.88rem; color:#64748B; max-width:480px; margin:0 auto 16px auto;">
+                El campeonato anterior ha concluido y sus datos se guardaron en el <strong>Archivo Histórico</strong>. Selecciona una liga en el menú o inicia una nueva.
+              </p>
+              ${canEdit ? `<button class="btn-m3-primary" style="padding:10px 22px; font-size:0.9rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>` : ''}
+            </div>
+          </div>
+        `;
+        return;
+      }
 
       let html = `
         <div class="view-content">
@@ -773,17 +800,6 @@ const App = {
               </div>
             ` : ''}
           </div>
-
-          ${!this.activeSeason ? `
-            <div class="md-card" style="text-align:center; padding:35px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; margin-top:12px;">
-              <div style="font-size:3rem; margin-bottom:10px;">🏆</div>
-              <h3 style="font-size:1.25rem; font-weight:800; color:#1E293B; margin-bottom:6px;">No hay ninguna liga en curso en este momento</h3>
-              <p style="font-size:0.85rem; color:#64748B; max-width:480px; margin:0 auto 16px auto;">
-                El campeonato anterior ha concluido y sus datos se guardaron en el <strong>Archivo Histórico</strong>.
-              </p>
-              ${canEdit ? `<button class="btn-m3-primary" style="padding:10px 22px; font-size:0.88rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>` : ''}
-            </div>
-          ` : ''}
 
           ${champions.length ? `
             <!-- Section: Reigning Champions -->
@@ -1042,6 +1058,24 @@ const App = {
   },
 
   async renderStandingsView(container) {
+    const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+
+    if (!this.activeSeason && !this.selectedSeasonId) {
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:40px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; margin-top:12px;">
+            <div style="font-size:3.5rem; margin-bottom:10px;">🏆</div>
+            <h3 style="font-size:1.3rem; font-weight:800; color:#1E293B; margin-bottom:6px;">Sin Tabla de Posiciones Activa</h3>
+            <p style="font-size:0.88rem; color:#64748B; max-width:480px; margin:0 auto 16px auto;">
+              No hay un campeonato en curso. Selecciona una liga en el <strong>Archivo Histórico</strong> para consultar posiciones pasadas o inicia una nueva liga.
+            </p>
+            ${canEdit ? `<button class="btn-m3-primary" style="padding:10px 22px; font-size:0.9rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>` : ''}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tabla de posiciones...</div></div>`;
 
     try {
@@ -1131,6 +1165,24 @@ const App = {
 
   // 3. CALENDAR & SCHEDULE VIEW (GOOGLE SPORTS FORMAT)
   async renderCalendarView(container) {
+    const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+
+    if (!this.activeSeason && !this.selectedSeasonId) {
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:40px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; margin-top:12px;">
+            <div style="font-size:3.5rem; margin-bottom:10px;">🏆</div>
+            <h3 style="font-size:1.3rem; font-weight:800; color:#1E293B; margin-bottom:6px;">Sin Calendario de Partidos Activo</h3>
+            <p style="font-size:0.88rem; color:#64748B; max-width:480px; margin:0 auto 16px auto;">
+              No hay un campeonato en curso. Selecciona un torneo en el <strong>Archivo Histórico</strong> para consultar partidos pasados o inicia una nueva liga.
+            </p>
+            ${canEdit ? `<button class="btn-m3-primary" style="padding:10px 22px; font-size:0.9rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>` : ''}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando calendario...</div></div>`;
 
     try {
@@ -1821,8 +1873,25 @@ const App = {
   // 7. LEADERS VIEW (Batting & Pitching Departmental Lists)
   async renderLeadersView(container, type = 'batting', stat = 'avg') {
     this.leadersType = type;
-
     this.leadersStat = stat;
+    const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+
+    if (!this.activeSeason && !this.selectedSeasonId) {
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:40px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; margin-top:12px;">
+            <div style="font-size:3.5rem; margin-bottom:10px;">🏆</div>
+            <h3 style="font-size:1.3rem; font-weight:800; color:#1E293B; margin-bottom:6px;">Sin Líderes de Liga Activos</h3>
+            <p style="font-size:0.88rem; color:#64748B; max-width:480px; margin:0 auto 16px auto;">
+              No hay un campeonato en curso. Selecciona un torneo en el <strong>Archivo Histórico</strong> para consultar líderes pasados o inicia una nueva liga.
+            </p>
+            ${canEdit ? `<button class="btn-m3-primary" style="padding:10px 22px; font-size:0.9rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>` : ''}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando líderes de estadísticas...</div></div>`;
 
     try {
@@ -1929,8 +1998,9 @@ const App = {
 
     let html = `
       <div class="view-content">
-        <div class="section-header">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <h2 class="section-title"><span class="material-icons-round" style="color:#EF4444;">admin_panel_settings</span> Panel de Control Autónomo</h2>
+          ${this.currentUser && this.currentUser.role === 'super_admin' ? `<button onclick="App.handleResetSystem()" class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem; color:#D93025; border-color:#FCA5A5; font-weight:800; display:inline-flex; align-items:center; gap:4px;"><span class="material-icons-round" style="font-size:14px;">restart_alt</span> 🚨 Reset Total del Sistema</button>` : ''}
         </div>
 
         <!-- Admin Navigation Tabs -->
@@ -4690,6 +4760,43 @@ const App = {
       } finally {
         this.hideLoading();
       }
+    }
+  },
+
+  async handleResetSystem() {
+    if (!this.currentUser || this.currentUser.role !== 'super_admin') return;
+
+    const confirm1 = confirm("⚠️ ATENCIÓN: Esta acción BORRARÁ TODO EL SISTEMA DE RAÍZ.\n\nSe eliminarán:\n- Todos los partidos, calendarios y estadísticas\n- Todos los equipos, jugadores y sedes\n- Todas las temporadas e historial de campeones\n- Todos los usuarios registrados (incluyendo tu cuenta actual)\n\nEl primer usuario que se registre después del reset se convertirá automáticamente en el nuevo Super Admin.\n\n¿Deseas continuar?");
+    if (!confirm1) return;
+
+    const word = prompt("Escribe la palabra BORRAR en mayúsculas para confirmar el restablecimiento total del sistema:");
+    if (!word || word.trim().toUpperCase() !== 'BORRAR') {
+      this.showAlert("Cancelado", "Palabra de confirmación incorrecta. No se realizaron cambios en el sistema.", "info", "#1A73E8");
+      return;
+    }
+
+    this.showLoading('Restableciendo sistema a cero...');
+
+    try {
+      const res = await fetch('api/auth.php?action=reset_system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm_text: 'BORRAR' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.currentUser = null;
+        this.showAlert("🚨 Sistema Restablecido", data.message, "restart_alt", "#D93025");
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        this.showAlert("Error", data.message || 'No se pudo restablecer el sistema.', "error", "#EF4444");
+      }
+    } catch(e) {
+      this.showAlert("Error", "Error de conexión al restablecer el sistema.", "wifi_off", "#EF4444");
+    } finally {
+      this.hideLoading();
     }
   },
 

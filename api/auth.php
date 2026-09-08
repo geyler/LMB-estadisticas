@@ -332,3 +332,70 @@ if ($action === 'settings_update' && $method === 'POST') {
     exit;
 }
 
+// Reset Total System Action (Super Admin Only)
+if ($action === 'reset_system' && $method === 'POST') {
+    if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'super_admin') {
+        echo json_encode(['success' => false, 'message' => 'Acceso denegado. Solo el Super Admin puede restablecer el sistema.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $confirmText = trim($input['confirm_text'] ?? '');
+
+    if (strtoupper($confirmText) !== 'BORRAR') {
+        echo json_encode(['success' => false, 'message' => 'Escribe la palabra BORRAR para confirmar el restablecimiento del sistema.']);
+        exit;
+    }
+
+    try {
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        $tables = [
+            'game_line_scores',
+            'game_batting_stats',
+            'game_pitching_stats',
+            'game_play_by_play',
+            'game_photos',
+            'entity_photos',
+            'games',
+            'season_champions',
+            'season_teams',
+            'categories',
+            'team_history',
+            'players',
+            'teams',
+            'stadiums',
+            'seasons',
+            'audit_logs',
+            'users'
+        ];
+
+        foreach ($tables as $tbl) {
+            try {
+                $pdo->exec("DELETE FROM {$tbl}");
+                if ($driver === 'sqlite') {
+                    $pdo->exec("DELETE FROM sqlite_sequence WHERE name = '{$tbl}'");
+                }
+            } catch(Exception $ex) {}
+        }
+
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        session_destroy();
+
+        echo json_encode([
+            'success' => true,
+            'message' => '🚨 Sistema restablecido a cero exitosamente. Todos los datos fueron eliminados. Registra el nuevo usuario para ser el Super Admin.'
+        ]);
+    } catch(Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al restablecer el sistema: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
