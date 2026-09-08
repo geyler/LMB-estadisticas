@@ -757,6 +757,8 @@ const App = {
 
       this.renderScorebugCarousel(games);
 
+      const canEdit = (this.currentUser && ['super_admin', 'admin', 'scorekeeper', 'team_admin'].includes(this.currentUser.role));
+
       if (!this.activeSeason && !this.selectedSeasonId) {
         container.innerHTML = `
           <div class="view-content">
