@@ -774,6 +774,17 @@ const App = {
             ` : ''}
           </div>
 
+          ${!this.activeSeason ? `
+            <div class="md-card" style="text-align:center; padding:35px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; margin-top:12px;">
+              <div style="font-size:3rem; margin-bottom:10px;">🏆</div>
+              <h3 style="font-size:1.25rem; font-weight:800; color:#1E293B; margin-bottom:6px;">No hay ninguna liga en curso en este momento</h3>
+              <p style="font-size:0.85rem; color:#64748B; max-width:480px; margin:0 auto 16px auto;">
+                El campeonato anterior ha concluido y sus datos se guardaron en el <strong>Archivo Histórico</strong>.
+              </p>
+              ${canEdit ? `<button class="btn-m3-primary" style="padding:10px 22px; font-size:0.88rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga</button>` : ''}
+            </div>
+          ` : ''}
+
           ${champions.length ? `
             <!-- Section: Reigning Champions -->
             <div class="view-section">
@@ -1952,46 +1963,42 @@ const App = {
     if (!tabContainer) return;
 
     if (this.adminTab === 'categories') {
-      tabContainer.innerHTML = `
-        <div class="md-card">
-          <div class="md-card-header">
-            <div>
-              <h3 style="font-size:1rem; font-weight:800; color:#1A73E8; margin:0;">🏆 Gestión de Campeonatos y Ligas</h3>
-              <p style="font-size:0.8rem; color:#5F6368; margin:4px 0 0 0;">Cada campeonato o torneo funciona como una unidad independiente con sus propios equipos y calendario.</p>
-            </div>
-            <div class="md-card-header-actions">
-              <button class="btn-m3-primary" style="padding:6px 12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;" onclick="App.showCreateSeasonModal()"><span class="material-icons-round" style="font-size:18px;">emoji_events</span> Iniciar Nuevo Campeonato</button>
-            </div>
+      if (!this.activeSeason) {
+        tabContainer.innerHTML = `
+          <div class="md-card" style="text-align:center; padding:40px 20px; background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0;">
+            <div style="font-size:3.5rem; margin-bottom:12px;">🏆</div>
+            <h3 style="font-size:1.3rem; font-weight:800; color:#1E293B; margin-bottom:8px;">Sin Liga ni Campeonato en Curso</h3>
+            <p style="font-size:0.88rem; color:#64748B; margin-bottom:20px; max-width:480px; margin-left:auto; margin-right:auto;">
+              Al coronar un campeón, la liga finaliza y pasa automáticamente al <strong>Archivo Histórico</strong>. Selecciona los equipos e inicia un nuevo torneo para comenzar.
+            </p>
+            <button class="btn-m3-primary" style="padding:10px 24px; font-size:0.92rem; font-weight:800; display:inline-flex; align-items:center; gap:8px; margin:0 auto;" onclick="App.showCreateSeasonModal()">
+              <span class="material-icons-round">emoji_events</span> 🏆 Iniciar Nuevo Campeonato / Liga
+            </button>
           </div>
-          <div style="font-size:0.82rem; color:#1E293B; background:#F8F9FA; padding:8px 12px; border-radius:8px; border:1px solid #E2E8F0; margin-top:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <span>Liga / Campeonato Activo Actualmente: <strong style="color:${this.activeSeason ? '#1A73E8' : '#D93025'};">${this.activeSeason ? this.activeSeason.name : 'Ninguna (Sin Liga en Curso)'}</strong></span>
-            ${this.activeSeason ? `<button onclick="App.handleFinishActiveSeason()" class="md-btn md-btn-outlined" style="padding:3px 10px; font-size:0.75rem; color:#D93025; border-color:#FCA5A5; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><span class="material-icons-round" style="font-size:14px;">flag</span> Finalizar Liga Actual</button>` : ''}
-          </div>
-        </div>
+        `;
+      } else {
+        const cat = (this.categories && this.categories.length) ? this.categories[0] : null;
+        const catId = cat ? cat.id : 0;
+        const catName = cat ? cat.name : this.activeSeason.name;
 
-        <div class="md-table-wrapper" style="margin-top:12px;">
-          <table class="md-table">
-            <thead>
-              <tr><th>Categoría / División</th><th>Código</th><th>Acciones</th></tr>
-            </thead>
-            <tbody>
-              ${this.categories.length ? this.categories.map(c => `
-                <tr>
-                  <td style="font-weight:700;">${c.name}</td>
-                  <td><span class="md-chip" style="padding:2px 6px;">${c.code}</span></td>
-                  <td>
-                    <div style="display:flex; gap:6px;">
-                      <button class="btn-m3-gold" onclick="App.showCrownChampionModal(${c.id}, '${c.name}')"><span class="material-icons-round" style="font-size:15px;">emoji_events</span> Coronar</button>
-                      <button class="btn-m3-edit" onclick="App.showEditCategoryModal(${c.id}, '${c.name}', '${c.code}')"><span class="material-icons-round" style="font-size:15px; color:#1A73E8;">edit</span> Editar</button>
-                      <button class="btn-m3-danger" onclick="App.deleteCategory(${c.id}, '${c.name}')"><span class="material-icons-round" style="font-size:15px;">delete</span></button>
-                    </div>
-                  </td>
-                </tr>
-              `).join('') : '<tr><td colspan="3" style="text-align:center; padding:16px; color:#5F6368;">Sin categorías registradas. Puedes crear las tuyas de 0.</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-      `;
+        tabContainer.innerHTML = `
+          <div class="md-card" style="background:#FFFFFF; border-radius:12px; border:1px solid #E2E8F0; padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #F1F5F9; padding-bottom:16px; margin-bottom:16px;">
+              <div>
+                <div style="font-size:0.75rem; font-weight:800; color:#1A73E8; text-transform:uppercase; letter-spacing:1px;">CAMPEONATO ACTIVO EN CURSO</div>
+                <h2 style="font-size:1.4rem; font-weight:900; color:#1E293B; margin:4px 0 0 0;">🏆 ${this.activeSeason.name} (${this.activeSeason.year})</h2>
+              </div>
+              <button class="btn-m3-gold" style="padding:10px 20px; font-size:0.88rem; font-weight:800; display:inline-flex; align-items:center; gap:8px;" onclick="App.showCrownChampionModal(${catId}, '${catName}')">
+                <span class="material-icons-round" style="font-size:18px;">workspace_premium</span> 👑 Coronar Campeón y Finalizar Liga
+              </button>
+            </div>
+
+            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px 16px; font-size:0.85rem; color:#475569;">
+              ℹ️ <strong>Información del Campeonato:</strong> Cuando concluyan todos los partidos, presiona <strong>"Coronar Campeón y Finalizar Liga"</strong>. La liga se archivará en el Histórico de forma ineditable y la aplicación quedará en blanco lista para el siguiente torneo.
+            </div>
+          </div>
+        `;
+      }
     } else if (this.adminTab === 'stadiums') {
       let stadia = [];
       try {

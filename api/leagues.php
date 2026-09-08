@@ -23,9 +23,7 @@ if ($action === 'list') {
             break;
         }
     }
-    if (!$activeSeason && !empty($seasons)) {
-        $activeSeason = $seasons[0];
-    }
+
 
     $categories = [];
     if ($activeSeason) {
