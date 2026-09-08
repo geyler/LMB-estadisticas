@@ -313,7 +313,11 @@ const App = {
       const res = await fetch('api/leagues.php?action=list');
       const data = await res.json();
       if (data.success) {
+        this.seasons = data.seasons || [];
         this.activeSeason = data.active_season;
+        if (!this.selectedSeasonId && this.activeSeason) {
+          this.selectedSeasonId = this.activeSeason.id;
+        }
         this.categories = data.categories || [];
         this.renderCategoryChips();
       }
@@ -517,13 +521,40 @@ const App = {
     const chipContainer = document.getElementById('global-category-chips');
     if (!chipContainer) return;
 
-    let html = `<button class="md-chip active" onclick="App.setCategory(0)">🏆 Liga Metropolitana (LMB)</button>`;
-    if (this.categories.length > 1) {
+    let html = '';
+    if (this.seasons && this.seasons.length > 1) {
+      html += `<select class="md-chip" style="font-weight:800; cursor:pointer; background:#1E293B; color:#FFFFFF; border:1px solid #3B82F6; margin-right:4px;" onchange="App.setSeason(this.value)">`;
+      this.seasons.forEach(s => {
+        const isSel = (this.selectedSeasonId ? this.selectedSeasonId == s.id : s.is_active == 1);
+        html += `<option value="${s.id}" ${isSel ? 'selected' : ''}>📅 ${s.name} (${s.year})${s.is_active == 1 ? ' ★ ACTIVA' : ' [Archivo]'}</option>`;
+      });
+      html += `</select>`;
+    }
+
+    html += `<button class="md-chip ${this.currentCategory === 0 ? 'active' : ''}" onclick="App.setCategory(0)">🏆 Toda la Liga</button>`;
+    if (this.categories && this.categories.length > 0) {
       this.categories.forEach(c => {
         html += `<button class="md-chip ${this.currentCategory === c.id ? 'active' : ''}" onclick="App.setCategory(${c.id})">${c.name}</button>`;
       });
     }
     chipContainer.innerHTML = html;
+  },
+
+  async setSeason(seasonId) {
+    this.selectedSeasonId = parseInt(seasonId);
+    this.currentCategory = 0;
+    this.showLoading('Cargando categorías de temporada...');
+    try {
+      const res = await fetch(`api/leagues.php?action=categories&season_id=${this.selectedSeasonId}`);
+      const data = await res.json();
+      this.categories = data.categories || [];
+      this.renderCategoryChips();
+      this.refreshCurrentView();
+    } catch(e) {
+      console.error("Error cambiando temporada", e);
+    } finally {
+      this.hideLoading();
+    }
   },
 
   setCategory(catId) {
@@ -1003,7 +1034,8 @@ const App = {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando tabla de posiciones...</div></div>`;
 
     try {
-      const res = await fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}`);
+      const seasonParam = (this.currentCategory === 0 && this.selectedSeasonId) ? `&season_id=${this.selectedSeasonId}` : "";
+      const res = await fetch(`api/teams.php?action=standings&category_id=${this.currentCategory}${seasonParam}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const standings = data.standings || [];
@@ -1066,7 +1098,8 @@ const App = {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando calendario...</div></div>`;
 
     try {
-      const res = await fetch(`api/games.php?action=list&category_id=${this.currentCategory}`);
+      const seasonParam = (this.currentCategory === 0 && this.selectedSeasonId) ? `&season_id=${this.selectedSeasonId}` : "";
+      const res = await fetch(`api/games.php?action=list&category_id=${this.currentCategory}${seasonParam}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const games = data.games || [];
@@ -1484,7 +1517,8 @@ const App = {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando equipos...</div></div>`;
 
     try {
-      const res = await fetch(`api/teams.php?action=list&category_id=${this.currentCategory}`);
+      const seasonParam = (this.currentCategory === 0 && this.selectedSeasonId) ? `&season_id=${this.selectedSeasonId}` : "";
+      const res = await fetch(`api/teams.php?action=list&category_id=${this.currentCategory}${seasonParam}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const teams = data.teams || [];
@@ -1756,7 +1790,8 @@ const App = {
     container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando líderes de estadísticas...</div></div>`;
 
     try {
-      const res = await fetch(`api/leaderboards.php?type=${type}&stat=${stat}&category_id=${this.currentCategory}`);
+      const seasonParam = (this.currentCategory === 0 && this.selectedSeasonId) ? `&season_id=${this.selectedSeasonId}` : "";
+      const res = await fetch(`api/leaderboards.php?type=${type}&stat=${stat}&category_id=${this.currentCategory}${seasonParam}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       const leaders = data.leaders || [];

@@ -13,7 +13,9 @@ $action = $_GET['action'] ?? 'list';
 
 if ($action === 'list') {
     $categoryId = intval($_GET['category_id'] ?? 0);
+    $seasonId = intval($_GET['season_id'] ?? 0);
     $status = trim($_GET['status'] ?? '');
+    $all = isset($_GET['all']) && $_GET['all'] == '1';
 
     $sql = "SELECT g.*, 
                    COALESCE(ht.name, 'Equipo Local') as home_team_name, COALESCE(ht.short_name, 'LOC') as home_short, ht.logo_url as home_logo, ht.color_primary as home_color,
@@ -24,10 +26,18 @@ if ($action === 'list') {
             LEFT JOIN teams ht ON g.home_team_id = ht.id
             LEFT JOIN teams at ON g.away_team_id = at.id
             LEFT JOIN categories c ON g.category_id = c.id
+            LEFT JOIN seasons se ON g.season_id = se.id
             LEFT JOIN stadiums s ON g.stadium_id = s.id";
 
     $where = [];
-    if ($categoryId > 0) $where[] = "g.category_id = {$categoryId}";
+    if ($categoryId > 0) {
+        $where[] = "g.category_id = {$categoryId}";
+    } else if ($seasonId > 0) {
+        $where[] = "g.season_id = {$seasonId}";
+    } else if (!$all) {
+        $where[] = "(se.is_active = 1 OR g.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1))";
+    }
+
     if (!empty($status)) $where[] = "g.status = '{$status}'";
 
     if (!empty($where)) {

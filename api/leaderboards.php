@@ -27,6 +27,8 @@ if ($type === 'batting') {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
         $whereCond .= " AND c.season_id = {$seasonId} ";
+    } else {
+        $whereCond .= " AND c.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1) ";
     }
 
     $sql = "
@@ -101,6 +103,8 @@ if ($type === 'batting') {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
         $whereCond .= " AND c.season_id = {$seasonId} ";
+    } else {
+        $whereCond .= " AND c.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1) ";
     }
 
     $sql = "

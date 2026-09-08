@@ -45,14 +45,22 @@ if ($action === 'list') {
 
 if ($action === 'categories') {
     $seasonId = intval($_GET['season_id'] ?? 0);
+    $all = isset($_GET['all']) && $_GET['all'] == '1';
+
     if ($seasonId > 0) {
         $stmt = $pdo->prepare("SELECT c.*, s.name as season_name FROM categories c JOIN seasons s ON c.season_id = s.id WHERE c.season_id = ? ORDER BY c.level ASC, c.id ASC");
         $stmt->execute([$seasonId]);
-    } else {
+    } else if ($all) {
         $stmt = $pdo->query("SELECT c.*, s.name as season_name, s.is_active as season_is_active 
                               FROM categories c 
                               LEFT JOIN seasons s ON c.season_id = s.id 
                               ORDER BY s.is_active DESC, c.season_id DESC, c.level ASC, c.id ASC");
+    } else {
+        $stmt = $pdo->query("SELECT c.*, s.name as season_name, s.is_active as season_is_active 
+                              FROM categories c 
+                              JOIN seasons s ON c.season_id = s.id 
+                              WHERE s.is_active = 1
+                              ORDER BY c.level ASC, c.id ASC");
     }
     $categories = $stmt->fetchAll();
     echo json_encode(['success' => true, 'categories' => $categories]);
@@ -163,8 +171,8 @@ if ($action === 'create_season' && $method === 'POST') {
     $stmtCat->execute([$seasonId, 'Segunda División A2', 'A2', 2]);
     $newA2Id = $pdo->lastInsertId();
 
-    // Move any unassigned or existing teams to the new season's main category
-    $pdo->prepare("UPDATE teams SET category_id = ? WHERE category_id = 0 OR category_id IS NULL")->execute([$newA1Id]);
+    // Reassign existing active teams to the new season's main category
+    $pdo->prepare("UPDATE teams SET category_id = ?")->execute([$newA1Id]);
 
     logAuditAction($pdo, 'CREATE_SEASON', "Inició la nueva temporada '{$name}' ({$year}) con categorías A1 y A2 pre-cargadas.");
 

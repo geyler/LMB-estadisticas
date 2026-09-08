@@ -38,6 +38,19 @@ if ($action === 'standings') {
     foreach ($teams as $t) {
         $tId = $t['id'];
 
+        $gameFilter = "";
+        $queryParams = [$tId, $tId, $tId, $tId, $tId, $tId, $tId, $tId];
+        if ($categoryId > 0) {
+            $gameFilter .= " AND category_id = ? ";
+            $queryParams[] = $categoryId;
+        } else if ($seasonId > 0) {
+            $gameFilter .= " AND season_id = ? ";
+            $queryParams[] = $seasonId;
+        } else if (!empty($t['category_id'])) {
+            $gameFilter .= " AND category_id = ? ";
+            $queryParams[] = $t['category_id'];
+        }
+
         $stmtGames = $pdo->prepare("
             SELECT 
                 COUNT(*) as gp,
@@ -47,9 +60,10 @@ if ($action === 'standings') {
                 SUM(CASE WHEN home_team_id = ? THEN away_score ELSE home_score END) as cc
             FROM games
             WHERE (home_team_id = ? OR away_team_id = ?) AND status = 'finished'
+            {$gameFilter}
             AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
         ");
-        $stmtGames->execute([$tId, $tId, $tId, $tId, $tId, $tId, $tId, $tId]);
+        $stmtGames->execute($queryParams);
         $res = $stmtGames->fetch();
 
         $gp = intval($res['gp'] ?? 0);
