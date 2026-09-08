@@ -1272,7 +1272,9 @@ const App = {
                   ${g.away_team_name}
                 </td>
                 ${[1,2,3,4,5,6,7,8,9].map(i => {
-                  const val = (lines.away && lines.away[i] !== undefined && lines.away[i] !== null) ? lines.away[i] : (['finalized','completed','live'].includes(g.status) && i <= (g.current_inning || 9) ? '0' : '-');
+                  const isStarted = ['finalized','completed','finished','live'].includes(g.status);
+                  const maxInning = Math.max(g.current_inning || 1, 1);
+                  const val = (lines.away && lines.away[i] !== undefined && lines.away[i] !== null) ? lines.away[i] : (isStarted && i <= maxInning ? '0' : '-');
                   return `<td style="padding:6px 4px; color:#3C4043;">${val}</td>`;
                 }).join('')}
                 <td style="padding:6px 8px; border-left:1px solid #DADCE0; font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.away_score}</td>
@@ -1285,7 +1287,9 @@ const App = {
                   ${g.home_team_name}
                 </td>
                 ${[1,2,3,4,5,6,7,8,9].map(i => {
-                  const val = (lines.home && lines.home[i] !== undefined && lines.home[i] !== null) ? lines.home[i] : (['finalized','completed','live'].includes(g.status) && i <= (g.current_inning || 9) ? '0' : '-');
+                  const isStarted = ['finalized','completed','finished','live'].includes(g.status);
+                  const maxInning = Math.max(g.current_inning || 1, 1);
+                  const val = (lines.home && lines.home[i] !== undefined && lines.home[i] !== null) ? lines.home[i] : (isStarted && i <= maxInning ? '0' : '-');
                   return `<td style="padding:6px 4px; color:#3C4043;">${val}</td>`;
                 }).join('')}
                 <td style="padding:6px 8px; border-left:1px solid #DADCE0; font-weight:900; color:#1A73E8;">${g.status === 'scheduled' ? '-' : g.home_score}</td>

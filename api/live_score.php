@@ -142,19 +142,21 @@ if ($action === 'record_play') {
     }
 
     // Update Game Score & Hits
-    if ($runsScored > 0 || $isH) {
+    if ($runsScored > 0 || $isH || true) {
         $scoreCol = $isHomeBatting ? 'home_score' : 'away_score';
         $hitsCol = $isHomeBatting ? 'home_hits' : 'away_hits';
         $pdo->prepare("UPDATE games SET {$scoreCol} = {$scoreCol} + ?, {$hitsCol} = {$hitsCol} + ? WHERE id = ?")
             ->execute([$runsScored, $isH?1:0, $gameId]);
 
-        // Update Line Score
+        // Update Line Score (always ensure line score record exists for the current inning)
         $stmtL = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");
         $stmtL->execute([$gameId, $battingTeamId, $game['current_inning']]);
         $lineRow = $stmtL->fetch();
 
         if ($lineRow) {
-            $pdo->prepare("UPDATE game_line_scores SET runs = runs + ? WHERE id = ?")->execute([$runsScored, $lineRow['id']]);
+            if ($runsScored > 0) {
+                $pdo->prepare("UPDATE game_line_scores SET runs = runs + ? WHERE id = ?")->execute([$runsScored, $lineRow['id']]);
+            }
         } else {
             $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, ?)")
                 ->execute([$gameId, $battingTeamId, $game['current_inning'], $runsScored]);
@@ -194,6 +196,18 @@ if ($action === 'change_inning') {
     $nextInning = intval($input['current_inning'] ?? $game['current_inning']);
     $nextHalf = trim($input['half_inning'] ?? ($game['half_inning'] === 'top' ? 'bottom' : 'top'));
 
+    // Ensure line score record exists for the half-inning that just ended
+    $isPreviousHome = ($game['half_inning'] === 'bottom');
+    $prevTeamId = $isPreviousHome ? $game['home_team_id'] : $game['away_team_id'];
+    $prevInning = $game['current_inning'];
+
+    $stmtL = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");
+    $stmtL->execute([$gameId, $prevTeamId, $prevInning]);
+    if (!$stmtL->fetch()) {
+        $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, 0)")
+            ->execute([$gameId, $prevTeamId, $prevInning]);
+    }
+
     $pdo->prepare("UPDATE games SET current_inning = ?, half_inning = ? WHERE id = ?")
         ->execute([$nextInning, $nextHalf, $gameId]);
 
@@ -207,6 +221,24 @@ if ($action === 'finalize') {
     $homeScore = isset($input['home_score']) ? intval($input['home_score']) : $game['home_score'];
     $currentInning = isset($input['current_inning']) ? intval($input['current_inning']) : $game['current_inning'];
     $halfInning = isset($input['half_inning']) ? trim($input['half_inning']) : $game['half_inning'];
+
+    // Ensure line score records exist for all played innings for both teams
+    for ($i = 1; $i <= $currentInning; $i++) {
+        // Away (Top)
+        $stmtA = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");
+        $stmtA->execute([$gameId, $game['away_team_id'], $i]);
+        if (!$stmtA->fetch()) {
+            $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, 0)")
+                ->execute([$gameId, $game['away_team_id'], $i]);
+        }
+        // Home (Bottom)
+        $stmtH = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");
+        $stmtH->execute([$gameId, $game['home_team_id'], $i]);
+        if (!$stmtH->fetch()) {
+            $pdo->prepare("INSERT INTO game_line_scores (game_id, team_id, inning, runs) VALUES (?, ?, ?, 0)")
+                ->execute([$gameId, $game['home_team_id'], $i]);
+        }
+    }
 
     $pdo->prepare("UPDATE games SET status = 'finished', away_score = ?, home_score = ?, current_inning = ?, half_inning = ?, lock_user_id = NULL WHERE id = ?")
         ->execute([$awayScore, $homeScore, $currentInning, $halfInning, $gameId]);

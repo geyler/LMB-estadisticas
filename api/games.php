@@ -110,6 +110,19 @@ if ($action === 'detail') {
         }
     }
 
+    // Auto-fill missing 0s for played innings if game is finished/live
+    if (in_array($game['status'], ['finished', 'finalized', 'completed', 'live'])) {
+        $maxInning = max(intval($game['current_inning'] ?? 1), 1);
+        for ($i = 1; $i <= $maxInning; $i++) {
+            if (!isset($lineScores['away'][$i])) {
+                $lineScores['away'][$i] = 0;
+            }
+            if (!isset($lineScores['home'][$i]) && ($i < $maxInning || $game['half_inning'] === 'bottom' || in_array($game['status'], ['finished', 'finalized', 'completed']))) {
+                $lineScores['home'][$i] = 0;
+            }
+        }
+    }
+
     // Batting Box Scores
     $stmtBatHome = $pdo->prepare("
         SELECT bs.*, p.first_name, p.last_name, p.jersey_number, p.bats
