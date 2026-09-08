@@ -15,6 +15,28 @@ $categoryId = intval($_GET['category_id'] ?? 0);
 $seasonId = intval($_GET['season_id'] ?? 0);
 $limit = intval($_GET['limit'] ?? 10);
 
+// Check active season or target season game counts
+$targetSeasonId = $seasonId;
+if ($categoryId === 0 && $targetSeasonId === 0) {
+    $activeS = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
+    if ($activeS) {
+        $targetSeasonId = intval($activeS['id']);
+    }
+}
+
+if ($categoryId === 0) {
+    if ($targetSeasonId === 0) {
+        echo json_encode(['success' => true, 'type' => $type, 'stat' => $stat, 'leaders' => []]);
+        exit;
+    }
+    $stmtG = $pdo->prepare("SELECT COUNT(*) FROM games WHERE season_id = ? AND status = 'finished' AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))");
+    $stmtG->execute([$targetSeasonId]);
+    if (intval($stmtG->fetchColumn()) === 0) {
+        echo json_encode(['success' => true, 'type' => $type, 'stat' => $stat, 'leaders' => []]);
+        exit;
+    }
+}
+
 if ($type === 'batting') {
     $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND bs.ab > 0 
                    AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
@@ -26,9 +48,9 @@ if ($type === 'batting') {
     if ($categoryId > 0) {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
-        $whereCond .= " AND c.season_id = {$seasonId} ";
+        $whereCond .= " AND g.season_id = {$seasonId} ";
     } else {
-        $whereCond .= " AND c.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1) ";
+        $whereCond .= " AND g.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1) ";
     }
 
     $sql = "
@@ -102,9 +124,9 @@ if ($type === 'batting') {
     if ($categoryId > 0) {
         $whereCond .= " AND t.category_id = {$categoryId} ";
     } elseif ($seasonId > 0) {
-        $whereCond .= " AND c.season_id = {$seasonId} ";
+        $whereCond .= " AND g.season_id = {$seasonId} ";
     } else {
-        $whereCond .= " AND c.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1) ";
+        $whereCond .= " AND g.season_id = (SELECT id FROM seasons WHERE is_active = 1 ORDER BY id DESC LIMIT 1) ";
     }
 
     $sql = "

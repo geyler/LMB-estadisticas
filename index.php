@@ -96,7 +96,7 @@ session_start();
       </div>
 
       <div class="header-actions">
-        <button class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía Paso a Paso">
+        <button id="guide-header-btn" class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía de Roles y Sistema" style="display: none;">
           📖 <span class="hide-mobile">Guía</span>
         </button>
         <button id="user-action-btn" class="md-btn md-btn-outlined user-badge-btn">

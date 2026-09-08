@@ -20,6 +20,9 @@ if ($action === 'standings') {
         $activeS = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
         if ($activeS) {
             $seasonId = intval($activeS['id']);
+        } else {
+            echo json_encode(['success' => true, 'standings' => []]);
+            exit;
         }
     }
 

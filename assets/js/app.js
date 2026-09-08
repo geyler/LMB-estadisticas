@@ -327,17 +327,28 @@ const App = {
   },
 
   renderUserBadge() {
-    const userBtn = document.getElementById('user-action-btn');
-    if (!userBtn) return;
+    const headerActions = document.querySelector('.header-actions');
+    if (!headerActions) return;
+
+    const editRoles = ['super_admin', 'admin', 'team_admin', 'scorekeeper'];
+    const hasEditRole = this.currentUser && editRoles.includes(this.currentUser.role);
+
+    const guideBtnHtml = hasEditRole ? `
+      <button id="guide-header-btn" class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía de Roles y Sistema" style="margin-right:6px;">
+        📖 <span class="hide-mobile">Guía</span>
+      </button>
+    ` : '';
+
     if (this.currentUser) {
-      const roleTag = this.currentUser.role === 'super_admin' ? 'SUPER' : (this.currentUser.role === 'team_admin' ? 'DELEGADO' : this.currentUser.role.toUpperCase());
+      const roleTag = this.currentUser.role === 'super_admin' ? 'SUPER' : (this.currentUser.role === 'team_admin' ? 'DELEGADO' : (this.currentUser.role === 'scorekeeper' ? 'ANOTADOR' : this.currentUser.role.toUpperCase()));
       
       let teamBtnHtml = '';
       if (this.currentUser.role === 'team_admin' && this.currentUser.assigned_team_id) {
         teamBtnHtml = `<button class="md-btn md-btn-gold" style="padding:4px 8px; font-size:0.72rem; margin-right:6px;" onclick="event.stopPropagation(); App.showView('team_detail', ${this.currentUser.assigned_team_id})">🧢 Mi Club</button>`;
       }
 
-      userBtn.parentElement.innerHTML = `
+      headerActions.innerHTML = `
+        ${guideBtnHtml}
         <div style="display:flex; align-items:center;">
           ${teamBtnHtml}
           <button id="user-action-btn" class="md-btn md-btn-outlined" style="display:flex; align-items:center; gap:6px; padding:4px 10px; font-size:0.78rem;" onclick="App.showUserModal()">
@@ -348,8 +359,11 @@ const App = {
         </div>
       `;
     } else {
-      userBtn.innerHTML = `<span class="material-icons-round" style="font-size:18px;">login</span> Acceder`;
-      userBtn.onclick = () => this.openAuthModal('login');
+      headerActions.innerHTML = `
+        <button id="user-action-btn" class="md-btn md-btn-outlined user-badge-btn" onclick="App.openAuthModal('login')">
+          <span class="material-icons-round" style="font-size:18px;">login</span> Acceder
+        </button>
+      `;
     }
   },
 
@@ -632,95 +646,164 @@ const App = {
     }
   },
 
-  // ONBOARDING & GUIDED SETUP TUTORIAL VIEW
+  // ONBOARDING & GUIDED SETUP TUTORIAL VIEW (RESTRICTED TO EDITING ROLES & PERSONALIZED PER ROLE)
   async renderOnboardingView(container) {
-    container.innerHTML = `<div class="view-content"><div style="text-align:center; padding:20px;">Cargando Guía de Inicio...</div></div>`;
+    const editRoles = ['super_admin', 'admin', 'team_admin', 'scorekeeper'];
+    if (!this.currentUser || !editRoles.includes(this.currentUser.role)) {
+      container.innerHTML = `
+        <div class="view-content">
+          <div class="md-card" style="text-align:center; padding:40px 20px;">
+            <div style="font-size:3rem; margin-bottom:12px;">🔒</div>
+            <h3 style="font-size:1.2rem; font-weight:800; color:#DC2626; margin-bottom:8px;">Acceso Restringido</h3>
+            <p style="font-size:0.88rem; color:#64748B; max-width:450px; margin:0 auto 16px;">
+              Esta Guía Personalizada está reservada únicamente para usuarios registrados con permisos de administración o anotación.
+            </p>
+            <button class="md-btn md-btn-primary" onclick="App.openAuthModal('login')">🔐 Iniciar Sesión</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
 
-    const [resCat, resTeams, resStadia, resPlayers, resGames] = await Promise.all([
-      fetch('api/leagues.php?action=categories'),
-      fetch('api/teams.php?action=list'),
-      fetch('api/leagues.php?action=stadiums'),
-      fetch('api/players.php?action=list'),
-      fetch('api/games.php?action=list')
-    ]);
+    const userRole = this.currentUser.role;
+    const userName = this.currentUser.name || 'Usuario';
+    const roleTitleMap = {
+      'super_admin': '👑 Super Administrador',
+      'admin': '🛡️ Administrador de Liga',
+      'team_admin': '🧢 Delegado de Equipo',
+      'scorekeeper': '📊 Anotador / Registrador Oficial'
+    };
+    const roleTitle = roleTitleMap[userRole] || 'Usuario Autorizado';
 
-    const cats = (await resCat.json()).categories || [];
-    const teams = (await resTeams.json()).teams || [];
-    const stadia = (await resStadia.json()).stadiums || [];
-    const players = (await resPlayers.json()).players || [];
-    const games = (await resGames.json()).games || [];
+    let contentHtml = '';
 
-    const isAuth = (this.currentUser && ['super_admin', 'admin'].includes(this.currentUser.role));
+    if (userRole === 'super_admin') {
+      contentHtml = `
+        <div class="md-card" style="margin-top:12px; border-left:4px solid #F59E0B;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">1️⃣ Inicio de Nueva Liga y Aislamiento Limpio</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            En LMB el sistema funciona de a <strong>1 liga/temporada a la vez</strong>. Al presionar <strong>🏆 Iniciar Nueva Liga</strong> (en Panel Admin), ingresas el nombre de la liga y seleccionas con el check-list interactivo qué equipos participarán. La liga anterior se archiva automáticamente en el <strong>Historial de Temporadas</strong> e ineditable, y el tablero actual se pone en blanco listo para el nuevo campeonato.
+          </p>
+          <button class="md-btn md-btn-gold" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('admin')">⚙️ Ir al Panel Admin</button>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #EF4444;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">2️⃣ 🚨 RESET TOTAL DEL SISTEMA (Exclusivo Super Admin)</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Como Super Admin posees la facultad exclusiva de reiniciar completamente el sistema. Si deseas borrar por completo la base de datos (equipos, jugadores, partidos e historial) para arrancar de cero absoluto, abre tu <strong>Perfil de Usuario</strong> y presiona el botón rojo <strong>🚨 RESET TOTAL DEL SISTEMA (Borrar Todo)</strong>.
+          </p>
+          <button class="md-btn md-btn-outlined" style="font-size:0.78rem; padding:4px 12px; border-color:#EF4444; color:#EF4444;" onclick="App.showUserModal()">👤 Abrir Mi Perfil</button>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #3B82F6;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">3️⃣ Gestión de Usuarios y Permisos de Rol</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Puedes promover o modificar los permisos de los usuarios registrados a <strong>Admin</strong>, <strong>Delegado (team_admin)</strong> o <strong>Anotador (scorekeeper)</strong> desde la pestaña <strong>👥 Usuarios y Roles</strong> en el Panel Admin.
+          </p>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #10B981;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">4️⃣ Programación, Anotación en Vivo y Coronación</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Puedes programar partidos en el <strong>Calendario</strong>, operar la mesa de anotación en vivo en tiempo real, y al culminar el torneo presionar <strong>👑 Coronar Campeón</strong> para galardonar al equipo vencedor e ingresar los datos al historial.
+          </p>
+          <button class="md-btn md-btn-primary" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+        </div>
+      `;
+    } else if (userRole === 'admin') {
+      contentHtml = `
+        <div class="md-card" style="margin-top:12px; border-left:4px solid #3B82F6;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">1️⃣ Configuración de Equipos y Sedes</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Registra y administra los clubes participantes de la temporada activa y sus estadios/canchas sede oficializadas.
+          </p>
+          <button class="md-btn md-btn-primary" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('admin')">⚙️ Panel Admin</button>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #10B981;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">2️⃣ Carga de Planteles y Jugadores</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Registra a los peloteros en cada equipo asignando su número de camiseta (jersey), foto o avatar, lados de bateo/lanzamiento y posiciones defensivas.
+          </p>
+          <button class="md-btn md-btn-outlined" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('teams')">👥 Ver Equipos y Rosters</button>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #F59E0B;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">3️⃣ Programación y Anotación Oficial</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Programa los partidos fijando fecha, hora y campo sede. Tienes acceso directo para anotar jugada por jugada en vivo o ingresar planillas concluidas.
+          </p>
+          <button class="md-btn md-btn-gold" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+        </div>
+      `;
+    } else if (userRole === 'team_admin') {
+      contentHtml = `
+        <div class="md-card" style="margin-top:12px; border-left:4px solid #F59E0B;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">1️⃣ Acceso Directo "🧢 Mi Club"</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Como delegado tienes asignado un equipo. Presiona el botón dorado <strong>🧢 Mi Club</strong> en la barra superior en cualquier momento para ir directamente a la vista de tu equipo.
+          </p>
+          ${this.currentUser.assigned_team_id ? `<button class="md-btn md-btn-gold" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('team_detail', ${this.currentUser.assigned_team_id})">🧢 Ir a Mi Club</button>` : ''}
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #3B82F6;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">2️⃣ Administración de Roster</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Agrega o actualiza los datos de tus jugadores (números de camiseta, fotos/avatares y datos biográficos). Recuerda garantizar el mínimo de 7 a 9 jugadores habilitados previo a los partidos.
+          </p>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #10B981;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">3️⃣ Estadísticas y Seguimiento</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Monitorea el desempeño de tu club en la tabla de posiciones y consulta el perfil individual de cada pelotero (estadísticas de la temporada activa y acumulado histórico de por vida).
+          </p>
+          <button class="md-btn md-btn-primary" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('standings')">📊 Ver Tabla de Posiciones</button>
+        </div>
+      `;
+    } else { // scorekeeper
+      contentHtml = `
+        <div class="md-card" style="margin-top:12px; border-left:4px solid #10B981;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">1️⃣ Selección del Partido en el Calendario</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Entra a la vista <strong>Calendario</strong>. Busca el partido a cubrir y haz clic en el botón verde <strong>📊 Anotar en Vivo</strong>.
+          </p>
+          <button class="md-btn md-btn-primary" style="font-size:0.78rem; padding:4px 12px;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #3B82F6;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">2️⃣ Confirmación de Lineups e Inicios</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Configura la alineación titular (orden al bate del 1 al 9 y pitcher abridor) de ambas escuadras antes de autorizar el comienzo del partido.
+          </p>
+        </div>
+
+        <div class="md-card" style="margin-top:10px; border-left:4px solid #F59E0B;">
+          <div style="font-weight:800; font-size:1rem; color:#1E293B;">3️⃣ Anotación Jugada por Jugada & Cierre</div>
+          <p style="font-size:0.85rem; color:#475569; margin:6px 0;">
+            Registra cada lanzamiento, batazo (1B, 2B, 3B, HR), out, ponche, boleto o error. El scorebug ticker se sincronizará automáticamente. Al completar el partido, oficializa el resultado para actualizar posiciones y líderes.
+          </p>
+        </div>
+      `;
+    }
 
     let html = `
       <div class="view-content">
-        <div class="md-card" style="background: linear-gradient(135deg, #1E3A8A 0%, #070D1B 100%); text-align:center;">
-          <div style="font-size:2rem; margin-bottom:4px;">📖</div>
-          <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;" class="text-truncate">Guía Paso a Paso de Inicio de Liga</h2>
-          <p style="font-size:0.8rem; color:#94A3B8; margin-top:4px;">Sigue este flujo guiado e intuitivo para completar la base de datos de tu liga desde cero.</p>
+        <div class="md-card" style="background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%); text-align:center; padding:24px 16px;">
+          <div style="font-size:2.2rem; margin-bottom:4px;">📖</div>
+          <h2 style="font-size:1.3rem; font-weight:800; color:#FFFFFF; margin:0;" class="text-truncate">Guía de Sistema y Operación</h2>
+          <div style="display:inline-block; margin-top:8px; padding:3px 10px; background:rgba(255,255,255,0.15); border-radius:20px; font-size:0.8rem; color:#F8FAFC; font-weight:600;">
+            Hola ${userName} — ${roleTitle}
+          </div>
+          <p style="font-size:0.82rem; color:#94A3B8; margin-top:8px; max-width:500px; margin-left:auto; margin-right:auto;">
+            Esta es tu guía personalizada según tus atribuciones en la Liga Metropolitana de Béisbol.
+          </p>
         </div>
 
-        <!-- Paso 1 -->
-        <div class="md-card" style="margin-top:12px; border-left:4px solid ${cats.length ? '#188038' : '#1A73E8'};">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 1: Temporadas y Categorías</div>
-            <span class="md-chip ${cats.length ? 'active' : ''}">${cats.length ? `✅ ${cats.length} Categorías` : '⚠️ Requerido'}</span>
-          </div>
-          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Crea las divisiones de la liga (ej. A1 Primera División, A2 Segunda División, Infantiles).</p>
-          ${isAuth ? `<button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('admin')">⚙️ Gestionar Categorías</button>` : ''}
-        </div>
-
-        <!-- Paso 2 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${stadia.length ? '#188038' : '#1A73E8'};">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 2: Sedes y Campos Deportivos</div>
-            <span class="md-chip ${stadia.length ? 'active' : ''}">${stadia.length ? `✅ ${stadia.length} Sedes` : '⚠️ Requerido'}</span>
-          </div>
-          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Registra los estadios y canchas donde se disputarán los partidos oficializados de la temporada.</p>
-          ${isAuth ? `<button class="md-btn md-btn-primary" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateStadiumModal()">📍 Registrar Nueva Sede</button>` : ''}
-        </div>
-
-        <!-- Paso 3 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${teams.length >= 2 ? '#188038' : '#1A73E8'};">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 3: Registro de Equipos</div>
-            <span class="md-chip ${teams.length >= 2 ? 'active' : ''}">${teams.length ? `✅ ${teams.length} Equipos` : '⚠️ Mínimo 2 equipos'}</span>
-          </div>
-          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Registra los clubes participantes y asócialos a su categoría y sede correspondiente.</p>
-          ${isAuth ? `<button class="md-btn md-btn-primary" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateTeamModal()">🛡️ Registrar Equipo</button>` : ''}
-        </div>
-
-        <!-- Paso 4 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${players.length >= 14 ? '#188038' : '#1A73E8'};">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 4: Jugadores y Cuerpo Técnico</div>
-            <span class="md-chip ${players.length >= 14 ? 'active' : ''}">${players.length ? `✅ ${players.length} Integrantes` : '⚠️ 7-9 jugadores por equipo'}</span>
-          </div>
-          <p style="font-size:0.8rem; color:#5F6368; margin:6px 0;">Carga los planteles (jugadores activos, managers y cuerpo técnico). Se exigen al menos 7 a 9 jugadores por equipo.</p>
-          ${teams.length ? `<button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('teams')">👥 Ver Equipos para Cargar Plantel</button>` : ''}
-        </div>
-
-        <!-- Paso 5 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid ${games.length ? '#188038' : '#1A73E8'};">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#202124;">Paso 5: Programación de Partidos</div>
-            <span class="md-chip ${games.length ? 'active' : ''}">${games.length ? `✅ ${games.length} Partidos` : '⚠️ Pendiente'}</span>
-          </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Programa los juegos fijando la sede, horario y contendientes.</p>
-          ${isAuth ? `<button class="md-btn md-btn-gold" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showCreateGameModal()">➕ Programar Partido</button>` : ''}
-        </div>
-
-        <!-- Paso 6 -->
-        <div class="md-card" style="margin-top:10px; border-left:4px solid #3B82F6;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:800; font-size:0.95rem; color:#FFFFFF;">Paso 6: Anotación en Vivo o Carga Directa</div>
-            <span class="md-chip active">📊 Sistema Preparado</span>
-          </div>
-          <p style="font-size:0.8rem; color:#94A3B8; margin:6px 0;">Anota jugada por jugada en tiempo real o ingresa resultados y planillas una vez finalizados los encuentros.</p>
-          <button class="md-btn md-btn-outlined" style="font-size:0.75rem; padding:4px 12px;" onclick="App.showView('calendar')">📅 Ir al Calendario</button>
-        </div>
+        ${contentHtml}
       </div>
     `;
+
     container.innerHTML = html;
   },
 
@@ -803,26 +886,28 @@ const App = {
             ` : ''}
           </div>
 
-          ${champions.length ? `
-            <!-- Section: Reigning Champions -->
-            <div class="view-section">
-              <div class="section-header">
-                <h3 class="section-title"><span class="material-icons-round" style="color:#1A73E8;">workspace_premium</span> Campeones Vigentes LMB</h3>
-              </div>
-              <div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;">
-                ${champions.map(c => `
-                  <div class="md-card" style="min-width:210px; padding:12px; background:#FFFFFF; border:1px solid #DADCE0; border-radius:10px;">
-                    <div style="font-size:0.68rem; font-weight:800; color:#1A73E8; text-transform:uppercase;">🏆 ${c.category_name} (${c.season_name})</div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-                      <img src="${c.team_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; object-fit:contain; border-radius:50%;" onerror="this.src='assets/images/lmb_logo.png'">
-                      <div style="font-size:0.9rem; font-weight:800; color:#202124;" class="text-truncate">${c.team_name}</div>
+          ${champions.length ? (() => {
+            const c = champions[0];
+            return `
+              <!-- Section: Reigning Champion (Single Highlight Banner) -->
+              <div class="view-section">
+                <div class="section-header">
+                  <h3 class="section-title"><span class="material-icons-round" style="color:#D97706;">workspace_premium</span> Campeón Vigente LMB</h3>
+                </div>
+                <div class="md-card" style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border:1.5px solid #F59E0B; padding:14px 18px; border-radius:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 2px 8px rgba(245,158,11,0.12);">
+                  <div style="display:flex; align-items:center; gap:14px;">
+                    <img src="${c.team_logo || 'assets/images/lmb_logo.png'}" style="width:48px; height:48px; object-fit:cover; border-radius:50%; border:2px solid #F59E0B; background:#FFF;" onerror="this.src='assets/images/lmb_logo.png'">
+                    <div>
+                      <div style="font-size:0.75rem; font-weight:800; color:#B45309; text-transform:uppercase; letter-spacing:0.5px;">👑 ${c.title_name || 'Campeón Oficial'}</div>
+                      <div style="font-size:1.15rem; font-weight:900; color:#78350F; font-family:'Roboto',sans-serif;">${c.team_name}</div>
+                      <div style="font-size:0.78rem; color:#92400E; font-weight:600; margin-top:2px;">🏆 ${c.season_name} (${c.season_year})</div>
                     </div>
-                    <div style="font-size:0.75rem; color:#137333; font-weight:700; margin-top:4px;">👑 ${c.title_name || 'Campeón Oficial'}</div>
                   </div>
-                `).join('')}
+                  <span class="md-chip" style="background:#F59E0B; color:#FFFFFF; font-weight:900; font-size:0.75rem; padding:4px 12px; border-radius:20px;">★ CAMPEÓN</span>
+                </div>
               </div>
-            </div>
-          ` : ''}
+            `;
+          })() : ''}
 
           <!-- Section: Live / Simultaneous Matches -->
           <div class="view-section">
@@ -2468,6 +2553,12 @@ const App = {
         ${['super_admin', 'admin'].includes(u.role) ? `
           <button class="md-btn md-btn-outlined" style="width:100%; justify-content:flex-start;" onclick="App.closeUserProfileModal(); App.showView('admin');">
             <span class="material-icons-round" style="color:#3B82F6;">admin_panel_settings</span> Ir al Panel de Administración
+          </button>
+        ` : ''}
+
+        ${u.role === 'super_admin' ? `
+          <button class="md-btn md-btn-danger" style="width:100%; justify-content:flex-start; background:#FEF2F2; color:#DC2626; border:1.5px solid #FCA5A5; font-weight:800; padding:10px 14px;" onclick="App.closeUserProfileModal(); App.handleResetSystem();">
+            <span class="material-icons-round" style="color:#DC2626;">restart_alt</span> 🚨 RESET TOTAL DEL SISTEMA (Borrar Todo)
           </button>
         ` : ''}
 
