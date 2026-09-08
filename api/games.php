@@ -82,23 +82,26 @@ if ($action === 'detail') {
         exit;
     }
 
-    // Team Records (W - L)
+    // Team Records (W - L) for the specific season of this game
+    $gameSeasonId = intval($game['season_id'] ?? 0);
+
     $stmtRec = $pdo->prepare("
         SELECT 
             SUM(CASE WHEN (home_team_id = ? AND home_score > away_score) OR (away_team_id = ? AND away_score > home_score) THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN (home_team_id = ? AND home_score < away_score) OR (away_team_id = ? AND away_score < home_score) THEN 1 ELSE 0 END) as losses
         FROM games 
         WHERE (home_team_id = ? OR away_team_id = ?) 
+          AND season_id = ?
           AND status IN ('finalized', 'completed', 'finished')
           AND (game_stage IS NULL OR game_stage NOT LIKE '%Amistoso%')
     ");
 
-    $stmtRec->execute([$game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id']]);
+    $stmtRec->execute([$game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $game['away_team_id'], $gameSeasonId]);
     $awayRec = $stmtRec->fetch();
     $game['away_wins'] = intval($awayRec['wins'] ?? 0);
     $game['away_losses'] = intval($awayRec['losses'] ?? 0);
 
-    $stmtRec->execute([$game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id']]);
+    $stmtRec->execute([$game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $game['home_team_id'], $gameSeasonId]);
     $homeRec = $stmtRec->fetch();
     $game['home_wins'] = intval($homeRec['wins'] ?? 0);
     $game['home_losses'] = intval($homeRec['losses'] ?? 0);

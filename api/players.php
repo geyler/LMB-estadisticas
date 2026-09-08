@@ -154,9 +154,18 @@ if ($action === 'detail') {
     $activeSeasonId = $activeSeason ? intval($activeSeason['id']) : 0;
 
     if ($activeSeasonId > 0) {
-        $activeWhere = " AND g.season_id = {$activeSeasonId} AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
-        $player['batting_stats'] = $calcBatting($activeWhere);
-        $player['pitching_stats'] = $calcPitching($activeWhere);
+        $stmtCheckG = $pdo->prepare("SELECT COUNT(*) FROM games WHERE season_id = ? AND status = 'finished' AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))");
+        $stmtCheckG->execute([$activeSeasonId]);
+        $finishedCountInActive = intval($stmtCheckG->fetchColumn());
+
+        if ($finishedCountInActive > 0) {
+            $activeWhere = " AND g.season_id = {$activeSeasonId} AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
+            $player['batting_stats'] = $calcBatting($activeWhere);
+            $player['pitching_stats'] = $calcPitching($activeWhere);
+        } else {
+            $player['batting_stats'] = $calcBatting(" AND 1=0 ");
+            $player['pitching_stats'] = $calcPitching(" AND 1=0 ");
+        }
     } else {
         $player['batting_stats'] = $calcBatting(" AND 1=0 ");
         $player['pitching_stats'] = $calcPitching(" AND 1=0 ");

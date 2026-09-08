@@ -249,28 +249,61 @@ if ($action === 'detail') {
     $stmtP->execute([$id]);
     $players = $stmtP->fetchAll();
 
-    // Stats Summary
-    $stmtGames = $pdo->prepare("
+    // Active Season Stats Summary
+    $activeS = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
+    $activeSeasonId = $activeS ? intval($activeS['id']) : 0;
+
+    if ($activeSeasonId > 0) {
+        $stmtGamesActive = $pdo->prepare("
+            SELECT 
+                COUNT(*) as gp,
+                SUM(CASE WHEN (home_team_id = ? AND home_score > away_score) OR (away_team_id = ? AND away_score > home_score) THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN (home_team_id = ? AND home_score < away_score) OR (away_team_id = ? AND away_score < home_score) THEN 1 ELSE 0 END) as losses
+            FROM games
+            WHERE (home_team_id = ? OR away_team_id = ?) AND season_id = ? AND status = 'finished'
+              AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
+        ");
+        $stmtGamesActive->execute([$id, $id, $id, $id, $id, $id, $activeSeasonId]);
+        $gStatsActive = $stmtGamesActive->fetch();
+
+        $gpActive = intval($gStatsActive['gp'] ?? 0);
+        $wActive = intval($gStatsActive['wins'] ?? 0);
+        $lActive = intval($gStatsActive['losses'] ?? 0);
+        $pctActive = ($gpActive > 0) ? number_format($wActive / $gpActive, 3) : '.000';
+    } else {
+        $gpActive = 0; $wActive = 0; $lActive = 0; $pctActive = '.000';
+    }
+
+    $team['stats'] = [
+        'games_played' => $gpActive,
+        'wins' => $wActive,
+        'losses' => $lActive,
+        'pct' => $pctActive
+    ];
+
+    // Lifetime Stats Summary (all finished official games)
+    $stmtGamesLife = $pdo->prepare("
         SELECT 
             COUNT(*) as gp,
             SUM(CASE WHEN (home_team_id = ? AND home_score > away_score) OR (away_team_id = ? AND away_score > home_score) THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN (home_team_id = ? AND home_score < away_score) OR (away_team_id = ? AND away_score < home_score) THEN 1 ELSE 0 END) as losses
         FROM games
         WHERE (home_team_id = ? OR away_team_id = ?) AND status = 'finished'
+          AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
     ");
-    $stmtGames->execute([$id, $id, $id, $id, $id, $id]);
-    $gStats = $stmtGames->fetch();
+    $stmtGamesLife->execute([$id, $id, $id, $id, $id, $id]);
+    $gStatsLife = $stmtGamesLife->fetch();
 
-    $gp = intval($gStats['gp'] ?? 0);
-    $w = intval($gStats['wins'] ?? 0);
-    $l = intval($gStats['losses'] ?? 0);
-    $pct = ($gp > 0) ? number_format($w / $gp, 3) : '.000';
+    $gpLife = intval($gStatsLife['gp'] ?? 0);
+    $wLife = intval($gStatsLife['wins'] ?? 0);
+    $lLife = intval($gStatsLife['losses'] ?? 0);
+    $pctLife = ($gpLife > 0) ? number_format($wLife / $gpLife, 3) : '.000';
 
-    $team['stats'] = [
-        'games_played' => $gp,
-        'wins' => $w,
-        'losses' => $l,
-        'pct' => $pct
+    $team['lifetime_stats'] = [
+        'games_played' => $gpLife,
+        'wins' => $wLife,
+        'losses' => $lLife,
+        'pct' => $pctLife
     ];
 
     echo json_encode(['success' => true, 'team' => $team, 'players' => $players]);

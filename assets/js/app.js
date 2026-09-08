@@ -1744,7 +1744,8 @@ const App = {
 
     const t = data.team;
     const allMembers = data.players || [];
-    const stats = t.stats || {};
+    const stats = t.stats || { games_played: 0, wins: 0, losses: 0, pct: '.000' };
+    const lifeStats = t.lifetime_stats || { games_played: 0, wins: 0, losses: 0, pct: '.000' };
 
     const activePlayers = allMembers.filter(p => !p.role_type || p.role_type === 'player');
     const coachingStaff = allMembers.filter(p => p.role_type && p.role_type !== 'player');
@@ -1778,11 +1779,18 @@ const App = {
             <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem; border-color:#DADCE0;" onclick="App.showEntityGalleryModal('team', ${t.id}, 'Galería de ${t.name}')">🖼️ Galería (Postales)</button>
           </div>
 
-          <div style="display:flex; justify-content:space-around; width:100%; margin-top:16px; border-top:1px solid #F1F3F4; padding-top:14px;">
+          <div style="font-size:0.75rem; font-weight:800; color:#1A73E8; margin-top:14px; margin-bottom:2px; text-transform:uppercase;">
+            🏆 Temporada Activa
+          </div>
+          <div style="display:flex; justify-content:space-around; width:100%; border-top:1px solid #F1F3F4; padding-top:10px;">
             <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PJ</div><div style="font-size:1.25rem; font-weight:900; color:#202124;">${stats.games_played}</div></div>
             <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PG</div><div style="font-size:1.25rem; font-weight:900; color:#1E8E3E;">${stats.wins}</div></div>
             <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PP</div><div style="font-size:1.25rem; font-weight:900; color:#D93025;">${stats.losses}</div></div>
             <div><div style="font-size:0.75rem; font-weight:600; color:#5F6368;">PCT</div><div style="font-size:1.25rem; font-weight:900; color:#1A73E8;">${stats.pct}</div></div>
+          </div>
+
+          <div style="margin-top:10px; font-size:0.75rem; color:#475569; background:#F8FAFC; padding:4px 12px; border-radius:6px; display:inline-block; border:1px solid #E2E8F0;">
+            📜 Histórico De Por Vida: <strong>${lifeStats.wins}-${lifeStats.losses}</strong> (${lifeStats.games_played} PJ, PCT <strong>${lifeStats.pct}</strong>)
           </div>
         </div>
 
