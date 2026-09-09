@@ -307,20 +307,23 @@ const LiveScorer = {
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('2B', '2B Doble', 0)">2B Doble</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('3B', '3B Triple', 0)">3B Triple</button>
             <button class="md-btn" style="background:#0F9D58; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('HR', '💥 JONRÓN (HR)', 0)">💥 JONRÓN (HR)</button>
-            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base)</button>
-            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SB', 'Robo de Base (SB)', 0)">🏃 SB (Robo)</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base por Bolas)</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('HBP', 'Golpeado / Pelotazo (HBP)', 0)">💥 HBP (Pelotazo)</button>
+            <button class="md-btn" style="grid-column: span 2; background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SB', 'Robo de Base (SB)', 0)">🏃 SB (Robo de Base)</button>
             
             <button class="md-btn" style="grid-column: span 2; background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.showRunScoredModal()">⚽ +1 Carrera Anotada / Impulsada</button>
           </div>
 
           <!-- OUTS & DEFENSIVE PLAYS (RED #EA4335) -->
           <div style="font-size:0.8rem; font-weight:800; color:#EA4335; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
-            <span class="material-icons-round" style="font-size:16px;">do_not_disturb_on</span> OUTS Y DEFENSIVA (ROJO)
+            <span class="material-icons-round" style="font-size:16px;">do_not_disturb_on</span> OUTS, SACRIFICIOS Y DEFENSIVA (ROJO)
           </div>
           <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;">
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SO', 'Ponche (SO / K)', 1)">SO (Ponche)</button>
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('FO', 'Fly Out (Elevado)', 1)">Fly Out (F)</button>
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('GO', 'Ground Out (Rodado)', 1)">Ground Out (G)</button>
+            <button class="md-btn" style="background:#D93025; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SF', 'Fly de Sacrificio (SF)', 1)">SF (Fly Sacrificio)</button>
+            <button class="md-btn" style="background:#D93025; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SAC', 'Toque Sacrificio (SAC)', 1)">SAC (Toque Sacrificio)</button>
             <button class="md-btn" style="background:${(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) && this.outsCount < 2 ? '#C5221F' : '#94A3B8'}; color:#FFFFFF; font-weight:900; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) || this.outsCount >= 2 ? 'opacity:0.6;' : ''}" onclick="LiveScorer.confirmPlay('DP', 'Double Play (2 Outs)', 2)">Double Play (DP)</button>
           </div>
         </div>

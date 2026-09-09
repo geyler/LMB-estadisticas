@@ -3584,6 +3584,8 @@ const App = {
     const hr = parseInt(document.getElementById('ms-bat-hr')?.value || 0);
     const rbi = parseInt(document.getElementById('ms-bat-rbi')?.value || 0);
     const bb = parseInt(document.getElementById('ms-bat-bb')?.value || 0);
+    const hbp = parseInt(document.getElementById('ms-bat-hbp')?.value || 0);
+    const sf = parseInt(document.getElementById('ms-bat-sf')?.value || 0);
     const so = parseInt(document.getElementById('ms-bat-so')?.value || 0);
     const sb = parseInt(document.getElementById('ms-bat-sb')?.value || 0);
     const e = parseInt(document.getElementById('ms-bat-e')?.value || 0);
@@ -3601,7 +3603,7 @@ const App = {
     const pitchArray = isAway ? (this.manualGameDetail.away_pitchers = this.manualGameDetail.away_pitchers || []) : (this.manualGameDetail.home_pitchers = this.manualGameDetail.home_pitchers || []);
 
     const existingBatIdx = batArray.findIndex(b => b.player_id == pId);
-    const batObj = { player_id: pId, ab, r, h, singles: Math.max(0, h - doubles - triples - hr), doubles, triples, hr, rbi, bb, so, sb, e };
+    const batObj = { player_id: pId, ab, r, h, singles: Math.max(0, h - doubles - triples - hr), doubles, triples, hr, rbi, bb, hbp, sf, so, sb, e };
     if (existingBatIdx >= 0) batArray[existingBatIdx] = batObj;
     else batArray.push(batObj);
 
@@ -3733,6 +3735,14 @@ const App = {
             <input type="number" min="0" id="ms-bat-bb" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.bb || 0}">
           </div>
           <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">HBP (Pelotazo)</label>
+            <input type="number" min="0" id="ms-bat-hbp" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.hbp || 0}">
+          </div>
+          <div>
+            <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">SF (Sacrificio)</label>
+            <input type="number" min="0" id="ms-bat-sf" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.sf || 0}">
+          </div>
+          <div>
             <label style="font-size:0.7rem; font-weight:700; color:#EA4335;">SO (Ponches)</label>
             <input type="number" min="0" id="ms-bat-so" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.so || 0}">
           </div>
@@ -3740,7 +3750,7 @@ const App = {
             <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">BR (Robos)</label>
             <input type="number" min="0" id="ms-bat-sb" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.sb || 0}">
           </div>
-          <div style="grid-column: span 2;">
+          <div>
             <label style="font-size:0.7rem; font-weight:700; color:#5F6368;">E (Errores)</label>
             <input type="number" min="0" id="ms-bat-e" class="form-control" style="text-align:center; font-weight:800; padding:4px;" value="${exBat.e || 0}">
           </div>

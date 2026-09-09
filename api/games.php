@@ -442,7 +442,8 @@ if ($action === 'save_manual_stats' && $method === 'POST') {
             $so = intval($b['so'] ?? 0);
             $sb = intval($b['sb'] ?? 0);
             $e = intval($b['e'] ?? 0);
-            $pos = trim($b['position'] ?? 'DH');
+            $hbp = intval($b['hbp'] ?? 0);
+            $sf = intval($b['sf'] ?? 0);
 
             // Check existing
             $stmtCheck = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
@@ -450,11 +451,11 @@ if ($action === 'save_manual_stats' && $method === 'POST') {
             $existing = $stmtCheck->fetch();
 
             if ($existing) {
-                $pdo->prepare("UPDATE game_batting_stats SET team_id = ?, position = ?, ab = ?, r = ?, h = ?, singles = ?, doubles = ?, triples = ?, hr = ?, rbi = ?, bb = ?, so = ?, sb = ?, e = ? WHERE id = ?")
-                    ->execute([$teamId, $pos, $ab, $r, $h, $singles, $doubles, $triples, $hr, $rbi, $bb, $so, $sb, $e, $existing['id']]);
+                $pdo->prepare("UPDATE game_batting_stats SET team_id = ?, position = ?, ab = ?, r = ?, h = ?, singles = ?, doubles = ?, triples = ?, hr = ?, rbi = ?, bb = ?, so = ?, sb = ?, e = ?, hbp = ?, sf = ? WHERE id = ?")
+                    ->execute([$teamId, $pos, $ab, $r, $h, $singles, $doubles, $triples, $hr, $rbi, $bb, $so, $sb, $e, $hbp, $sf, $existing['id']]);
             } else {
-                $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, position, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, e) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                    ->execute([$gameId, $teamId, $playerId, $pos, $ab, $r, $h, $singles, $doubles, $triples, $hr, $rbi, $bb, $so, $sb, $e]);
+                $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, position, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, e, hbp, sf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                    ->execute([$gameId, $teamId, $playerId, $pos, $ab, $r, $h, $singles, $doubles, $triples, $hr, $rbi, $bb, $so, $sb, $e, $hbp, $sf]);
             }
         }
     }
