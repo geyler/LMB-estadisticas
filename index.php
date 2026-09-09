@@ -583,6 +583,22 @@ session_start();
       </div>
     </div>
 
+    <!-- Live Game Run Scored Modal -->
+    <div id="live-run-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+        <div class="sheet-handle" onclick="LiveScorer.closeRunModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1.05rem; font-weight:800; color:#188038; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#188038;">sports_baseball</span> Registro de Carrera Anotada (+1 R)
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="LiveScorer.closeRunModal()">✕</button>
+        </div>
+        <div id="live-run-body" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+          <!-- Dynamically rendered -->
+        </div>
+      </div>
+    </div>
+
     <!-- Single File / Photo Upload Modal -->
     <div id="file-upload-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:480px;">

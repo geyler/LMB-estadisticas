@@ -173,7 +173,36 @@ if ($action === 'record_run') {
     $battingTeamId = $isHomeBatting ? $game['home_team_id'] : $game['away_team_id'];
     $scoreCol = $isHomeBatting ? 'home_score' : 'away_score';
 
+    $runnerId = intval($input['runner_id'] ?? 0);
+    $rbiBatterId = intval($input['rbi_batter_id'] ?? 0);
+
     $pdo->prepare("UPDATE games SET {$scoreCol} = {$scoreCol} + 1 WHERE id = ?")->execute([$gameId]);
+
+    // Update runner's run stat (r = r + 1)
+    if ($runnerId > 0) {
+        $stmtR = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+        $stmtR->execute([$gameId, $runnerId]);
+        $rRow = $stmtR->fetch();
+        if ($rRow) {
+            $pdo->prepare("UPDATE game_batting_stats SET r = r + 1 WHERE id = ?")->execute([$rRow['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, r) VALUES (?, ?, ?, 1)")
+                ->execute([$gameId, $battingTeamId, $runnerId]);
+        }
+    }
+
+    // Update batter's RBI stat (rbi = rbi + 1)
+    if ($rbiBatterId > 0) {
+        $stmtRBI = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+        $stmtRBI->execute([$gameId, $rbiBatterId]);
+        $rbiRow = $stmtRBI->fetch();
+        if ($rbiRow) {
+            $pdo->prepare("UPDATE game_batting_stats SET rbi = rbi + 1 WHERE id = ?")->execute([$rbiRow['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, rbi) VALUES (?, ?, ?, 1)")
+                ->execute([$gameId, $battingTeamId, $rbiBatterId]);
+        }
+    }
 
     // Upsert Line Score
     $stmtL = $pdo->prepare("SELECT id FROM game_line_scores WHERE game_id = ? AND team_id = ? AND inning = ?");

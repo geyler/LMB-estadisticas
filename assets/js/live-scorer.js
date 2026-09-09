@@ -362,16 +362,15 @@ const LiveScorer = {
           <div style="font-size:0.8rem; font-weight:800; color:#188038; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
             <span class="material-icons-round" style="font-size:16px;">trending_up</span> JUGADAS DE HIT & OFENSIVA (VERDE)
           </div>
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px;">
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; margin-bottom:12px;">
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('1B', '1B Sencillo', 0)">1B Sencillo</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('2B', '2B Doble', 0)">2B Doble</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('3B', '3B Triple', 0)">3B Triple</button>
-
-            <button class="md-btn" style="grid-column: span 2; background:#0F9D58; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('HR', '💥 JONRÓN (HR)', 0)">💥 JONRÓN (HR)</button>
+            <button class="md-btn" style="background:#0F9D58; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('HR', '💥 JONRÓN (HR)', 0)">💥 JONRÓN (HR)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SB', 'Robo de Base (SB)', 0)">🏃 SB (Robo)</button>
             
-            <button class="md-btn" style="grid-column: span 3; background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.confirmPlay('RUN', '+1 Carrera Anotada', 0)">⚽ +1 Carrera Anotada</button>
+            <button class="md-btn" style="grid-column: span 2; background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.showRunScoredModal()">⚽ +1 Carrera Anotada / Impulsada</button>
           </div>
 
           <!-- OUTS & DEFENSIVE PLAYS (RED #EA4335) -->
@@ -382,7 +381,7 @@ const LiveScorer = {
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SO', 'Ponche (SO / K)', 1)">SO (Ponche)</button>
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('FO', 'Fly Out (Elevado)', 1)">Fly Out (F)</button>
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('GO', 'Ground Out (Rodado)', 1)">Ground Out (G)</button>
-            <button class="md-btn" style="background:#C5221F; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('DP', 'Double Play (2 Outs)', 2)">Double Play (DP - 2 Outs)</button>
+            <button class="md-btn" style="background:${(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) && this.outsCount < 2 ? '#C5221F' : '#94A3B8'}; color:#FFFFFF; font-weight:900; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) || this.outsCount >= 2 ? 'opacity:0.6;' : ''}" onclick="LiveScorer.confirmPlay('DP', 'Double Play (2 Outs)', 2)">Double Play (DP)</button>
           </div>
         </div>
 
@@ -404,6 +403,19 @@ const LiveScorer = {
       return;
     }
 
+    if (code === 'DP') {
+      const hasRunners = (this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3);
+      if (!hasRunners || this.outsCount >= 2) {
+        App.showAlert(
+          "Doble Play No Válido",
+          "No se puede registrar Double Play: Se requiere al menos 1 corredor en base y menos de 2 outs en la entrada.",
+          "warning",
+          "#EA4335"
+        );
+        return;
+      }
+    }
+
     const isTop = (this.game.half_inning === 'top');
     const battingList = isTop ? this.awayBatters : this.homeBatters;
     const currentBatter = battingList.find(b => b.player_id == this.activeBatterId);
@@ -422,7 +434,7 @@ const LiveScorer = {
 
     if (confirmed) {
       if (code === 'RUN') {
-        this.recordRunScored();
+        this.showRunScoredModal();
       } else {
         this.recordPlay(code, label, outsAdded);
       }
@@ -490,7 +502,72 @@ const LiveScorer = {
     this.renderScorerInterface();
   },
 
-  recordRunScored() {
+  closeRunModal() {
+    const modal = document.getElementById('live-run-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  showRunScoredModal() {
+    const isTop = this.game.half_inning === 'top';
+    const battingList = isTop ? this.awayBatters : this.homeBatters;
+    const currentBatter = battingList.find(b => b.player_id == this.activeBatterId);
+    
+    if (!battingList || !battingList.length) {
+      App.showAlert("Carrera Anotada", "Debes configurar la nómina del equipo al bate.", "info", "#F59E0B");
+      return;
+    }
+
+    const body = document.getElementById('live-run-body');
+    if (!body) return;
+
+    let html = `
+      <div style="font-size:0.8rem; font-weight:700; color:#5F6368;">
+        Equipo al bate: <strong style="color:#188038;">${isTop ? this.game.away_team_name : this.game.home_team_name}</strong>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+        <label style="font-size:0.82rem; font-weight:800; color:#202124;">
+          🏃 Jugador que Anota la Carrera (R):
+        </label>
+        <select id="run-scorer-select" class="form-control" style="font-weight:700; font-size:0.85rem;">
+          ${battingList.map(p => `
+            <option value="${p.player_id}" ${p.player_id == this.activeBatterId ? 'selected' : ''}>
+              #${p.jersey_number} ${p.first_name} ${p.last_name} (${p.position || 'Jugador'})
+            </option>
+          `).join('')}
+        </select>
+      </div>
+
+      <div style="background:#E6F4EA; border:1px solid #CEEAD6; padding:10px; border-radius:8px; margin-top:6px;">
+        <label style="font-size:0.82rem; font-weight:800; color:#137333; display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="run-rbi-check" checked style="width:18px; height:18px;">
+          Carrera impulsada (CI / RBI) por el bateador actual: <br>
+          <span style="font-weight:900;">${currentBatter ? '#' + currentBatter.jersey_number + ' ' + currentBatter.first_name + ' ' + currentBatter.last_name : 'Bateador Actual'}</span>
+        </label>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.closeRunModal()">Cancelar</button>
+        <button class="md-btn md-btn-primary" style="flex:1; background:#188038; border-color:#188038; font-weight:800;" onclick="LiveScorer.applyRunScored()">
+          ⚽ Registrar Carrera
+        </button>
+      </div>
+    `;
+
+    body.innerHTML = html;
+    const modal = document.getElementById('live-run-modal');
+    if (modal) modal.classList.add('open');
+  },
+
+  applyRunScored() {
+    const runnerSelect = document.getElementById('run-scorer-select');
+    const rbiCheck = document.getElementById('run-rbi-check');
+    if (!runnerSelect) return;
+
+    const runnerId = parseInt(runnerSelect.value || 0);
+    const hasRbi = rbiCheck ? rbiCheck.checked : false;
+    const rbiBatterId = hasRbi ? this.activeBatterId : 0;
+
     const isTop = this.game.half_inning === 'top';
     if (isTop) {
       this.game.away_score++;
@@ -498,15 +575,32 @@ const LiveScorer = {
       this.game.home_score++;
     }
 
+    // Auto-advance runners on base (clear third base runner if occupied)
+    if (this.baseRunners.b3) {
+      this.baseRunners.b3 = false;
+    } else if (this.baseRunners.b2) {
+      this.baseRunners.b2 = false;
+    } else if (this.baseRunners.b1) {
+      this.baseRunners.b1 = false;
+    }
+
     const payload = {
       action: 'record_run',
       game_id: this.game.id,
       inning: this.game.current_inning,
-      half_inning: this.game.half_inning
+      half_inning: this.game.half_inning,
+      runner_id: runnerId,
+      rbi_batter_id: rbiBatterId
     };
 
     this.enqueueOfflineAction(payload);
-    App.showSnackbar("+1 Carrera sumada al marcador");
+
+    const battingList = isTop ? this.awayBatters : this.homeBatters;
+    const runnerObj = battingList.find(b => b.player_id == runnerId);
+    const runnerName = runnerObj ? `#${runnerObj.jersey_number} ${runnerObj.first_name}` : 'Jugador';
+
+    App.showSnackbar(`⚽ Carrera anotada por ${runnerName}${hasRbi ? ' (Impulsada)' : ''}`);
+    this.closeRunModal();
     this.renderScorerInterface();
   },
 
