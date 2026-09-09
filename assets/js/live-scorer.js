@@ -274,11 +274,11 @@ const LiveScorer = {
       <div class="view-content">
         <!-- Live Header Box (Light Theme) -->
         <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; text-align:center; padding:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span id="live-queue-badge" class="md-chip active" style="background:#E8F0FE; color:#1A73E8; font-weight:800; border:1px solid #1A73E8;">🔴 ANOTADOR EN VIVO</span>
-            <div style="display:flex; gap:6px;">
-              <button class="md-btn md-btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="App.showGameLineupModal()">📋 Lineup</button>
-              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span id="live-queue-badge" class="md-chip active" style="background:#E8F0FE; color:#1A73E8; font-weight:800; border:1px solid #1A73E8; font-size:0.75rem; white-space:normal; text-align:left;">🔴 ANOTADOR EN VIVO</span>
+            <div style="display:flex; gap:6px; flex-shrink:0; white-space:nowrap;">
+              <button class="md-btn md-btn-primary" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap; flex-shrink:0;" onclick="App.showGameLineupModal()">📋 Lineup</button>
+              <button class="md-btn md-btn-outlined" style="padding:4px 10px; font-size:0.75rem; white-space:nowrap; flex-shrink:0;" onclick="App.showView('game_detail', ${this.game.id})">❌ Salir</button>
             </div>
           </div>
 
@@ -671,51 +671,66 @@ const LiveScorer = {
 
     const isTop = this.game.half_inning === 'top';
     const isBatter = (this.currentSubType === 'batter');
+    
+    // For batter substitution: team currently AT BAT (isTop -> away, !isTop -> home)
+    // For pitcher substitution: team currently IN FIELD (isTop -> home, !isTop -> away)
+    const teamLineup = isBatter ? (isTop ? (this.awayBatters || []) : (this.homeBatters || [])) : (isTop ? (this.homeBatters || []) : (this.awayBatters || []));
     const activeList = isBatter ? (isTop ? this.awayBatters : this.homeBatters) : (isTop ? this.homePitchers : this.awayPitchers);
-    const defenseList = isTop ? (this.homeBatters || []) : (this.awayBatters || []);
     
     const currentActiveId = isBatter ? this.activeBatterId : this.activePitcherId;
-    const currentActivePlayer = activeList.find(p => p.player_id == currentActiveId);
+    const currentActivePlayer = activeList.find(p => (p.player_id == currentActiveId || p.id == currentActiveId)) || teamLineup.find(p => (p.player_id == currentActiveId || p.id == currentActiveId));
 
     const positionsList = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'PH', 'PR', 'OF', 'IF'];
+
+    const benchPlayers = [];
+    const lineupPlayers = [];
+
+    this.currentSubPlayers.forEach(p => {
+      const activeEntry = teamLineup.find(d => (d.player_id == p.id || d.id == p.id));
+      if (activeEntry) {
+        lineupPlayers.push({ roster: p, active: activeEntry });
+      } else {
+        benchPlayers.push({ roster: p });
+      }
+    });
 
     let html = `
       <div class="md-card" style="background:#F8F9FA; border:1px solid #DADCE0; margin-bottom:4px;">
         <div style="font-size:0.75rem; font-weight:800; color:#5F6368; text-transform:uppercase;">
-          ${isBatter ? '⚡ Bateador Actual en Turno' : '⚾ Lanzador (Pitcher) Actual'}
+          ${isBatter ? '⚡ Bateador Actual en Turno' : '⚾ Lanzador (Pitcher) Actual en Juego'}
         </div>
         <div style="font-size:1rem; font-weight:800; color:#1A73E8; margin-top:2px;">
-          ${currentActivePlayer ? `#${currentActivePlayer.jersey_number} ${currentActivePlayer.first_name} ${currentActivePlayer.last_name} (${currentActivePlayer.position || 'P'})` : 'Sin asignar'}
+          ${currentActivePlayer ? `#${currentActivePlayer.jersey_number} ${currentActivePlayer.first_name} ${currentActivePlayer.last_name} (${currentActivePlayer.position || (isBatter ? 'Bateador' : 'P')})` : 'Sin asignar'}
         </div>
       </div>
 
       <!-- NEW PLAYER SELECT -->
       <div style="display:flex; flex-direction:column; gap:6px;">
-        <label style="font-size:0.8rem; font-weight:800; color:#202124;">
+        <label style="font-size:0.82rem; font-weight:800; color:#202124;">
           Selecciona el Nuevo ${isBatter ? 'Bateador (PH)' : 'Lanzador (P)'}:
         </label>
         <select id="sub-player-select" class="form-control" style="font-weight:700; font-size:0.85rem;" onchange="LiveScorer.handleSubPlayerChange(this.value)">
-          <optgroup label="-- Jugadores en la Banca / Suplentes --">
-            ${this.currentSubPlayers.filter(p => !defenseList.some(d => d.player_id == p.id)).map(p => `
-              <option value="${p.id}" ${p.id == currentActiveId ? 'selected' : ''}>
-                #${p.jersey_number} ${p.first_name} ${p.last_name} (${p.position_primary || 'Suplente'})
-              </option>
-            `).join('')}
+          <optgroup label="📋 Banca / Suplentes (${benchPlayers.length})">
+            ${benchPlayers.map(b => {
+              const p = b.roster;
+              return `<option value="${p.id}">#${p.jersey_number} ${p.first_name} ${p.last_name} (${p.position_primary || 'Suplente'}) [BANCA]</option>`;
+            }).join('')}
           </optgroup>
-          <optgroup label="-- Jugadores en el Campo (Lineup Activo) --">
-            ${defenseList.map(p => `
-              <option value="${p.player_id}" ${p.player_id == currentActiveId ? 'selected' : ''}>
-                #${p.jersey_number} ${p.first_name} ${p.last_name} (Actualmente en ${p.position || 'Campo'})
-              </option>
-            `).join('')}
+          <optgroup label="🏟️ Jugadores Activos en Alineación / Campo (${lineupPlayers.length})">
+            ${lineupPlayers.map(b => {
+              const p = b.roster;
+              const a = b.active;
+              const isCurrent = (p.id == currentActiveId);
+              return `<option value="${p.id}" ${isCurrent ? 'selected' : ''}>#${p.jersey_number} ${p.first_name} ${p.last_name} (${a.position || 'Campo'}) ${isCurrent ? '← ACTUAL' : '[EN ALINEACIÓN]'}</option>`;
+            }).join('')}
           </optgroup>
         </select>
       </div>
 
       ${!isBatter ? `
         <!-- FORMER PITCHER NEW POSITION SELECT -->
-        <div id="former-pitcher-container" style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
-          <label style="font-size:0.8rem; font-weight:800; color:#202124;">
+        <div id="former-pitcher-container" style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+          <label style="font-size:0.82rem; font-weight:800; color:#202124;">
             ¿A qué posición pasa el Lanzador Anterior (${currentActivePlayer ? '#' + currentActivePlayer.jersey_number + ' ' + currentActivePlayer.first_name : 'Anterior'})?
           </label>
           <select id="sub-former-pitcher-pos" class="form-control" style="font-weight:700; font-size:0.85rem;">
@@ -759,7 +774,8 @@ const LiveScorer = {
     if (isBatter) {
       this.activeBatterId = foundPlayer.id;
       const battingList = isTop ? this.awayBatters : this.homeBatters;
-      if (!battingList.some(b => b.player_id == foundPlayer.id)) {
+      const existingInList = battingList.find(b => (b.player_id == foundPlayer.id || b.id == foundPlayer.id));
+      if (!existingInList) {
         const activeIdx = isTop ? this.awayLineupIndex : this.homeLineupIndex;
         battingList[activeIdx % Math.max(1, battingList.length)] = {
           player_id: foundPlayer.id,
@@ -781,8 +797,8 @@ const LiveScorer = {
 
       this.activePitcherId = foundPlayer.id;
 
-      const newPitcherInField = defenseList.find(d => d.player_id == foundPlayer.id);
-      const oldPitcherInField = defenseList.find(d => d.player_id == oldPitcherId);
+      const newPitcherInField = defenseList.find(d => (d.player_id == foundPlayer.id || d.id == foundPlayer.id));
+      const oldPitcherInField = defenseList.find(d => (d.player_id == oldPitcherId || d.id == oldPitcherId));
 
       if (newPitcherInField) {
         newPitcherInField.position = 'P';
@@ -791,7 +807,7 @@ const LiveScorer = {
         oldPitcherInField.position = formerPos;
       }
 
-      if (!pitchingList.some(p => p.player_id == foundPlayer.id)) {
+      if (!pitchingList.some(p => (p.player_id == foundPlayer.id || p.id == foundPlayer.id))) {
         pitchingList.unshift({
           player_id: foundPlayer.id,
           first_name: foundPlayer.first_name,
