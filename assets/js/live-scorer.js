@@ -372,29 +372,6 @@ const LiveScorer = {
   async recordPlay(code, label, outsAdded = 0) {
     const runs = (code === 'HR') ? 1 : 0;
 
-    const payload = {
-      action: 'record_play',
-      game_id: this.game.id,
-      inning: this.game.current_inning,
-      half_inning: this.game.half_inning,
-      batter_id: this.activeBatterId,
-      pitcher_id: this.activePitcherId,
-      outs_before: this.outsCount,
-      outs_added: outsAdded,
-      result_code: code,
-      description: label,
-      runs_scored: runs
-    };
-
-    const ok = await this.sendDirectPlay(payload);
-    if (!ok) return;
-
-    if (runs > 0) {
-      const isTop = this.game.half_inning === 'top';
-      if (isTop) this.game.away_score += runs;
-      else this.game.home_score += runs;
-    }
-    
     // Automatic Base Runner Progression
     if (code === '1B') {
       this.baseRunners = { b1: true, b2: this.baseRunners.b1, b3: this.baseRunners.b2 };
@@ -413,6 +390,32 @@ const LiveScorer = {
     } else if (code === 'SB') {
       if (this.baseRunners.b2) this.baseRunners.b3 = true;
       if (this.baseRunners.b1) this.baseRunners.b2 = true;
+    }
+
+    const payload = {
+      action: 'record_play',
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning,
+      batter_id: this.activeBatterId,
+      pitcher_id: this.activePitcherId,
+      outs_before: this.outsCount,
+      outs_added: outsAdded,
+      result_code: code,
+      description: label,
+      runs_scored: runs,
+      b1: this.baseRunners.b1 ? 1 : 0,
+      b2: this.baseRunners.b2 ? 1 : 0,
+      b3: this.baseRunners.b3 ? 1 : 0
+    };
+
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
+    if (runs > 0) {
+      const isTop = this.game.half_inning === 'top';
+      if (isTop) this.game.away_score += runs;
+      else this.game.home_score += runs;
     }
 
     if (outsAdded > 0) {

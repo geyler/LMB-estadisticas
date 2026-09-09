@@ -914,36 +914,7 @@ const App = {
               <button class="md-btn md-btn-outlined" style="padding:4px 12px; font-size:0.75rem;" onclick="App.showView('calendar')">Ver Calendario</button>
             </div>
 
-            ${games.length ? games.slice(0, 3).map(g => `
-              <div class="md-card md-card-interactive" onclick="App.showView('game_detail', ${g.id})" style="cursor:pointer; transition:border-color 0.2s ease;">
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#5F6368;">
-                  <span class="text-truncate" style="font-weight:600;">${g.category_name} • ${App.formatDateTime(g.game_date)} • 📍 ${g.stadium_name ? g.stadium_name + ' (' + (g.stadium_field || 'Cancha Principal') + ')' : g.field_location}</span>
-                  ${App.getStatusBadge(g.status)}
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                  <div style="display:flex; align-items:center; gap:8px; min-width:0;" class="text-truncate">
-                    <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
-                    <div style="font-weight:700; font-size:0.95rem; color:#202124;" class="text-truncate">${g.away_team_name}</div>
-                  </div>
-                  <div style="font-size:1.25rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                  <div style="display:flex; align-items:center; gap:8px; min-width:0;" class="text-truncate">
-                    <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0;" onerror="this.src='assets/images/lmb_logo.png'">
-                    <div style="font-weight:700; font-size:0.95rem; color:#202124;" class="text-truncate">${g.home_team_name}</div>
-                  </div>
-                  <div style="font-size:1.25rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
-                </div>
-
-                ${canEdit ? `
-                  <div style="display:flex; gap:6px; margin-top:10px; border-top:1px solid #E3E8EE; padding-top:6px;">
-                    <button class="md-btn md-btn-gold" style="flex:1; padding:5px 8px; font-size:0.75rem; font-weight:800;" onclick="event.stopPropagation(); App.openManualStatsModal(${JSON.stringify(g).replace(/"/g, '&quot;')})">📊 Actualizar Stats Jugadores</button>
-                  </div>
-                ` : ''}
-              </div>
-            `).join('') : `
+            ${games.length ? games.slice(0, 3).map(g => App.renderMatchCard(g)).join('') : `
               <div class="md-card" style="text-align:center; padding:24px;">
                 <span class="material-icons-round" style="font-size:36px; color:#1A73E8;">event_available</span>
                 <div style="font-weight:700; font-size:0.95rem; margin-top:6px; color:#202124;">No hay partidos programados aún</div>
@@ -1093,6 +1064,83 @@ const App = {
     }
   },
 
+  renderMatchCard(g) {
+    const isLive = (g.status === 'live');
+    const isFinished = ['finalized', 'completed', 'finished'].includes(g.status);
+    const isScheduled = ['scheduled', 'delayed', 'awaiting_data'].includes(g.status);
+
+    const awayScoreStr = (isScheduled && (g.away_score === 0 || g.away_score === '0') && (g.home_score === 0 || g.home_score === '0')) ? '-' : g.away_score;
+    const homeScoreStr = (isScheduled && (g.away_score === 0 || g.away_score === '0') && (g.home_score === 0 || g.home_score === '0')) ? '-' : g.home_score;
+
+    const b1 = Boolean(g.b1 && g.b1 != '0');
+    const b2 = Boolean(g.b2 && g.b2 != '0');
+    const b3 = Boolean(g.b3 && g.b3 != '0');
+    const outs = parseInt(g.outs_count || 0);
+
+    const cardBorder = isLive ? '1.5px solid #EA4335' : '1px solid #DADCE0';
+    const cardBg = isLive ? '#FFFFFF' : '#FFFFFF';
+
+    return `
+      <div class="md-card md-card-interactive ${isLive ? 'is-live' : ''}" onclick="App.showView('game_detail', ${g.id})" style="cursor:pointer; border:${cardBorder}; background:${cardBg}; border-radius:14px; padding:12px 14px; transition:border-color 0.2s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-size:0.75rem; font-weight:800; color:#5F6368; text-transform:uppercase; letter-spacing:0.5px;" class="text-truncate">
+            ${g.category_name || 'LIGA'} • ${g.game_stage || 'Temporada Regular'}
+          </div>
+          <div>
+            ${App.getStatusBadge(g.status)}
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Away Team Row -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;" class="text-truncate">
+              <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0; flex-shrink:0;" onerror="this.src='assets/images/lmb_logo.png'">
+              <span style="font-weight:800; font-size:0.95rem; color:#202124;" class="text-truncate">${g.away_short || g.away_team_name}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:1.25rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${awayScoreStr}</span>
+              ${isLive ? `
+                <div class="mlb-diamond-container" title="Bases Ocupadas" style="width:24px; height:24px; display:inline-flex; justify-content:center; align-items:center;">
+                  <div class="mlb-diamond">
+                    <div class="mlb-base b2 ${b2 ? 'occupied' : ''}"></div>
+                    <div class="mlb-base b1 ${b1 ? 'occupied' : ''}"></div>
+                    <div class="mlb-base b3 ${b3 ? 'occupied' : ''}"></div>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Home Team Row -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;" class="text-truncate">
+              <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid #DADCE0; flex-shrink:0;" onerror="this.src='assets/images/lmb_logo.png'">
+              <span style="font-weight:800; font-size:0.95rem; color:#202124;" class="text-truncate">${g.home_short || g.home_team_name}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:1.25rem; font-weight:900; color:#202124; font-family:'Roboto',sans-serif;">${homeScoreStr}</span>
+              ${isLive ? `
+                <div style="display:flex; align-items:center; gap:3px; font-size:12px; font-weight:900; width:24px; justify-content:center;" title="${outs} Out(s)">
+                  <span style="color:${outs >= 1 ? '#D93025' : '#DADCE0'};">●</span>
+                  <span style="color:${outs >= 2 ? '#D93025' : '#DADCE0'};">●</span>
+                  <span style="color:${outs >= 3 ? '#D93025' : '#DADCE0'};">○</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+
+        ${!isLive ? `
+          <div style="font-size:0.72rem; color:#5F6368; margin-top:8px; border-top:1px solid #F1F3F4; padding-top:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span>📅 ${App.formatDateTime(g.game_date)}</span>
+            <span class="text-truncate" style="max-width:180px;">📍 ${g.stadium_name ? g.stadium_name + (g.stadium_field ? ' (' + g.stadium_field + ')' : '') : (g.field_location || 'Estadio LMB')}</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  },
+
   renderScorebugCarousel(games) {
     const scorebug = document.getElementById('scorebug-carousel');
     if (!scorebug) return;
@@ -1130,11 +1178,14 @@ const App = {
           ${g.status === 'live' ? `
             <div class="mlb-diamond-container" style="margin-left:6px;">
               <div class="mlb-diamond">
-                <div class="mlb-base b1"></div>
-                <div class="mlb-base b2"></div>
-                <div class="mlb-base b3"></div>
+                <div class="mlb-base b2 ${g.b2 && g.b2 != '0' ? 'occupied' : ''}"></div>
+                <div class="mlb-base b1 ${g.b1 && g.b1 != '0' ? 'occupied' : ''}"></div>
+                <div class="mlb-base b3 ${g.b3 && g.b3 != '0' ? 'occupied' : ''}"></div>
               </div>
-              <div class="mlb-outs-dots">●●○</div>
+              <div class="mlb-outs-dots">
+                <span style="color:${parseInt(g.outs_count||0) >= 1 ? '#D93025' : '#DADCE0'};">●</span>
+                <span style="color:${parseInt(g.outs_count||0) >= 2 ? '#D93025' : '#DADCE0'};">●</span>
+              </div>
             </div>
           ` : ''}
         </div>
@@ -1287,33 +1338,7 @@ const App = {
           </div>
 
           <div class="google-match-grid">
-            ${games.length ? games.map(g => `
-              <div class="google-match-card" onclick="App.showView('game_detail', ${g.id})">
-                <div class="google-match-teams">
-                  <div style="font-size:0.68rem; font-weight:700; color:#1A73E8;" class="text-truncate">
-                    🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name}
-                  </div>
-                  <div class="google-team-row">
-                    <div class="google-team-info text-truncate">
-                      <img src="${g.away_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
-                      <span class="google-team-name text-truncate">${g.away_team_name}</span>
-                    </div>
-                    <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.away_score}</div>
-                  </div>
-                  <div class="google-team-row">
-                    <div class="google-team-info text-truncate">
-                      <img src="${g.home_logo || 'assets/images/lmb_logo.png'}" class="google-team-logo" onerror="this.src='assets/images/lmb_logo.png'">
-                      <span class="google-team-name text-truncate">${g.home_team_name}</span>
-                    </div>
-                    <div class="google-team-score">${['scheduled', 'delayed', 'awaiting_data'].includes(g.status) && g.away_score === 0 && g.home_score === 0 ? '-' : g.home_score}</div>
-                  </div>
-                </div>
-                <div class="google-match-status">
-                  ${App.getStatusBadge(g.status)}
-                  <span style="font-size:0.7rem; color:#5F6368; margin-top:2px;">${App.formatDateTime(g.game_date)}</span>
-                </div>
-              </div>
-            `).join('') : `
+            ${games.length ? games.map(g => App.renderMatchCard(g)).join('') : `
               <div class="md-card" style="grid-column: 1 / -1; text-align:center; padding:24px; background:#FFFFFF; border:1px solid #DADCE0;">
                 <span class="material-icons-round" style="font-size:36px; color:#1A73E8;">event_available</span>
                 <div style="font-weight:700; font-size:0.95rem; margin-top:6px; color:#202124;">No hay partidos en el calendario</div>

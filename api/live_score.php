@@ -142,6 +142,25 @@ if ($action === 'record_play') {
     }
 
     // Update Game Score & Hits
+    // Update Game Score, Hits, Outs & Base Runners
+    $b1Val = !empty($input['b1']) ? 1 : 0;
+    $b2Val = !empty($input['b2']) ? 1 : 0;
+    $b3Val = !empty($input['b3']) ? 1 : 0;
+    $calcOuts = $outsBefore + $outsAdded;
+
+    if ($calcOuts >= 3) {
+        $nextInn = $game['current_inning'];
+        $nextHf = ($game['half_inning'] === 'top') ? 'bottom' : 'top';
+        if ($game['half_inning'] === 'bottom') {
+            $nextInn++;
+        }
+        $pdo->prepare("UPDATE games SET current_inning = ?, half_inning = ?, outs_count = 0, b1 = 0, b2 = 0, b3 = 0 WHERE id = ?")
+            ->execute([$nextInn, $nextHf, $gameId]);
+    } else {
+        $pdo->prepare("UPDATE games SET outs_count = ?, b1 = ?, b2 = ?, b3 = ? WHERE id = ?")
+            ->execute([$calcOuts, $b1Val, $b2Val, $b3Val, $gameId]);
+    }
+
     if ($runsScored > 0 || $isH || true) {
         $scoreCol = $isHomeBatting ? 'home_score' : 'away_score';
         $hitsCol = $isHomeBatting ? 'home_hits' : 'away_hits';
@@ -175,8 +194,12 @@ if ($action === 'record_run') {
 
     $runnerId = intval($input['runner_id'] ?? 0);
     $rbiBatterId = intval($input['rbi_batter_id'] ?? 0);
+    $b1Val = !empty($input['b1']) ? 1 : 0;
+    $b2Val = !empty($input['b2']) ? 1 : 0;
+    $b3Val = !empty($input['b3']) ? 1 : 0;
 
-    $pdo->prepare("UPDATE games SET {$scoreCol} = {$scoreCol} + 1 WHERE id = ?")->execute([$gameId]);
+    $pdo->prepare("UPDATE games SET {$scoreCol} = {$scoreCol} + 1, b1 = ?, b2 = ?, b3 = ? WHERE id = ?")
+        ->execute([$b1Val, $b2Val, $b3Val, $gameId]);
 
     // Update runner's run stat (r = r + 1)
     if ($runnerId > 0) {
@@ -237,7 +260,7 @@ if ($action === 'change_inning') {
             ->execute([$gameId, $prevTeamId, $prevInning]);
     }
 
-    $pdo->prepare("UPDATE games SET current_inning = ?, half_inning = ? WHERE id = ?")
+    $pdo->prepare("UPDATE games SET current_inning = ?, half_inning = ?, outs_count = 0, b1 = 0, b2 = 0, b3 = 0 WHERE id = ?")
         ->execute([$nextInning, $nextHalf, $gameId]);
 
     echo json_encode(['success' => true, 'message' => "Cambio a entrada {$nextHalf} inning {$nextInning}."]);
@@ -250,6 +273,13 @@ if ($action === 'finalize') {
     $homeScore = isset($input['home_score']) ? intval($input['home_score']) : $game['home_score'];
     $currentInning = isset($input['current_inning']) ? intval($input['current_inning']) : $game['current_inning'];
     $halfInning = isset($input['half_inning']) ? trim($input['half_inning']) : $game['half_inning'];
+
+    $stmtMax = $pdo->prepare("SELECT MAX(inning) as max_inn FROM game_line_scores WHERE game_id = ?");
+    $stmtMax->execute([$gameId]);
+    $maxRow = $stmtMax->fetch();
+    if (!empty($maxRow['max_inn']) && intval($maxRow['max_inn']) > $currentInning) {
+        $currentInning = intval($maxRow['max_inn']);
+    }
 
     // Ensure line score records exist for all played innings for both teams
     for ($i = 1; $i <= $currentInning; $i++) {
@@ -269,7 +299,7 @@ if ($action === 'finalize') {
         }
     }
 
-    $pdo->prepare("UPDATE games SET status = 'finished', away_score = ?, home_score = ?, current_inning = ?, half_inning = ?, lock_user_id = NULL WHERE id = ?")
+    $pdo->prepare("UPDATE games SET status = 'finished', away_score = ?, home_score = ?, current_inning = ?, half_inning = ?, outs_count = 0, b1 = 0, b2 = 0, b3 = 0, lock_user_id = NULL WHERE id = ?")
         ->execute([$awayScore, $homeScore, $currentInning, $halfInning, $gameId]);
 
     echo json_encode(['success' => true, 'message' => 'Partido finalizado oficialmente.']);

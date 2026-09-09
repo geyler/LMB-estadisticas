@@ -69,6 +69,15 @@ function autoInitTables($pdo) {
     } catch (Exception $e) {
         initDatabaseSchemaAndSeed($pdo);
     }
+
+    try {
+        $pdo->query("SELECT outs_count FROM games LIMIT 1");
+    } catch (Exception $e) {
+        try { $pdo->exec("ALTER TABLE games ADD COLUMN outs_count INT DEFAULT 0"); } catch(Exception $ex){}
+        try { $pdo->exec("ALTER TABLE games ADD COLUMN b1 TINYINT DEFAULT 0"); } catch(Exception $ex){}
+        try { $pdo->exec("ALTER TABLE games ADD COLUMN b2 TINYINT DEFAULT 0"); } catch(Exception $ex){}
+        try { $pdo->exec("ALTER TABLE games ADD COLUMN b3 TINYINT DEFAULT 0"); } catch(Exception $ex){}
+    }
 }
 
 function initDatabaseSchemaAndSeed($pdo) {
