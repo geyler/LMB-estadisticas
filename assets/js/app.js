@@ -3543,7 +3543,62 @@ const App = {
     if (modal) modal.classList.remove('open');
   },
 
+  saveCurrentPlayerInputsSilent() {
+    if (!this.currentManualGame) return;
+    const pId = document.getElementById('ms-player-id')?.value;
+    if (!pId) return;
+
+    const isAway = (this.currentManualTeamKey === 'away');
+    const teamId = isAway ? this.currentManualGame.away_team_id : this.currentManualGame.home_team_id;
+
+    const ab = parseInt(document.getElementById('ms-bat-ab')?.value || 0);
+    const r = parseInt(document.getElementById('ms-bat-r')?.value || 0);
+    const h = parseInt(document.getElementById('ms-bat-h')?.value || 0);
+    const doubles = parseInt(document.getElementById('ms-bat-doubles')?.value || 0);
+    const triples = parseInt(document.getElementById('ms-bat-triples')?.value || 0);
+    const hr = parseInt(document.getElementById('ms-bat-hr')?.value || 0);
+    const rbi = parseInt(document.getElementById('ms-bat-rbi')?.value || 0);
+    const bb = parseInt(document.getElementById('ms-bat-bb')?.value || 0);
+    const so = parseInt(document.getElementById('ms-bat-so')?.value || 0);
+    const sb = parseInt(document.getElementById('ms-bat-sb')?.value || 0);
+    const e = parseInt(document.getElementById('ms-bat-e')?.value || 0);
+
+    const ip_outs = parseInt(document.getElementById('ms-pitch-outs')?.value || 0);
+    const pitch_h = parseInt(document.getElementById('ms-pitch-h')?.value || 0);
+    const pitch_r = parseInt(document.getElementById('ms-pitch-r')?.value || 0);
+    const pitch_er = parseInt(document.getElementById('ms-pitch-er')?.value || 0);
+    const pitch_bb = parseInt(document.getElementById('ms-pitch-bb')?.value || 0);
+    const pitch_so = parseInt(document.getElementById('ms-pitch-so')?.value || 0);
+    const decision = document.getElementById('ms-pitch-decision')?.value || 'NONE';
+
+    if (!this.manualGameDetail) this.manualGameDetail = {};
+    const batArray = isAway ? (this.manualGameDetail.away_batters = this.manualGameDetail.away_batters || []) : (this.manualGameDetail.home_batters = this.manualGameDetail.home_batters || []);
+    const pitchArray = isAway ? (this.manualGameDetail.away_pitchers = this.manualGameDetail.away_pitchers || []) : (this.manualGameDetail.home_pitchers = this.manualGameDetail.home_pitchers || []);
+
+    const existingBatIdx = batArray.findIndex(b => b.player_id == pId);
+    const batObj = { player_id: pId, ab, r, h, singles: Math.max(0, h - doubles - triples - hr), doubles, triples, hr, rbi, bb, so, sb, e };
+    if (existingBatIdx >= 0) batArray[existingBatIdx] = batObj;
+    else batArray.push(batObj);
+
+    const existingPitchIdx = pitchArray.findIndex(pt => pt.player_id == pId);
+    const pitchObj = { player_id: pId, ip_outs, h: pitch_h, r: pitch_r, er: pitch_er, bb: pitch_bb, so: pitch_so, decision };
+    if (existingPitchIdx >= 0) pitchArray[existingPitchIdx] = pitchObj;
+    else pitchArray.push(pitchObj);
+
+    fetch('api/games.php?action=save_manual_stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_id: this.currentManualGame.id,
+        team_id: teamId,
+        batting_stats: batArray,
+        pitching_stats: pitchArray
+      })
+    }).catch(err => console.warn('Background auto-save failed:', err));
+  },
+
   switchManualStatsTeam(teamKey) {
+    this.saveCurrentPlayerInputsSilent();
     this.currentManualTeamKey = teamKey;
     this.currentManualPlayerId = null;
     const tabAway = document.getElementById('ms-tab-away');
@@ -3561,6 +3616,7 @@ const App = {
   },
 
   selectManualPlayer(playerId) {
+    this.saveCurrentPlayerInputsSilent();
     this.currentManualPlayerId = playerId;
     this.renderManualStatsContent();
   },
@@ -3709,8 +3765,8 @@ const App = {
         </div>
       </div>
 
-      <!-- ACTIONS BAR -->
-      <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+      <!-- STICKY ACTIONS BAR -->
+      <div style="position:sticky; bottom:-20px; z-index:100; background:#FFFFFF; border-top:2px solid #E2E8F0; padding:12px 14px 20px 14px; margin-top:12px; border-radius:12px; box-shadow:0 -4px 12px rgba(0,0,0,0.06); display:flex; flex-direction:column; gap:6px;">
         <button class="md-btn md-btn-primary" style="width:100%; font-size:0.9rem; font-weight:800; padding:10px;" onclick="App.handleSaveAndNextManualStat()">
           💾 Guardar y Siguiente Jugador (➡️)
         </button>
