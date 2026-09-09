@@ -59,7 +59,7 @@ if ($action === 'detail') {
                 SUM(bs.rbi) as rbi, SUM(bs.bb) as bb, SUM(bs.so) as so, SUM(bs.sb) as sb, SUM(bs.hbp) as hbp, SUM(bs.sf) as sf
             FROM game_batting_stats bs
             JOIN games g ON bs.game_id = g.id
-            WHERE bs.player_id = ? AND g.status = 'finished' AND bs.ab > 0 {$whereExtra}
+            WHERE bs.player_id = ? AND g.status = 'finished' AND (bs.ab > 0 OR bs.bb > 0 OR bs.hbp > 0 OR bs.r > 0 OR bs.rbi > 0 OR bs.sf > 0) {$whereExtra}
         ");
         $stmtBat->execute([$id]);
         $bat = $stmtBat->fetch() ?: [];
@@ -191,7 +191,7 @@ if ($action === 'detail') {
         JOIN games g ON bs.game_id = g.id
         LEFT JOIN seasons s ON g.season_id = s.id
         LEFT JOIN teams t ON bs.team_id = t.id
-        WHERE bs.player_id = ? AND g.status = 'finished' AND bs.ab > 0 
+        WHERE bs.player_id = ? AND g.status = 'finished' AND (bs.ab > 0 OR bs.bb > 0 OR bs.hbp > 0 OR bs.r > 0 OR bs.rbi > 0 OR bs.sf > 0) 
           AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
         GROUP BY g.season_id, bs.team_id
         ORDER BY s.year DESC, s.id DESC

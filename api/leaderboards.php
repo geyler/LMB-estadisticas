@@ -33,12 +33,11 @@ if ($categoryId === 0) {
     $stmtG->execute([$targetSeasonId]);
     if (intval($stmtG->fetchColumn()) === 0) {
         echo json_encode(['success' => true, 'type' => $type, 'stat' => $stat, 'leaders' => []]);
-        exit;
     }
 }
 
 if ($type === 'batting') {
-    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND bs.ab > 0 
+    $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND (bs.ab > 0 OR bs.bb > 0 OR bs.hbp > 0 OR bs.r > 0 OR bs.rbi > 0 OR bs.sf > 0) 
                    AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
                    AND (
                        (bs.team_id = g.home_team_id AND g.home_hits = (SELECT COALESCE(SUM(h),0) FROM game_batting_stats WHERE game_id = g.id AND team_id = g.home_team_id))
