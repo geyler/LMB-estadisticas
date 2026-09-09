@@ -532,10 +532,16 @@ const LiveScorer = {
     this.renderScorerInterface();
   },
 
+  closeSubstitutionModal() {
+    const modal = document.getElementById('live-substitution-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
   async showSubstitutionModal(type) {
     const isTop = this.game.half_inning === 'top';
     const isBatter = (type === 'batter');
     const teamId = isBatter ? (isTop ? this.game.away_team_id : this.game.home_team_id) : (isTop ? this.game.home_team_id : this.game.away_team_id);
+    const teamName = isBatter ? (isTop ? this.game.away_team_name : this.game.home_team_name) : (isTop ? this.game.home_team_name : this.game.away_team_name);
     
     try {
       const res = await fetch(`api/players.php?team_id=${teamId}`);
@@ -547,30 +553,175 @@ const LiveScorer = {
         return;
       }
 
-      let optionsList = players.map(p => `${p.id}: #${p.jersey_number} ${p.first_name} ${p.last_name} (${p.position_primary})`).join('\n');
-      const inputVal = await App.showPrompt(
-        `Rotación / Cambio de ${isBatter ? 'Bateador' : 'Lanzador (Pitcher)'}`,
-        `Cualquier jugador de la nómina puede pitchar o ingresar al campo.\nIngresa el ID del jugador:\n${optionsList}`,
-        isBatter ? (this.activeBatterId ? this.activeBatterId.toString() : '') : (this.activePitcherId ? this.activePitcherId.toString() : '')
-      );
+      this.currentSubPlayers = players;
+      this.currentSubTeamName = teamName;
+      this.currentSubType = type;
 
-      if (inputVal) {
-        const found = players.find(p => p.id == inputVal || p.jersey_number == inputVal);
-        if (found) {
-          if (isBatter) {
-            this.activeBatterId = found.id;
-          } else {
-            this.activePitcherId = found.id;
-          }
-          App.showSnackbar(`🔄 Cambio registrado: #${found.jersey_number} ${found.first_name} ${found.last_name} como ${isBatter ? 'Bateador' : 'Lanzador'}.`);
-          this.renderScorerInterface();
-        } else {
-          App.showSnackbar("ID o número de camiseta no encontrado.");
-        }
+      const titleEl = document.getElementById('sub-modal-title');
+      if (titleEl) {
+        titleEl.innerHTML = `<span class="material-icons-round" style="color:#1A73E8;">published_with_changes</span> ${isBatter ? 'Sustitución de Bateador (PH/PR)' : 'Cambio de Lanzador / Defensa'}`;
       }
+
+      this.renderSubstitutionModalContent();
+
+      const modal = document.getElementById('live-substitution-modal');
+      if (modal) modal.classList.add('open');
     } catch(e) {
       App.showSnackbar("Error al obtener el plantel del equipo.");
     }
+  },
+
+  renderSubstitutionModalContent() {
+    const body = document.getElementById('live-substitution-body');
+    if (!body || !this.currentSubPlayers) return;
+
+    const isTop = this.game.half_inning === 'top';
+    const isBatter = (this.currentSubType === 'batter');
+    const activeList = isBatter ? (isTop ? this.awayBatters : this.homeBatters) : (isTop ? this.homePitchers : this.awayPitchers);
+    const defenseList = isTop ? (this.homeBatters || []) : (this.awayBatters || []);
+    
+    const currentActiveId = isBatter ? this.activeBatterId : this.activePitcherId;
+    const currentActivePlayer = activeList.find(p => p.player_id == currentActiveId);
+
+    const positionsList = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'PH', 'PR', 'OF', 'IF'];
+
+    let html = `
+      <div class="md-card" style="background:#F8F9FA; border:1px solid #DADCE0; margin-bottom:4px;">
+        <div style="font-size:0.75rem; font-weight:800; color:#5F6368; text-transform:uppercase;">
+          ${isBatter ? '⚡ Bateador Actual en Turno' : '⚾ Lanzador (Pitcher) Actual'}
+        </div>
+        <div style="font-size:1rem; font-weight:800; color:#1A73E8; margin-top:2px;">
+          ${currentActivePlayer ? `#${currentActivePlayer.jersey_number} ${currentActivePlayer.first_name} ${currentActivePlayer.last_name} (${currentActivePlayer.position || 'P'})` : 'Sin asignar'}
+        </div>
+      </div>
+
+      <!-- NEW PLAYER SELECT -->
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:0.8rem; font-weight:800; color:#202124;">
+          Selecciona el Nuevo ${isBatter ? 'Bateador (PH)' : 'Lanzador (P)'}:
+        </label>
+        <select id="sub-player-select" class="form-control" style="font-weight:700; font-size:0.85rem;" onchange="LiveScorer.handleSubPlayerChange(this.value)">
+          <optgroup label="-- Jugadores en la Banca / Suplentes --">
+            ${this.currentSubPlayers.filter(p => !defenseList.some(d => d.player_id == p.id)).map(p => `
+              <option value="${p.id}" ${p.id == currentActiveId ? 'selected' : ''}>
+                #${p.jersey_number} ${p.first_name} ${p.last_name} (${p.position_primary || 'Suplente'})
+              </option>
+            `).join('')}
+          </optgroup>
+          <optgroup label="-- Jugadores en el Campo (Lineup Activo) --">
+            ${defenseList.map(p => `
+              <option value="${p.player_id}" ${p.player_id == currentActiveId ? 'selected' : ''}>
+                #${p.jersey_number} ${p.first_name} ${p.last_name} (Actualmente en ${p.position || 'Campo'})
+              </option>
+            `).join('')}
+          </optgroup>
+        </select>
+      </div>
+
+      ${!isBatter ? `
+        <!-- FORMER PITCHER NEW POSITION SELECT -->
+        <div id="former-pitcher-container" style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+          <label style="font-size:0.8rem; font-weight:800; color:#202124;">
+            ¿A qué posición pasa el Lanzador Anterior (${currentActivePlayer ? '#' + currentActivePlayer.jersey_number + ' ' + currentActivePlayer.first_name : 'Anterior'})?
+          </label>
+          <select id="sub-former-pitcher-pos" class="form-control" style="font-weight:700; font-size:0.85rem;">
+            <option value="OUT">❌ Sale del Juego (Remplazado / A la banca)</option>
+            ${positionsList.filter(pos => pos !== 'P').map(pos => `
+              <option value="${pos}">Pasa a jugar defensivamente en ${pos}</option>
+            `).join('')}
+          </select>
+        </div>
+      ` : ''}
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.closeSubstitutionModal()">Cancelar</button>
+        <button class="md-btn md-btn-primary" style="flex:1; font-weight:800;" onclick="LiveScorer.applySubstitution()">
+          ✅ Aplicar Sustitución
+        </button>
+      </div>
+    `;
+
+    body.innerHTML = html;
+  },
+
+  handleSubPlayerChange(selectedId) {
+    // Interactive handler if needed
+  },
+
+  applySubstitution() {
+    const selEl = document.getElementById('sub-player-select');
+    if (!selEl) return;
+
+    const newPlayerId = selEl.value;
+    const foundPlayer = this.currentSubPlayers.find(p => p.id == newPlayerId);
+    if (!foundPlayer) {
+      App.showSnackbar("Jugador no válido.");
+      return;
+    }
+
+    const isTop = this.game.half_inning === 'top';
+    const isBatter = (this.currentSubType === 'batter');
+
+    if (isBatter) {
+      this.activeBatterId = foundPlayer.id;
+      const battingList = isTop ? this.awayBatters : this.homeBatters;
+      if (!battingList.some(b => b.player_id == foundPlayer.id)) {
+        const activeIdx = isTop ? this.awayLineupIndex : this.homeLineupIndex;
+        battingList[activeIdx % Math.max(1, battingList.length)] = {
+          player_id: foundPlayer.id,
+          first_name: foundPlayer.first_name,
+          last_name: foundPlayer.last_name,
+          jersey_number: foundPlayer.jersey_number,
+          position: 'PH',
+          bats: foundPlayer.bats || 'R'
+        };
+      }
+      App.showSnackbar(`🔄 Cambio de Bateador: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name} toma el turno.`);
+    } else {
+      const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
+      const defenseList = isTop ? this.homeBatters : this.awayBatters;
+      
+      const oldPitcherId = this.activePitcherId;
+      const formerPosEl = document.getElementById('sub-former-pitcher-pos');
+      const formerPos = formerPosEl ? formerPosEl.value : 'OUT';
+
+      this.activePitcherId = foundPlayer.id;
+
+      const newPitcherInField = defenseList.find(d => d.player_id == foundPlayer.id);
+      const oldPitcherInField = defenseList.find(d => d.player_id == oldPitcherId);
+
+      if (newPitcherInField) {
+        newPitcherInField.position = 'P';
+      }
+      if (oldPitcherInField && formerPos !== 'OUT') {
+        oldPitcherInField.position = formerPos;
+      }
+
+      if (!pitchingList.some(p => p.player_id == foundPlayer.id)) {
+        pitchingList.unshift({
+          player_id: foundPlayer.id,
+          first_name: foundPlayer.first_name,
+          last_name: foundPlayer.last_name,
+          jersey_number: foundPlayer.jersey_number,
+          position: 'P'
+        });
+      }
+
+      App.showSnackbar(`🔄 Cambio de Lanzador: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name} ingresa a lanzar.`);
+    }
+
+    const payload = {
+      action: 'substitution',
+      game_id: this.game.id,
+      type: this.currentSubType,
+      player_id: foundPlayer.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning
+    };
+
+    this.enqueueOfflineAction(payload);
+    this.closeSubstitutionModal();
+    this.renderScorerInterface();
   },
 
   async finishGame() {

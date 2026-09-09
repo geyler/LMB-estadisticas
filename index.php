@@ -567,6 +567,22 @@ session_start();
       </div>
     </div>
 
+    <!-- Live Game Substitution Modal -->
+    <div id="live-substitution-modal" class="md-modal-backdrop">
+      <div class="md-bottom-sheet" style="max-width:540px; max-height:92vh; overflow-y:auto;">
+        <div class="sheet-handle" onclick="LiveScorer.closeSubstitutionModal()"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 id="sub-modal-title" style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons-round" style="color:#1A73E8;">published_with_changes</span> Rotación y Sustitución
+          </h3>
+          <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="LiveScorer.closeSubstitutionModal()">✕</button>
+        </div>
+        <div id="live-substitution-body" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+          <!-- Dynamically rendered -->
+        </div>
+      </div>
+    </div>
+
     <!-- Single File / Photo Upload Modal -->
     <div id="file-upload-modal" class="md-modal-backdrop">
       <div class="md-bottom-sheet" style="max-width:480px;">

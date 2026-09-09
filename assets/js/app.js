@@ -4564,8 +4564,8 @@ const App = {
         <table class="md-table">
           <thead>
             <tr>
-              <th style="width:40px; text-align:center;">Activo</th>
-              <th style="width:50px; text-align:center;">Orden</th>
+              <th style="width:36px; text-align:center;">Activo</th>
+              <th style="width:100px; text-align:center;">Orden</th>
               <th>Jugador</th>
               <th>Posición</th>
             </tr>
@@ -4582,10 +4582,14 @@ const App = {
               return `
                 <tr>
                   <td style="text-align:center;">
-                    <input type="checkbox" class="gl-player-active" value="${p.player_id}" ${inLineup ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+                    <input type="checkbox" class="gl-player-active" value="${p.player_id}" ${inLineup ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;" onchange="App.reindexGameLineupOrders()">
                   </td>
                   <td style="text-align:center;">
-                    <input type="number" min="1" max="20" class="form-control gl-player-order" value="${orderDisplay}" style="padding:2px; width:44px; text-align:center; font-weight:800;">
+                    <div style="display:inline-flex; align-items:center; gap:2px;">
+                      <button type="button" class="md-btn md-btn-outlined" style="padding:2px 4px; font-size:0.65rem; font-weight:800;" onclick="App.moveGameLineupRow(this, -1)" title="Subir orden">⬆️</button>
+                      <input type="number" min="1" max="20" class="form-control gl-player-order" value="${orderDisplay}" style="padding:2px; width:34px; text-align:center; font-weight:800;" onchange="App.reindexGameLineupOrders()">
+                      <button type="button" class="md-btn md-btn-outlined" style="padding:2px 4px; font-size:0.65rem; font-weight:800;" onclick="App.moveGameLineupRow(this, 1)" title="Bajar orden">⬇️</button>
+                    </div>
                   </td>
                   <td style="font-weight:700;" class="text-truncate">
                     #${p.jersey_number} ${p.first_name} ${p.last_name}
@@ -4613,6 +4617,29 @@ const App = {
         ✅ Aplicar Lineup de ${teamName}
       </button>
     `;
+  },
+
+  moveGameLineupRow(btn, direction) {
+    const tr = btn.closest('tr');
+    if (!tr) return;
+    const tbody = tr.parentNode;
+    if (direction === -1 && tr.previousElementSibling) {
+      tbody.insertBefore(tr, tr.previousElementSibling);
+    } else if (direction === 1 && tr.nextElementSibling) {
+      tbody.insertBefore(tr.nextElementSibling, tr);
+    }
+    this.reindexGameLineupOrders();
+  },
+
+  reindexGameLineupOrders() {
+    let orderCounter = 1;
+    document.querySelectorAll('#game-lineup-body tbody tr').forEach(tr => {
+      const orderInput = tr.querySelector('.gl-player-order');
+      if (orderInput) {
+        orderInput.value = orderCounter;
+        orderCounter++;
+      }
+    });
   },
 
   handleSaveGameLineup() {
@@ -4649,6 +4676,34 @@ const App = {
 
     if (!selectedBatters.length) {
       this.showAlert("Atención", "Debes seleccionar al menos un jugador activo para la nómina.", "warning", "#F59E0B");
+      return;
+    }
+
+    // Defensive position uniqueness validation
+    const DEFENSIVE_POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
+    const posCounts = {};
+    const duplicates = [];
+
+    selectedBatters.forEach(b => {
+      if (DEFENSIVE_POSITIONS.includes(b.position)) {
+        if (!posCounts[b.position]) posCounts[b.position] = [];
+        posCounts[b.position].push(`#${b.jersey_number} ${b.first_name} ${b.last_name}`);
+      }
+    });
+
+    Object.keys(posCounts).forEach(pos => {
+      if (posCounts[pos].length > 1) {
+        duplicates.push(`• Posición [${pos}]: Asignada a ${posCounts[pos].join(' y ')}`);
+      }
+    });
+
+    if (duplicates.length > 0) {
+      this.showAlert(
+        "⚠️ Conflicto de Posiciones Defensivas",
+        `Cada posición defensiva en el campo (P, C, 1B, 2B, 3B, SS, LF, CF, RF) debe ser única para un solo jugador.<br><br><b>Posiciones duplicadas detectadas:</b><br>${duplicates.join('<br>')}`,
+        "warning",
+        "#EF4444"
+      );
       return;
     }
 
