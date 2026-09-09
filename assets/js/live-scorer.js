@@ -369,6 +369,7 @@ const LiveScorer = {
 
             <button class="md-btn" style="grid-column: span 2; background:#0F9D58; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('HR', '💥 JONRÓN (HR)', 0)">💥 JONRÓN (HR)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base)</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SB', 'Robo de Base (SB)', 0)">🏃 SB (Robo)</button>
             
             <button class="md-btn" style="grid-column: span 3; background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.confirmPlay('RUN', '+1 Carrera Anotada', 0)">⚽ +1 Carrera Anotada</button>
           </div>
@@ -408,7 +409,7 @@ const LiveScorer = {
     const currentBatter = battingList.find(b => b.player_id == this.activeBatterId);
     const batterName = currentBatter ? `#${currentBatter.jersey_number} ${currentBatter.first_name} ${currentBatter.last_name}` : 'Bateador Actual';
 
-    const isPositive = ['1B', '2B', '3B', 'HR', 'BB', 'RUN'].includes(code);
+    const isPositive = ['1B', '2B', '3B', 'HR', 'BB', 'RUN', 'SB'].includes(code);
     const icon = isPositive ? 'check_circle' : 'do_not_disturb_on';
     const color = isPositive ? '#188038' : '#EA4335';
 
@@ -451,6 +452,9 @@ const LiveScorer = {
         this.baseRunners.b2 = true;
       }
       this.baseRunners.b1 = true;
+    } else if (code === 'SB') {
+      if (this.baseRunners.b2) this.baseRunners.b3 = true;
+      if (this.baseRunners.b1) this.baseRunners.b2 = true;
     }
 
     if (outsAdded > 0) {
@@ -480,7 +484,9 @@ const LiveScorer = {
 
     this.enqueueOfflineAction(payload);
     App.showSnackbar(`Jugada registrada: ${label}`);
-    this.advanceBatterLineup();
+    if (code !== 'SB') {
+      this.advanceBatterLineup();
+    }
     this.renderScorerInterface();
   },
 

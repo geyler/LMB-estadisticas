@@ -2365,8 +2365,8 @@ const App = {
             <p style="font-size:0.8rem; color:#5F6368; margin:4px 0 0 0;">Registro cronológico de todas las acciones administrativas críticas realizadas en el sistema.</p>
           </div>
           ${isSuperAdmin ? `
-            <button class="btn-m3-danger" style="padding:6px 14px; font-size:0.75rem; background:#D93025; border-color:#D93025; color:#fff; display:inline-flex; align-items:center; gap:6px;" onclick="App.showFactoryResetModal()">
-              <span class="material-icons-round" style="font-size:16px;">restart_alt</span> Resetear Base de Datos desde Cero
+            <button class="btn-m3-danger" style="padding:8px 16px; font-size:0.8rem; background:#D93025; border-color:#D93025; color:#FFFFFF !important; font-weight:800; display:inline-flex; align-items:center; gap:6px; border-radius:20px;" onclick="App.showFactoryResetModal()">
+              <span class="material-icons-round" style="font-size:16px; color:#FFFFFF;">restart_alt</span> Resetear Base de Datos desde Cero
             </button>
           ` : ''}
         </div>
@@ -4572,9 +4572,12 @@ const App = {
           </thead>
           <tbody>
             ${activePlayers.map((p, i) => {
-              const inLineup = currentBatters.some(b => b.player_id == p.player_id);
+              const currentBatter = currentBatters.find(b => b.player_id == p.player_id);
+              const inLineup = !!currentBatter;
               const orderVal = currentBatters.findIndex(b => b.player_id == p.player_id);
               const orderDisplay = orderVal >= 0 ? orderVal + 1 : (i + 1);
+              const activePos = (currentBatter && currentBatter.position) ? currentBatter.position : (p.position || p.position_primary || 'P');
+              const positionsList = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'PH', 'PR', 'OF', 'IF'];
 
               return `
                 <tr>
@@ -4582,7 +4585,7 @@ const App = {
                     <input type="checkbox" class="gl-player-active" value="${p.player_id}" ${inLineup ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
                   </td>
                   <td style="text-align:center;">
-                    <input type="number" min="1" max="20" class="form-control gl-player-order" value="${orderDisplay}" style="padding:2px; width:44px; text-align:center;">
+                    <input type="number" min="1" max="20" class="form-control gl-player-order" value="${orderDisplay}" style="padding:2px; width:44px; text-align:center; font-weight:800;">
                   </td>
                   <td style="font-weight:700;" class="text-truncate">
                     #${p.jersey_number} ${p.first_name} ${p.last_name}
@@ -4593,7 +4596,11 @@ const App = {
                     <input type="hidden" class="gl-player-bats" value="${p.bats || 'R'}">
                   </td>
                   <td>
-                    <span class="md-chip" style="padding:2px 6px; font-size:0.65rem;">${p.position}</span>
+                    <select class="form-control gl-player-pos" style="padding:2px 4px; font-size:0.75rem; font-weight:800; width:68px;">
+                      ${positionsList.map(pos => `
+                        <option value="${pos}" ${pos === activePos ? 'selected' : ''}>${pos}</option>
+                      `).join('')}
+                    </select>
                   </td>
                 </tr>
               `;
@@ -4620,6 +4627,7 @@ const App = {
       if (activeChk && activeChk.checked) {
         const playerId = el.value;
         const orderNum = parseInt(row.querySelector('.gl-player-order')?.value || 1);
+        const posVal = row.querySelector('.gl-player-pos')?.value || 'P';
         const firstName = row.querySelector('.gl-player-first')?.value || '';
         const lastName = row.querySelector('.gl-player-last')?.value || '';
         const jersey = row.querySelector('.gl-player-jersey')?.value || '0';
@@ -4631,6 +4639,7 @@ const App = {
           last_name: lastName,
           jersey_number: jersey,
           bats: bats,
+          position: posVal,
           batting_order: orderNum
         });
       }

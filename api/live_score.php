@@ -102,7 +102,7 @@ if ($action === 'record_play') {
     $stmtBCheck->execute([$gameId, $batterId]);
     $bStat = $stmtBCheck->fetch();
 
-    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF']);
+    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF', 'SB']);
     $isH = in_array($resultCode, ['1B', '2B', '3B', 'HR']);
     $is1B = ($resultCode === '1B') ? 1 : 0;
     $is2B = ($resultCode === '2B') ? 1 : 0;

@@ -1013,7 +1013,7 @@ body {
   gap: 4px;
   padding: 6px 10px;
   background: #FEF2F2;
-  color: #DC2626 !important;
+  color: #DC2626;
   border: 1px solid #FCA5A5;
   font-weight: 700;
   font-size: 0.78rem;
