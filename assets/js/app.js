@@ -1822,7 +1822,7 @@ const App = {
             ` : ''}
           </div>
 
-          <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow:hidden;">
+          <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow-x:auto; -webkit-overflow-scrolling:touch;">
             <table class="md-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
               <thead>
                 <tr style="border-bottom:1px solid #DADCE0; color:#5F6368;">
@@ -2036,7 +2036,7 @@ const App = {
           </div>
         </div>
 
-        <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow:hidden;">
+        <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow-x:auto; -webkit-overflow-scrolling:touch;">
           <table class="md-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
             <thead>
               <tr style="border-bottom:1px solid #DADCE0; color:#5F6368; font-weight:700;">
@@ -4931,7 +4931,7 @@ const App = {
             <div style="font-size:0.75rem; color:#64748B; margin-top:4px;">Batea: <strong>${p.bats || 'R'}</strong> • Lanza: <strong>${p.throws || 'R'}</strong> • Rol: <strong>${p.role_type === 'player' ? 'Jugador' : (p.role_type || 'Integrante')}</strong></div>
           </div>
           ${canEdit ? `
-            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem; color:#FFF; border-color:#94A3B8;" onclick="App.closePlayerProfileModal(); App.openEditPlayerModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">✏️ Editar</button>
+            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem; color:#FFF; border-color:#94A3B8;" onclick="App.closePlayerProfileModal(); App.showEditPlayerModal(${p.id})">✏️ Editar</button>
           ` : ''}
         </div>
 
