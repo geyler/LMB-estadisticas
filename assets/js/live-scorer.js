@@ -122,95 +122,23 @@ const LiveScorer = {
   },
 
   // --- OFFLINE QUEUE MANAGEMENT (Resilience on High Latency / Connection Loss) ---
-  getOfflineQueueKey() {
-    return `lmb_offline_queue_${this.game ? this.game.id : 0}`;
-  },
-
-  getOfflineQueue() {
+  async sendDirectPlay(payload) {
     try {
-      return JSON.parse(localStorage.getItem(this.getOfflineQueueKey()) || '[]');
-    } catch(e) {
-      return [];
-    }
-  },
-
-  setOfflineQueue(queue) {
-    try {
-      localStorage.setItem(this.getOfflineQueueKey(), JSON.stringify(queue));
-    } catch(e) {}
-  },
-
-  enqueueOfflineAction(payload) {
-    const queue = this.getOfflineQueue();
-    queue.push({
-      id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      timestamp: new Date().toISOString(),
-      payload
-    });
-    this.setOfflineQueue(queue);
-    this.updateQueueBadgeUI();
-    this.processOfflineQueue();
-  },
-
-  async processOfflineQueue() {
-    if (this.isSyncing) return;
-    const queue = this.getOfflineQueue();
-    if (!queue.length) {
-      this.updateQueueBadgeUI();
-      return;
-    }
-
-    this.isSyncing = true;
-    this.updateQueueBadgeUI();
-
-    while (queue.length > 0) {
-      const item = queue[0];
-      try {
-        const res = await fetch('api/live_score.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item.payload)
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success || data.message) {
-            queue.shift(); // Remove processed action
-            this.setOfflineQueue(queue);
-          } else {
-            console.warn("Error retrying offline play action:", data.message);
-            break; // Stop loop on server business logic rejection
-          }
-        } else {
-          break; // Stop loop on HTTP failure
-        }
-      } catch (err) {
-        // Network connection error
-        break;
+      const res = await fetch('api/live_score.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.success) {
+        App.showAlert("Error al Anotar", data.message || "No se pudo guardar la jugada en el servidor.", "error", "#EF4444");
+        return false;
       }
-    }
-
-    this.isSyncing = false;
-    this.updateQueueBadgeUI();
-  },
-
-  updateQueueBadgeUI() {
-    const badgeEl = document.getElementById('live-queue-badge');
-    if (!badgeEl) return;
-
-    const queue = this.getOfflineQueue();
-    if (queue.length > 0) {
-      badgeEl.style.display = 'inline-flex';
-      badgeEl.style.background = '#FEF3C7';
-      badgeEl.style.color = '#B45309';
-      badgeEl.style.borderColor = '#F59E0B';
-      badgeEl.innerHTML = `⚠️ ${queue.length} jugada(s) guardadas en local (${this.isSyncing ? 'Sincronizando...' : 'Retomando red'})`;
-    } else {
-      badgeEl.style.display = 'inline-flex';
-      badgeEl.style.background = '#E8F0FE';
-      badgeEl.style.color = '#1A73E8';
-      badgeEl.style.borderColor = '#1A73E8';
-      badgeEl.innerHTML = `🔴 ANOTADOR EN VIVO (En Línea)`;
+      return true;
+    } catch(err) {
+      console.error("Error de red enviando jugada al servidor", err);
+      App.showAlert("Error de Conexión", "No se pudo conectar con el servidor. Verifica tu conexión a internet para continuar guardando en vivo.", "wifi_off", "#EF4444");
+      return false;
     }
   },
 
@@ -436,13 +364,31 @@ const LiveScorer = {
       if (code === 'RUN') {
         this.showRunScoredModal();
       } else {
-        this.recordPlay(code, label, outsAdded);
+        await this.recordPlay(code, label, outsAdded);
       }
     }
   },
 
-  recordPlay(code, label, outsAdded = 0) {
+  async recordPlay(code, label, outsAdded = 0) {
     const runs = (code === 'HR') ? 1 : 0;
+
+    const payload = {
+      action: 'record_play',
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning,
+      batter_id: this.activeBatterId,
+      pitcher_id: this.activePitcherId,
+      outs_before: this.outsCount,
+      outs_added: outsAdded,
+      result_code: code,
+      description: label,
+      runs_scored: runs
+    };
+
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
     if (runs > 0) {
       const isTop = this.game.half_inning === 'top';
       if (isTop) this.game.away_score += runs;
@@ -475,27 +421,12 @@ const LiveScorer = {
         App.showSnackbar("¡3 Outs completados! Cambio automático de media entrada.");
         this.outsCount = 0;
         this.baseRunners = { b1: false, b2: false, b3: false };
-        this.toggleHalfInning();
+        await this.toggleHalfInning();
         return;
       }
     }
 
-    const payload = {
-      action: 'record_play',
-      game_id: this.game.id,
-      inning: this.game.current_inning,
-      half_inning: this.game.half_inning,
-      batter_id: this.activeBatterId,
-      pitcher_id: this.activePitcherId,
-      outs_before: this.outsCount,
-      outs_added: outsAdded,
-      result_code: code,
-      description: label,
-      runs_scored: runs
-    };
-
-    this.enqueueOfflineAction(payload);
-    App.showSnackbar(`Jugada registrada: ${label}`);
+    App.showSnackbar(`✓ Jugada guardada en servidor: ${label}`);
     if (code !== 'SB') {
       this.advanceBatterLineup();
     }
@@ -559,7 +490,7 @@ const LiveScorer = {
     if (modal) modal.classList.add('open');
   },
 
-  applyRunScored() {
+  async applyRunScored() {
     const runnerSelect = document.getElementById('run-scorer-select');
     const rbiCheck = document.getElementById('run-rbi-check');
     if (!runnerSelect) return;
@@ -567,22 +498,6 @@ const LiveScorer = {
     const runnerId = parseInt(runnerSelect.value || 0);
     const hasRbi = rbiCheck ? rbiCheck.checked : false;
     const rbiBatterId = hasRbi ? this.activeBatterId : 0;
-
-    const isTop = this.game.half_inning === 'top';
-    if (isTop) {
-      this.game.away_score++;
-    } else {
-      this.game.home_score++;
-    }
-
-    // Auto-advance runners on base (clear third base runner if occupied)
-    if (this.baseRunners.b3) {
-      this.baseRunners.b3 = false;
-    } else if (this.baseRunners.b2) {
-      this.baseRunners.b2 = false;
-    } else if (this.baseRunners.b1) {
-      this.baseRunners.b1 = false;
-    }
 
     const payload = {
       action: 'record_run',
@@ -593,35 +508,59 @@ const LiveScorer = {
       rbi_batter_id: rbiBatterId
     };
 
-    this.enqueueOfflineAction(payload);
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
+    const isTop = this.game.half_inning === 'top';
+    if (isTop) {
+      this.game.away_score++;
+    } else {
+      this.game.home_score++;
+    }
+
+    if (this.baseRunners.b3) {
+      this.baseRunners.b3 = false;
+    } else if (this.baseRunners.b2) {
+      this.baseRunners.b2 = false;
+    } else if (this.baseRunners.b1) {
+      this.baseRunners.b1 = false;
+    }
 
     const battingList = isTop ? this.awayBatters : this.homeBatters;
     const runnerObj = battingList.find(b => b.player_id == runnerId);
     const runnerName = runnerObj ? `#${runnerObj.jersey_number} ${runnerObj.first_name}` : 'Jugador';
 
-    App.showSnackbar(`⚽ Carrera anotada por ${runnerName}${hasRbi ? ' (Impulsada)' : ''}`);
+    App.showSnackbar(`✓ Carrera guardada en servidor: ${runnerName}${hasRbi ? ' (Impulsada)' : ''}`);
     this.closeRunModal();
     this.renderScorerInterface();
   },
 
-  toggleHalfInning() {
-    if (this.game.half_inning === 'top') {
-      this.game.half_inning = 'bottom';
+  async toggleHalfInning() {
+    let nextInning = this.game.current_inning;
+    let nextHalf = this.game.half_inning;
+
+    if (nextHalf === 'top') {
+      nextHalf = 'bottom';
     } else {
-      this.game.half_inning = 'top';
-      this.game.current_inning++;
+      nextHalf = 'top';
+      nextInning++;
     }
-    this.outsCount = 0;
-    this.baseRunners = { b1: false, b2: false, b3: false };
-    
+
     const payload = {
       action: 'change_inning',
       game_id: this.game.id,
-      current_inning: this.game.current_inning,
-      half_inning: this.game.half_inning
+      current_inning: nextInning,
+      half_inning: nextHalf
     };
 
-    this.enqueueOfflineAction(payload);
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
+    this.game.current_inning = nextInning;
+    this.game.half_inning = nextHalf;
+    this.outsCount = 0;
+    this.baseRunners = { b1: false, b2: false, b3: false };
+
     this.autoSelectActivePlayers();
     this.renderScorerInterface();
   },
@@ -757,7 +696,7 @@ const LiveScorer = {
     // Interactive handler if needed
   },
 
-  applySubstitution() {
+  async applySubstitution() {
     const selEl = document.getElementById('sub-player-select');
     if (!selEl) return;
 
@@ -767,6 +706,18 @@ const LiveScorer = {
       App.showSnackbar("Jugador no válido.");
       return;
     }
+
+    const payload = {
+      action: 'substitution',
+      game_id: this.game.id,
+      type: this.currentSubType,
+      player_id: foundPlayer.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning
+    };
+
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
 
     const isTop = this.game.half_inning === 'top';
     const isBatter = (this.currentSubType === 'batter');
@@ -786,7 +737,7 @@ const LiveScorer = {
           bats: foundPlayer.bats || 'R'
         };
       }
-      App.showSnackbar(`🔄 Cambio de Bateador: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name} toma el turno.`);
+      App.showSnackbar(`✓ Cambio de Bateador guardado: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name}`);
     } else {
       const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
       const defenseList = isTop ? this.homeBatters : this.awayBatters;
@@ -817,19 +768,9 @@ const LiveScorer = {
         });
       }
 
-      App.showSnackbar(`🔄 Cambio de Lanzador: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name} ingresa a lanzar.`);
+      App.showSnackbar(`✓ Cambio de Lanzador guardado: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name}`);
     }
 
-    const payload = {
-      action: 'substitution',
-      game_id: this.game.id,
-      type: this.currentSubType,
-      player_id: foundPlayer.id,
-      inning: this.game.current_inning,
-      half_inning: this.game.half_inning
-    };
-
-    this.enqueueOfflineAction(payload);
     this.closeSubstitutionModal();
     this.renderScorerInterface();
   },
@@ -846,11 +787,12 @@ const LiveScorer = {
         half_inning: this.game.half_inning
       };
 
-      this.enqueueOfflineAction(payload);
-      await this.processOfflineQueue();
-
-      App.showAlert("Partido Finalizado", `El resultado final (${this.game.away_score} - ${this.game.home_score}) ha sido registrado exitosamente.`, "check_circle", "#10B981");
-      App.showView('game_detail', this.game.id);
+      const ok = await this.sendDirectPlay(payload);
+      if (ok) {
+        this.game.status = 'finished';
+        App.showAlert("Partido Finalizado", `El resultado final (${this.game.away_score} - ${this.game.home_score}) ha sido registrado exitosamente.`, "check_circle", "#10B981");
+        App.showView('game_detail', this.game.id);
+      }
     }
   }
 };
