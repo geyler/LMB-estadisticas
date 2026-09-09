@@ -178,6 +178,28 @@ body {
   font-weight: 700 !important;
 }
 
+.user-badge-icon-btn {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  border-radius: 50% !important;
+  background: #E8F0FE !important;
+  border: 1.5px solid #1A73E8 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.2) !important;
+  flex-shrink: 0 !important;
+}
+
+.user-badge-icon-btn:hover {
+  background: #D2E3FC !important;
+  transform: scale(1.05);
+}
+
 .user-badge-name {
   max-width: 90px;
   overflow: hidden;
@@ -652,6 +674,7 @@ body {
   border: 1px solid #DADCE0;
   border-radius: 10px;
   background: #FFFFFF;
+  width: 100%;
 }
 
 .md-table,
@@ -660,6 +683,7 @@ body {
   border-collapse: collapse;
   font-size: 0.82rem;
   background: #FFFFFF;
+  text-align: left;
 }
 
 .md-table th,
@@ -667,12 +691,17 @@ body {
   background: #F8F9FA;
   color: #5F6368;
   font-weight: 800;
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-size: 0.74rem;
   text-transform: uppercase;
   border-bottom: 1px solid #DADCE0;
-  text-align: center;
+  text-align: left;
   white-space: nowrap;
+}
+
+.md-table th.text-center,
+.google-standings-table th.text-center {
+  text-align: center;
 }
 
 .md-table th.text-left,
@@ -682,12 +711,18 @@ body {
 
 .md-table td,
 .google-standings-table td {
-  padding: 9px 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid #E3E8EE;
   color: #202124;
-  text-align: center;
+  text-align: left;
   font-weight: 600;
   white-space: nowrap;
+  vertical-align: middle;
+}
+
+.md-table td.text-center,
+.google-standings-table td.text-center {
+  text-align: center;
 }
 
 .md-table tr:hover,

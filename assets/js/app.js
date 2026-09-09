@@ -334,7 +334,7 @@ const App = {
     const hasEditRole = this.currentUser && editRoles.includes(this.currentUser.role);
 
     const guideBtnHtml = hasEditRole ? `
-      <button id="guide-header-btn" class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía de Roles y Sistema" style="margin-right:6px;">
+      <button id="guide-header-btn" class="md-btn md-btn-outlined header-btn" onclick="App.showView('onboarding')" title="Guía de Roles y Sistema" style="margin-right:4px;">
         📖 <span class="hide-mobile">Guía</span>
       </button>
     ` : '';
@@ -344,23 +344,21 @@ const App = {
       
       let teamBtnHtml = '';
       if (this.currentUser.role === 'team_admin' && this.currentUser.assigned_team_id) {
-        teamBtnHtml = `<button class="md-btn md-btn-gold" style="padding:4px 8px; font-size:0.72rem; margin-right:6px;" onclick="event.stopPropagation(); App.showView('team_detail', ${this.currentUser.assigned_team_id})">🧢 Mi Club</button>`;
+        teamBtnHtml = `<button class="md-btn md-btn-gold hide-mobile" style="padding:4px 8px; font-size:0.72rem; margin-right:4px;" onclick="event.stopPropagation(); App.showView('team_detail', ${this.currentUser.assigned_team_id})">🧢 Mi Club</button>`;
       }
 
       headerActions.innerHTML = `
         ${guideBtnHtml}
-        <div style="display:flex; align-items:center;">
+        <div style="display:flex; align-items:center; gap:4px;">
           ${teamBtnHtml}
-          <button id="user-action-btn" class="md-btn md-btn-outlined" style="display:flex; align-items:center; gap:6px; padding:4px 10px; font-size:0.78rem;" onclick="App.showUserModal()">
-            <span class="material-icons-round" style="color:#1A73E8; font-size:18px;">account_circle</span>
-            <span class="user-badge-name text-truncate">${this.currentUser.name}</span>
-            <span class="user-badge-role">${roleTag}</span>
+          <button id="user-action-btn" class="user-badge-icon-btn" onclick="App.showUserModal()" title="${this.currentUser.name} (${roleTag})">
+            <span class="material-icons-round" style="color:#1A73E8; font-size:22px;">account_circle</span>
           </button>
         </div>
       `;
     } else {
       headerActions.innerHTML = `
-        <button id="user-action-btn" class="md-btn md-btn-outlined user-badge-btn" onclick="App.openAuthModal('login')">
+        <button id="user-action-btn" class="md-btn md-btn-outlined user-badge-btn" onclick="App.openAuthModal('login')" style="padding:4px 10px; font-size:0.78rem;">
           <span class="material-icons-round" style="font-size:18px;">login</span> Acceder
         </button>
       `;
@@ -1399,15 +1397,15 @@ const App = {
     const homeRecordStr = (g.home_wins !== undefined) ? `(${g.home_wins} - ${g.home_losses})` : `(${g.home_short})`;
 
     let html = `
-      <div class="view-content" style="max-width:900px; margin:0 auto; padding:12px;">
+      <div class="view-content" style="max-width:900px; margin:0 auto; padding:0;">
         <!-- MLB Google Style Match Header -->
         <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(60,64,67,0.08); margin-bottom:16px;">
           <!-- Top Row: Category Left, Status Right -->
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F3F4; padding-bottom:10px; margin-bottom:16px;">
-            <div style="font-size:0.82rem; font-weight:700; color:#1A73E8;" class="text-truncate">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F3F4; padding-bottom:10px; margin-bottom:16px; gap:8px;">
+            <div style="font-size:0.82rem; font-weight:700; color:#1A73E8; flex:1; min-width:0;" class="text-truncate">
               🏆 ${g.game_stage || 'Temporada Regular'} • ${g.category_name} • 📍 ${g.stadium_name ? g.stadium_name + (g.stadium_field ? ' (' + g.stadium_field + ')' : '') : (g.field_location || 'Cancha Principal')}
             </div>
-            <div style="font-size:0.85rem; font-weight:800; color:${statusColor};">
+            <div style="font-size:0.85rem; font-weight:800; color:${statusColor}; white-space:nowrap; flex-shrink:0; margin-left:8px;">
               ${statusText}
             </div>
           </div>
@@ -2461,26 +2459,30 @@ const App = {
         </div>
       </div>
 
-      <div class="md-table-wrapper" style="margin-top:12px;">
-        <table class="md-table">
+      <div class="md-table-wrapper" style="margin-top:12px; width:100%; overflow-x:auto;">
+        <table class="md-table" style="width:100%; text-align:left;">
           <thead>
             <tr>
-              <th>Usuario / Correo</th>
-              <th>Rol</th>
-              <th>Equipo Asignado</th>
-              <th>Acción</th>
+              <th style="text-align:left; padding:10px 12px;">Usuario / Correo</th>
+              <th style="text-align:left; padding:10px 12px;">Rol</th>
+              <th style="text-align:left; padding:10px 12px;">Equipo Asignado</th>
+              <th style="text-align:left; padding:10px 12px;">Acción</th>
             </tr>
           </thead>
           <tbody>
             ${users.length ? users.map(u => `
               <tr>
-                <td>
-                  <div style="font-weight:800;">${u.name}</div>
+                <td style="text-align:left; padding:10px 12px;">
+                  <div style="font-weight:800; color:#202124;">${u.name}</div>
                   <div style="font-size:0.75rem; color:#5F6368;">${u.email}</div>
                 </td>
-                <td><span class="md-chip active" style="padding:2px 6px; font-size:0.65rem;">${u.role.toUpperCase()}</span></td>
-                <td style="font-size:0.8rem; color:#1A73E8;">${u.assigned_team_name || 'Ninguno (Global)'}</td>
-                <td>
+                <td style="text-align:left; padding:10px 12px;">
+                  <span class="md-chip active" style="padding:3px 10px; font-size:0.68rem; font-weight:800; display:inline-block;">${u.role.toUpperCase()}</span>
+                </td>
+                <td style="text-align:left; padding:10px 12px; font-size:0.82rem; color:#1A73E8; font-weight:700;">
+                  ${u.assigned_team_name || 'Ninguno (Global)'}
+                </td>
+                <td style="text-align:left; padding:10px 12px;">
                   <button class="btn-m3-outlined" style="padding:4px 10px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;" onclick="App.showEditUserModal(${u.id}, '${u.name}', '${u.role}', ${u.assigned_team_id || 0})"><span class="material-icons-round" style="font-size:15px;">tune</span> Permisos</button>
                 </td>
               </tr>
