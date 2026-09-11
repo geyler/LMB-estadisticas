@@ -136,47 +136,74 @@ if ($action === 'detail') {
         }
     }
 
-    // Batting Box Scores
-    $stmtBatHome = $pdo->prepare("
-        SELECT bs.*, p.first_name, p.last_name, p.jersey_number, p.bats
-        FROM game_batting_stats bs
-        JOIN players p ON bs.player_id = p.id
-        WHERE bs.game_id = ? AND bs.team_id = ?
-        ORDER BY bs.batting_order ASC
-    ");
-    $stmtBatHome->execute([$id, $game['home_team_id']]);
-    $homeBatters = $stmtBatHome->fetchAll();
+    // Batting Box Scores (Full roster: players who played first, followed by active roster)
+    $getBattingBoxscore = function($teamId) use ($pdo, $id) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.id as player_id,
+                p.first_name,
+                p.last_name,
+                p.jersey_number,
+                COALESCE(bs.position, p.position_primary, 'OF') as position,
+                p.bats,
+                COALESCE(bs.ab, 0) as ab,
+                COALESCE(bs.r, 0) as r,
+                COALESCE(bs.h, 0) as h,
+                COALESCE(bs.singles, 0) as singles,
+                COALESCE(bs.doubles, 0) as doubles,
+                COALESCE(bs.triples, 0) as triples,
+                COALESCE(bs.hr, 0) as hr,
+                COALESCE(bs.rbi, 0) as rbi,
+                COALESCE(bs.bb, 0) as bb,
+                COALESCE(bs.so, 0) as so,
+                COALESCE(bs.sb, 0) as sb,
+                COALESCE(bs.e, 0) as e,
+                COALESCE(bs.hbp, 0) as hbp,
+                COALESCE(bs.sf, 0) as sf,
+                COALESCE(bs.batting_order, 99) as batting_order,
+                CASE WHEN bs.id IS NOT NULL THEN 1 ELSE 0 END as has_played
+            FROM players p
+            LEFT JOIN game_batting_stats bs ON p.id = bs.player_id AND bs.game_id = ?
+            WHERE p.team_id = ? AND p.is_active = 1
+            ORDER BY has_played DESC, bs.batting_order ASC, p.jersey_number ASC
+        ");
+        $stmt->execute([$id, $teamId]);
+        return $stmt->fetchAll();
+    };
 
-    $stmtBatAway = $pdo->prepare("
-        SELECT bs.*, p.first_name, p.last_name, p.jersey_number, p.bats
-        FROM game_batting_stats bs
-        JOIN players p ON bs.player_id = p.id
-        WHERE bs.game_id = ? AND bs.team_id = ?
-        ORDER BY bs.batting_order ASC
-    ");
-    $stmtBatAway->execute([$id, $game['away_team_id']]);
-    $awayBatters = $stmtBatAway->fetchAll();
+    $homeBatters = $getBattingBoxscore($game['home_team_id']);
+    $awayBatters = $getBattingBoxscore($game['away_team_id']);
 
     // Pitching Box Scores
-    $stmtPitchHome = $pdo->prepare("
-        SELECT ps.*, p.first_name, p.last_name, p.jersey_number
-        FROM game_pitching_stats ps
-        JOIN players p ON ps.player_id = p.id
-        WHERE ps.game_id = ? AND ps.team_id = ?
-        ORDER BY ps.is_starter DESC, ps.id ASC
-    ");
-    $stmtPitchHome->execute([$id, $game['home_team_id']]);
-    $homePitchers = $stmtPitchHome->fetchAll();
+    $getPitchingBoxscore = function($teamId) use ($pdo, $id) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.id as player_id,
+                p.first_name,
+                p.last_name,
+                p.jersey_number,
+                COALESCE(ps.ip_outs, 0) as ip_outs,
+                COALESCE(ps.h, 0) as h,
+                COALESCE(ps.r, 0) as r,
+                COALESCE(ps.er, 0) as er,
+                COALESCE(ps.bb, 0) as bb,
+                COALESCE(ps.so, 0) as so,
+                COALESCE(ps.hr, 0) as hr,
+                COALESCE(ps.pitches_count, 0) as pitches_count,
+                COALESCE(ps.is_starter, 0) as is_starter,
+                COALESCE(ps.decision, 'NONE') as decision,
+                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as has_pitched
+            FROM players p
+            LEFT JOIN game_pitching_stats ps ON p.id = ps.player_id AND ps.game_id = ?
+            WHERE p.team_id = ? AND p.is_active = 1 AND (ps.id IS NOT NULL OR p.position_primary = 'P' OR p.position_secondary = 'P')
+            ORDER BY has_pitched DESC, ps.is_starter DESC, p.jersey_number ASC
+        ");
+        $stmt->execute([$id, $teamId]);
+        return $stmt->fetchAll();
+    };
 
-    $stmtPitchAway = $pdo->prepare("
-        SELECT ps.*, p.first_name, p.last_name, p.jersey_number
-        FROM game_pitching_stats ps
-        JOIN players p ON ps.player_id = p.id
-        WHERE ps.game_id = ? AND ps.team_id = ?
-        ORDER BY ps.is_starter DESC, ps.id ASC
-    ");
-    $stmtPitchAway->execute([$id, $game['away_team_id']]);
-    $awayPitchers = $stmtPitchAway->fetchAll();
+    $homePitchers = $getPitchingBoxscore($game['home_team_id']);
+    $awayPitchers = $getPitchingBoxscore($game['away_team_id']);
 
     // Play-by-play logs
     $stmtPbp = $pdo->prepare("

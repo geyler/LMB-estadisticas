@@ -27,47 +27,35 @@ if ($action === 'standings') {
     }
 
     if ($seasonId > 0) {
-        $stmtST = $pdo->prepare("SELECT COUNT(*) FROM season_teams WHERE season_id = ?");
-        $stmtST->execute([$seasonId]);
-        $stCount = intval($stmtST->fetchColumn());
-
-        if ($stCount > 0) {
-            $stmtTeams = $pdo->prepare("
-                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
-                FROM teams t 
-                JOIN season_teams st ON t.id = st.team_id
-                LEFT JOIN categories c ON t.category_id = c.id
-                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
-                WHERE st.season_id = ?
-                ORDER BY t.name ASC
-            ");
-            $stmtTeams->execute([$seasonId]);
-            $teams = $stmtTeams->fetchAll();
-        } else {
-            $stmtTeams = $pdo->prepare("
-                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
-                FROM teams t 
-                LEFT JOIN categories c ON t.category_id = c.id
-                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
-                WHERE c.season_id = ?
-                ORDER BY t.name ASC
-            ");
-            $stmtTeams->execute([$seasonId]);
-            $teams = $stmtTeams->fetchAll();
-        }
+        $stmtTeams = $pdo->prepare("
+            SELECT DISTINCT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+            FROM teams t 
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+            LEFT JOIN season_teams st ON t.id = st.team_id AND st.season_id = ?
+            WHERE st.team_id IS NOT NULL 
+               OR c.season_id = ? 
+               OR t.id IN (SELECT home_team_id FROM games WHERE season_id = ?)
+               OR t.id IN (SELECT away_team_id FROM games WHERE season_id = ?)
+            ORDER BY t.name ASC
+        ");
+        $stmtTeams->execute([$seasonId, $seasonId, $seasonId, $seasonId]);
+        $teams = $stmtTeams->fetchAll();
     } elseif ($categoryId > 0) {
         $stmtTeams = $pdo->prepare("
-            SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+            SELECT DISTINCT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
             FROM teams t 
             LEFT JOIN categories c ON t.category_id = c.id
             LEFT JOIN stadiums s ON t.home_stadium_id = s.id
             WHERE t.category_id = ?
+               OR t.id IN (SELECT home_team_id FROM games WHERE category_id = ?)
+               OR t.id IN (SELECT away_team_id FROM games WHERE category_id = ?)
             ORDER BY t.name ASC
         ");
-        $stmtTeams->execute([$categoryId]);
+        $stmtTeams->execute([$categoryId, $categoryId, $categoryId]);
         $teams = $stmtTeams->fetchAll();
     } else {
-        $sqlTeams = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
+        $sqlTeams = "SELECT DISTINCT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, s.name as home_stadium_name 
                      FROM teams t 
                      LEFT JOIN categories c ON t.category_id = c.id
                      LEFT JOIN stadiums s ON t.home_stadium_id = s.id
@@ -103,6 +91,7 @@ if ($action === 'standings') {
             FROM games
             WHERE (home_team_id = ? OR away_team_id = ?) AND status = 'finished'
             {$gameFilter}
+            AND home_team_id != away_team_id
             AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
         ");
         $stmtGames->execute($queryParams);
