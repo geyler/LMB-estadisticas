@@ -2061,6 +2061,14 @@ const App = {
           </div>
         </div>
 
+        ${data.is_rate_stat ? `
+        <div class="md-card" style="background:#FEF7E0; border:1px solid #F9AB00; padding:8px 12px; margin-bottom:8px;">
+          <div style="font-size:0.75rem; font-weight:700; color:#E37400;">
+            📊 Regla de Calificación (MLB/WBSC): ${type === 'batting' ? `Mín. ${data.min_ab || 10} AB` : `Mín. ${data.min_ip_outs ? (Math.floor(data.min_ip_outs/3) + '.' + (data.min_ip_outs%3)) : '3.0'} IP`} (${data.season_games || 0} juegos oficiales en temporada)
+          </div>
+        </div>
+        ` : ''}
+
         <div class="md-table-wrapper" style="background:#FFFFFF; border:1px solid #DADCE0; border-radius:12px; overflow-x:auto; -webkit-overflow-scrolling:touch;">
           <table class="md-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
             <thead>
@@ -2068,6 +2076,8 @@ const App = {
                 <th style="width:32px; text-align:center; padding:8px 2px;">#</th>
                 <th style="text-align:left; padding:8px 4px;">Jugador</th>
                 <th style="text-align:center; padding:8px 4px;">Equipo</th>
+                <th style="text-align:center; padding:8px 2px; font-size:0.72rem;">GP</th>
+                <th style="text-align:center; padding:8px 2px; font-size:0.72rem;">${type === 'batting' ? 'AB' : 'IP'}</th>
                 <th style="text-align:center; padding:8px 4px; width:65px; font-weight:900; color:#1A73E8;">${statLabel}</th>
               </tr>
             </thead>
@@ -2077,15 +2087,18 @@ const App = {
                   <td style="width:32px; text-align:center; font-weight:800; color:${idx === 0 ? '#1A73E8' : '#5F6368'}; font-size:0.85rem; padding:8px 2px;">#${idx + 1}</td>
                   <td style="font-weight:700; color:#202124; text-align:left; padding:8px 4px;" class="text-truncate">
                     <span style="color:#5F6368; font-weight:600; margin-right:4px;">#${l.jersey_number}</span> ${l.first_name} ${l.last_name}
+                    ${(data.is_rate_stat && l.qualified === false) ? '<span style="font-size:0.65rem; color:#F59E0B; font-weight:800;" title="No calificado (insuficientes turnos)">⚠️</span>' : ''}
                   </td>
                   <td style="text-align:center; padding:8px 4px;">
                     <span class="md-chip" style="padding:3px 8px; font-size:0.8rem; font-weight:800; background:#F8F9FA; color:#202124; border:1px solid #DADCE0;">${l.team_short || l.team_name}</span>
                   </td>
+                  <td style="text-align:center; padding:8px 2px; font-size:0.78rem; color:#5F6368; font-weight:600;">${l.gp}</td>
+                  <td style="text-align:center; padding:8px 2px; font-size:0.78rem; color:#5F6368; font-weight:600;">${type === 'batting' ? l.ab : l.ip_display}</td>
                   <td class="highlight-val" style="text-align:center; font-size:1.05rem; font-weight:900; color:#1A73E8; padding:8px 4px;">
-                    ${type === 'batting' ? (l[stat] || l.avg) : (stat === 'era' ? l.era : (stat === 'so' ? l.so : (stat === 'wins' ? l.wins : (stat === 'saves' ? l.saves : l.whip))))}
+                    ${type === 'batting' ? (l[stat] || l.avg) : (stat === 'era' ? l.era : (stat === 'so' ? l.so : (stat === 'wins' ? l.wins : (stat === 'saves' ? l.saves : (stat === 'ip' ? l.ip_display : l.whip)))))}
                   </td>
                 </tr>
-              `).join('') : '<tr><td colspan="4" style="text-align:center; padding:16px; color:#5F6368;">Sin líderes registrados en este departamento.</td></tr>'}
+              `).join('') : '<tr><td colspan="6" style="text-align:center; padding:16px; color:#5F6368;">Sin líderes registrados en este departamento.</td></tr>'}
             </tbody>
           </table>
         </div>

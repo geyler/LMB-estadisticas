@@ -15,7 +15,7 @@ $categoryId = intval($_GET['category_id'] ?? 0);
 $seasonId = intval($_GET['season_id'] ?? 0);
 $limit = intval($_GET['limit'] ?? 10);
 
-// Check active season or target season game counts
+// ─── Determine target season ─────────────────────────────────────
 $targetSeasonId = $seasonId;
 if ($categoryId === 0 && $targetSeasonId === 0) {
     $activeS = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
@@ -33,9 +33,44 @@ if ($categoryId === 0) {
     $stmtG->execute([$targetSeasonId]);
     if (intval($stmtG->fetchColumn()) === 0) {
         echo json_encode(['success' => true, 'type' => $type, 'stat' => $stat, 'leaders' => []]);
+        exit;
     }
 }
 
+// ─── Count finished official games in this season/category ────────
+// Used to compute dynamic MLB-style qualification thresholds
+$seasonGamesCount = 0;
+if ($categoryId > 0) {
+    $stmtSG = $pdo->prepare("SELECT COUNT(*) FROM games g JOIN teams t ON (g.home_team_id = t.id OR g.away_team_id = t.id) WHERE t.category_id = ? AND g.status = 'finished' AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso','Juego Amistoso / Preparación','Exhibición','Juego de Exhibición'))");
+    $stmtSG->execute([$categoryId]);
+    $seasonGamesCount = intval($stmtSG->fetchColumn());
+} elseif ($targetSeasonId > 0) {
+    $stmtSG = $pdo->prepare("SELECT COUNT(*) FROM games WHERE season_id = ? AND status = 'finished' AND (game_stage IS NULL OR game_stage NOT IN ('Amistoso','Juego Amistoso / Preparación','Exhibición','Juego de Exhibición'))");
+    $stmtSG->execute([$targetSeasonId]);
+    $seasonGamesCount = intval($stmtSG->fetchColumn());
+}
+
+// ─── Rate vs Counting stat detection ──────────────────────────────
+// Rate stats require minimum qualification; counting stats do not
+$battingRateStats = ['avg', 'obp', 'slg', 'ops'];
+$pitchingRateStats = ['era', 'whip'];
+
+$isRateStat = ($type === 'batting') ? in_array($stat, $battingRateStats) : in_array($stat, $pitchingRateStats);
+
+// ─── Qualification Thresholds ─────────────────────────────────────
+// MLB Rule 9.22(a): 3.1 PA per scheduled team game for batting title
+// MLB Pitching: 1 IP per scheduled team game for ERA title
+// Adapted for amateur: 2 AB per official game (min absolute 10 AB)
+//                       1 IP (3 outs) per official game (min absolute 3 IP = 9 outs)
+// If nobody meets the threshold, progressively lower it to fill the leaderboard
+
+$minAB = max(10, $seasonGamesCount * 2);   // 2 AB per game, floor 10
+$minIPOuts = max(9, $seasonGamesCount * 3); // 1 IP (3 outs) per game, floor 9 (3 IP)
+
+
+// ═══════════════════════════════════════════════════════════════════
+// BATTING LEADERS
+// ═══════════════════════════════════════════════════════════════════
 if ($type === 'batting') {
     $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND (bs.ab > 0 OR bs.bb > 0 OR bs.hbp > 0 OR bs.r > 0 OR bs.rbi > 0 OR bs.sf > 0) 
                    AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición'))
@@ -73,6 +108,7 @@ if ($type === 'batting') {
     $stmt = $pdo->query($sql);
     $rows = $stmt->fetchAll();
 
+    // Compute derived stats
     foreach ($rows as &$r) {
         $ab = intval($r['ab']);
         $h = intval($r['h']);
@@ -88,36 +124,110 @@ if ($type === 'batting') {
 
         $obpDen = ($ab + $bb + $hbp + $sf);
         $obpVal = ($obpDen > 0) ? (($h + $bb + $hbp) / $obpDen) : 0;
+        $r['obp_val'] = $obpVal;
         $r['obp'] = number_format($obpVal, 3);
 
         $tb = ($h - $d2 - $d3 - $hr) + ($d2 * 2) + ($d3 * 3) + ($hr * 4);
         $slgVal = ($ab > 0) ? ($tb / $ab) : 0;
+        $r['slg_val'] = $slgVal;
         $r['slg'] = number_format($slgVal, 3);
         $r['ops_val'] = $obpVal + $slgVal;
         $r['ops'] = number_format($r['ops_val'], 3);
+
+        // PA (plate appearances) for qualification reference
+        $r['pa'] = $ab + $bb + $hbp + $sf;
     }
     unset($r);
+
+    // ─── Apply Qualification Filter for Rate Stats ────────────────
+    if ($isRateStat) {
+        // Step 1: Try standard threshold (MLB-style: 2 AB per game, min 10)
+        $qualified = array_filter($rows, function($r) use ($minAB) {
+            return intval($r['ab']) >= $minAB;
+        });
+
+        // Step 2: If not enough qualified players, progressively lower threshold
+        // This handles early-season or very short tournaments
+        if (count($qualified) < $limit) {
+            // Sort ALL players by AB descending to find the natural cutoff
+            $allByAB = $rows;
+            usort($allByAB, function($a, $b) { return intval($b['ab']) - intval($a['ab']); });
+
+            // Take top N players by AB, but require at least 3 AB to avoid 1-AB flukes
+            $absoluteFloor = 3;
+            $qualified = [];
+            foreach ($allByAB as $r) {
+                if (intval($r['ab']) >= $absoluteFloor) {
+                    $qualified[] = $r;
+                }
+                if (count($qualified) >= $limit * 2) break; // Pool enough candidates
+            }
+
+            // If still < limit, just take what we have with >= 2 AB
+            if (count($qualified) < $limit) {
+                $qualified = array_filter($rows, function($r) {
+                    return intval($r['ab']) >= 2;
+                });
+                $qualified = array_values($qualified);
+            }
+        } else {
+            $qualified = array_values($qualified);
+        }
+
+        $rows = $qualified;
+    }
 
     // Sort by requested stat
     usort($rows, function($a, $b) use ($stat) {
         switch ($stat) {
-            case 'avg': return $b['avg_val'] <=> $a['avg_val'];
-            case 'hr': return $b['hr'] <=> $a['hr'];
-            case 'rbi': return $b['rbi'] <=> $a['rbi'];
-            case 'h': return $b['h'] <=> $a['h'];
-            case 'ops': return $b['ops_val'] <=> $a['ops_val'];
-            case 'sb': return $b['sb'] <=> $a['sb'];
-            case 'r': return $b['r'] <=> $a['r'];
-            default: return $b['avg_val'] <=> $a['avg_val'];
+            case 'avg':
+                $cmp = $b['avg_val'] <=> $a['avg_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['ab']) <=> intval($a['ab'])); // Tiebreak: more AB
+            case 'obp':
+                $cmp = $b['obp_val'] <=> $a['obp_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['pa']) <=> intval($a['pa']));
+            case 'slg':
+                $cmp = $b['slg_val'] <=> $a['slg_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['ab']) <=> intval($a['ab']));
+            case 'ops':
+                $cmp = $b['ops_val'] <=> $a['ops_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['pa']) <=> intval($a['pa']));
+            case 'hr': return intval($b['hr']) <=> intval($a['hr']);
+            case 'rbi': return intval($b['rbi']) <=> intval($a['rbi']);
+            case 'h': return intval($b['h']) <=> intval($a['h']);
+            case 'sb': return intval($b['sb']) <=> intval($a['sb']);
+            case 'r': return intval($b['r']) <=> intval($a['r']);
+            default:
+                $cmp = $b['avg_val'] <=> $a['avg_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['ab']) <=> intval($a['ab']));
         }
     });
 
+    // Add qualification info to response
     $leaders = array_slice($rows, 0, $limit);
-    echo json_encode(['success' => true, 'type' => 'batting', 'stat' => $stat, 'leaders' => $leaders]);
+
+    // Mark qualified status on each leader
+    foreach ($leaders as &$l) {
+        $l['qualified'] = (intval($l['ab']) >= $minAB) ? true : false;
+        $l['min_ab'] = $minAB;
+    }
+    unset($l);
+
+    echo json_encode([
+        'success' => true,
+        'type' => 'batting',
+        'stat' => $stat,
+        'is_rate_stat' => $isRateStat,
+        'min_ab' => $minAB,
+        'season_games' => $seasonGamesCount,
+        'leaders' => $leaders
+    ]);
     exit;
 
 } else {
-    // Pitching Leaders
+    // ═══════════════════════════════════════════════════════════════
+    // PITCHING LEADERS
+    // ═══════════════════════════════════════════════════════════════
     $whereCond = " WHERE p.is_active = 1 AND g.status = 'finished' AND (ps.ip_outs > 0 OR ps.pitches_count > 0)
                    AND (g.game_stage IS NULL OR g.game_stage NOT IN ('Amistoso', 'Juego Amistoso / Preparación', 'Exhibición', 'Juego de Exhibición')) ";
     if ($categoryId > 0) {
@@ -171,19 +281,72 @@ if ($type === 'batting') {
     }
     unset($r);
 
+    // ─── Apply Qualification Filter for Rate Stats ────────────────
+    if ($isRateStat) {
+        $qualified = array_filter($rows, function($r) use ($minIPOuts) {
+            return intval($r['ip_outs']) >= $minIPOuts;
+        });
+
+        if (count($qualified) < $limit) {
+            $allByIP = $rows;
+            usort($allByIP, function($a, $b) { return intval($b['ip_outs']) - intval($a['ip_outs']); });
+
+            $absoluteFloor = 6; // Minimum 2 IP (6 outs) to qualify
+            $qualified = [];
+            foreach ($allByIP as $r) {
+                if (intval($r['ip_outs']) >= $absoluteFloor) {
+                    $qualified[] = $r;
+                }
+                if (count($qualified) >= $limit * 2) break;
+            }
+
+            if (count($qualified) < $limit) {
+                $qualified = array_filter($rows, function($r) {
+                    return intval($r['ip_outs']) >= 3; // Min 1 IP
+                });
+                $qualified = array_values($qualified);
+            }
+        } else {
+            $qualified = array_values($qualified);
+        }
+
+        $rows = $qualified;
+    }
+
     usort($rows, function($a, $b) use ($stat) {
         switch ($stat) {
-            case 'era': return $a['era_val'] <=> $b['era_val']; // Ascending
-            case 'so': return $b['so'] <=> $a['so'];
-            case 'wins': return $b['wins'] <=> $a['wins'];
-            case 'saves': return $b['saves'] <=> $a['saves'];
-            case 'whip': return $a['whip_val'] <=> $b['whip_val']; // Ascending
-            case 'ip': return $b['ip_outs'] <=> $a['ip_outs'];
-            default: return $a['era_val'] <=> $b['era_val'];
+            case 'era':
+                $cmp = $a['era_val'] <=> $b['era_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['ip_outs']) <=> intval($a['ip_outs']));
+            case 'whip':
+                $cmp = $a['whip_val'] <=> $b['whip_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['ip_outs']) <=> intval($a['ip_outs']));
+            case 'so': return intval($b['so']) <=> intval($a['so']);
+            case 'wins': return intval($b['wins']) <=> intval($a['wins']);
+            case 'saves': return intval($b['saves']) <=> intval($a['saves']);
+            case 'ip': return intval($b['ip_outs']) <=> intval($a['ip_outs']);
+            default:
+                $cmp = $a['era_val'] <=> $b['era_val'];
+                return $cmp !== 0 ? $cmp : (intval($b['ip_outs']) <=> intval($a['ip_outs']));
         }
     });
 
     $leaders = array_slice($rows, 0, $limit);
-    echo json_encode(['success' => true, 'type' => 'pitching', 'stat' => $stat, 'leaders' => $leaders]);
+
+    foreach ($leaders as &$l) {
+        $l['qualified'] = (intval($l['ip_outs']) >= $minIPOuts) ? true : false;
+        $l['min_ip_outs'] = $minIPOuts;
+    }
+    unset($l);
+
+    echo json_encode([
+        'success' => true,
+        'type' => 'pitching',
+        'stat' => $stat,
+        'is_rate_stat' => $isRateStat,
+        'min_ip_outs' => $minIPOuts,
+        'season_games' => $seasonGamesCount,
+        'leaders' => $leaders
+    ]);
     exit;
 }
