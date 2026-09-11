@@ -195,7 +195,7 @@ if ($action === 'detail') {
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as has_pitched
             FROM players p
             LEFT JOIN game_pitching_stats ps ON p.id = ps.player_id AND ps.game_id = ?
-            WHERE p.team_id = ? AND p.is_active = 1 AND (ps.id IS NOT NULL OR p.position_primary = 'P' OR p.position_secondary = 'P')
+            WHERE p.team_id = ? AND p.is_active = 1
             ORDER BY has_pitched DESC, ps.is_starter DESC, p.jersey_number ASC
         ");
         $stmt->execute([$id, $teamId]);
@@ -211,8 +211,8 @@ if ($action === 'detail') {
                b.first_name as batter_first, b.last_name as batter_last, b.jersey_number as batter_num,
                p.first_name as pitcher_first, p.last_name as pitcher_last, p.jersey_number as pitcher_num
         FROM game_play_by_play pbp
-        JOIN players b ON pbp.batter_id = b.id
-        JOIN players p ON pbp.pitcher_id = p.id
+        LEFT JOIN players b ON pbp.batter_id = b.id
+        LEFT JOIN players p ON pbp.pitcher_id = p.id
         WHERE pbp.game_id = ?
         ORDER BY pbp.id DESC
     ");
