@@ -305,3 +305,85 @@ if ($action === 'finalize') {
     echo json_encode(['success' => true, 'message' => 'Partido finalizado oficialmente.']);
     exit;
 }
+
+// Action 5: Player / Pitcher Substitution
+if ($action === 'substitution') {
+    $subType = trim($input['type'] ?? $input['sub_type'] ?? 'pitcher');
+    $playerId = intval($input['player_id'] ?? 0);
+    $formerPitcherPos = trim($input['former_pitcher_pos'] ?? 'OUT');
+
+    if (!$playerId) {
+        echo json_encode(['success' => false, 'message' => 'ID de jugador para sustitución es requerido.']);
+        exit;
+    }
+
+    // Fetch player info
+    $stmtSubP = $pdo->prepare("SELECT * FROM players WHERE id = ?");
+    $stmtSubP->execute([$playerId]);
+    $subPlayer = $stmtSubP->fetch();
+
+    if (!$subPlayer) {
+        echo json_encode(['success' => false, 'message' => 'Jugador no encontrado.']);
+        exit;
+    }
+
+    $isTop = ($game['half_inning'] === 'top');
+    $isBatter = ($subType === 'batter');
+
+    // Fielding team: top -> home, bottom -> away
+    // Batting team: top -> away, bottom -> home
+    $teamId = $isBatter ? ($isTop ? $game['away_team_id'] : $game['home_team_id']) : ($isTop ? $game['home_team_id'] : $game['away_team_id']);
+    $playerName = "#{$subPlayer['jersey_number']} {$subPlayer['first_name']} {$subPlayer['last_name']}";
+
+    $desc = $isBatter 
+        ? "🔄 Sustitución: Entra a batear {$playerName}" 
+        : "🔄 Cambio de Lanzador: Entra a lanzar {$playerName}" . ($formerPitcherPos !== 'OUT' ? " (Pitcher anterior pasa a {$formerPitcherPos})" : "");
+
+    // Log in play-by-play
+    $stmtPbp = $pdo->prepare("INSERT INTO game_play_by_play (game_id, inning, half_inning, batter_id, pitcher_id, outs_before, result_code, description, runs_scored) VALUES (?, ?, ?, ?, ?, ?, 'SUB', ?, 0)");
+    $stmtPbp->execute([
+        $gameId,
+        $game['current_inning'],
+        $game['half_inning'],
+        $isBatter ? $playerId : 0,
+        !$isBatter ? $playerId : 0,
+        $game['outs_count'],
+        $desc
+    ]);
+
+    if (!$isBatter) {
+        // Ensure row in pitching stats
+        $stmtPCheck = $pdo->prepare("SELECT id FROM game_pitching_stats WHERE game_id = ? AND player_id = ?");
+        $stmtPCheck->execute([$gameId, $playerId]);
+        if (!$stmtPCheck->fetch()) {
+            $pdo->prepare("INSERT INTO game_pitching_stats (game_id, team_id, player_id, ip_outs, h, r, er, bb, so, hr, pitches_count, is_starter) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0)")
+                ->execute([$gameId, $teamId, $playerId]);
+        }
+    } else {
+        // Ensure row in batting stats
+        $stmtBCheck = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+        $stmtBCheck->execute([$gameId, $playerId]);
+        if (!$stmtBCheck->fetch()) {
+            $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, hbp, sf) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)")
+                ->execute([$gameId, $teamId, $playerId]);
+        }
+    }
+
+    echo json_encode([
+        'success' => true, 
+        'message' => "Sustitución realizada con éxito: {$playerName}",
+        'player' => [
+            'id' => $subPlayer['id'],
+            'first_name' => $subPlayer['first_name'],
+            'last_name' => $subPlayer['last_name'],
+            'jersey_number' => $subPlayer['jersey_number'],
+            'position' => $subPlayer['position_primary']
+        ]
+    ]);
+    exit;
+}
+
+// Fallback for unknown action
+echo json_encode(['success' => false, 'message' => "Acción '{$action}' no reconocida."]);
+exit;
+

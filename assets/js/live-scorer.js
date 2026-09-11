@@ -777,11 +777,15 @@ const LiveScorer = {
       return;
     }
 
+    const formerPosEl = document.getElementById('sub-former-pitcher-pos');
+    const formerPos = formerPosEl ? formerPosEl.value : 'OUT';
+
     const payload = {
       action: 'substitution',
       game_id: this.game.id,
       type: this.currentSubType,
       player_id: foundPlayer.id,
+      former_pitcher_pos: formerPos,
       inning: this.game.current_inning,
       half_inning: this.game.half_inning
     };
@@ -795,11 +799,17 @@ const LiveScorer = {
     if (isBatter) {
       this.activeBatterId = foundPlayer.id;
       const battingList = isTop ? this.awayBatters : this.homeBatters;
-      const existingInList = battingList.find(b => (b.player_id == foundPlayer.id || b.id == foundPlayer.id));
-      if (!existingInList) {
-        const activeIdx = isTop ? this.awayLineupIndex : this.homeLineupIndex;
-        battingList[activeIdx % Math.max(1, battingList.length)] = {
+      const activeIdx = isTop ? this.awayLineupIndex : this.homeLineupIndex;
+      const existingInListIdx = battingList.findIndex(b => (b.player_id == foundPlayer.id || b.id == foundPlayer.id));
+
+      if (existingInListIdx >= 0) {
+        // Swap or bring to current lineup index
+        battingList[existingInListIdx].position = 'PH';
+      } else {
+        const targetIdx = activeIdx % Math.max(1, battingList.length);
+        battingList[targetIdx] = {
           player_id: foundPlayer.id,
+          id: foundPlayer.id,
           first_name: foundPlayer.first_name,
           last_name: foundPlayer.last_name,
           jersey_number: foundPlayer.jersey_number,
@@ -813,8 +823,6 @@ const LiveScorer = {
       const defenseList = isTop ? this.homeBatters : this.awayBatters;
       
       const oldPitcherId = this.activePitcherId;
-      const formerPosEl = document.getElementById('sub-former-pitcher-pos');
-      const formerPos = formerPosEl ? formerPosEl.value : 'OUT';
 
       this.activePitcherId = foundPlayer.id;
 
@@ -828,9 +836,11 @@ const LiveScorer = {
         oldPitcherInField.position = formerPos;
       }
 
-      if (!pitchingList.some(p => (p.player_id == foundPlayer.id || p.id == foundPlayer.id))) {
+      const existingPitcher = pitchingList.find(p => (p.player_id == foundPlayer.id || p.id == foundPlayer.id));
+      if (!existingPitcher) {
         pitchingList.unshift({
           player_id: foundPlayer.id,
+          id: foundPlayer.id,
           first_name: foundPlayer.first_name,
           last_name: foundPlayer.last_name,
           jersey_number: foundPlayer.jersey_number,
