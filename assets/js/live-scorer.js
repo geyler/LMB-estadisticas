@@ -18,9 +18,10 @@ const LiveScorer = {
   activePitcherId: null,
   outsCount: 0,
 
-  baseRunners: { b1: false, b2: false, b3: false },
+  baseRunners: { b1: null, b2: null, b3: null },  // null or { id, name, jersey }
   isSyncing: false,
   autoSyncTimer: null,
+  hasDH: false,  // true if the lineup uses a Designated Hitter
 
   init(gameDetailData) {
     this.game = gameDetailData.game;
@@ -121,7 +122,7 @@ const LiveScorer = {
     this.outsCount = 0;
     this.awayLineupIndex = 0;
     this.homeLineupIndex = 0;
-    this.baseRunners = { b1: false, b2: false, b3: false };
+    this.baseRunners = { b1: null, b2: null, b3: null };
 
     this.autoSelectActivePlayers();
     this.renderScorerInterface();
@@ -155,13 +156,39 @@ const LiveScorer = {
   },
 
   toggleRunner(base) {
-    this.baseRunners[base] = !this.baseRunners[base];
+    this.baseRunners[base] = this.baseRunners[base] ? null : { id: 0, name: '?', jersey: '?' };
     this.renderScorerInterface();
   },
 
   clearRunners() {
-    this.baseRunners = { b1: false, b2: false, b3: false };
+    this.baseRunners = { b1: null, b2: null, b3: null };
     this.renderScorerInterface();
+  },
+
+  // Helper: create a runner object from current batter
+  _makeRunner(playerId) {
+    const isTop = this.game.half_inning === 'top';
+    const battingList = isTop ? this.awayBatters : this.homeBatters;
+    const p = battingList.find(b => (b.player_id || b.id) == playerId);
+    if (p) return { id: parseInt(p.player_id || p.id), name: `${p.first_name} ${p.last_name}`, jersey: p.jersey_number };
+    return { id: parseInt(playerId), name: '?', jersey: '?' };
+  },
+
+  // Helper: send scoring runs to server for each runner
+  async _sendScoringRuns(scoringRunners, rbiBatterId) {
+    for (const runner of scoringRunners) {
+      await this.sendDirectPlay({
+        action: 'record_run',
+        game_id: this.game.id,
+        inning: this.game.current_inning,
+        half_inning: this.game.half_inning,
+        runner_id: runner.id,
+        rbi_batter_id: rbiBatterId,
+        b1: this.baseRunners.b1 ? 1 : 0,
+        b2: this.baseRunners.b2 ? 1 : 0,
+        b3: this.baseRunners.b3 ? 1 : 0
+      });
+    }
   },
 
   autoSelectActivePlayers() {
@@ -171,13 +198,15 @@ const LiveScorer = {
     const activeIndex = isTop ? this.awayLineupIndex : this.homeLineupIndex;
 
     if (battingList.length > 0) {
-      this.activeBatterId = battingList[activeIndex % battingList.length].player_id;
+      this.activeBatterId = battingList[activeIndex % battingList.length].player_id || battingList[activeIndex % battingList.length].id;
     } else {
       this.activeBatterId = null;
     }
 
     if (pitchingList.length > 0) {
-      this.activePitcherId = pitchingList[0].player_id;
+      // Prioritize explicit pitcher ('P')
+      const explicitPitcher = pitchingList.find(p => p.position === 'P');
+      this.activePitcherId = explicitPitcher ? (explicitPitcher.player_id || explicitPitcher.id) : (pitchingList[0].player_id || pitchingList[0].id);
     } else {
       this.activePitcherId = null;
     }
@@ -263,14 +292,14 @@ const LiveScorer = {
               </div>
 
               <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
-                <button class="md-chip" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:${this.baseRunners.b1 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b1 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b1 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b1')">
-                  1ª Base: ${this.baseRunners.b1 ? '🏃 SI' : '○ NO'}
+                <button class="md-chip" style="padding:4px 8px; font-size:0.72rem; font-weight:800; background:${this.baseRunners.b1 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b1 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b1 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b1')">
+                  1ª: ${this.baseRunners.b1 ? '🏃 #' + this.baseRunners.b1.jersey + ' ' + (this.baseRunners.b1.name || '').split(' ')[0] : '○ vacía'}
                 </button>
-                <button class="md-chip" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:${this.baseRunners.b2 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b2 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b2 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b2')">
-                  2ª Base: ${this.baseRunners.b2 ? '🏃 SI' : '○ NO'}
+                <button class="md-chip" style="padding:4px 8px; font-size:0.72rem; font-weight:800; background:${this.baseRunners.b2 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b2 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b2 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b2')">
+                  2ª: ${this.baseRunners.b2 ? '🏃 #' + this.baseRunners.b2.jersey + ' ' + (this.baseRunners.b2.name || '').split(' ')[0] : '○ vacía'}
                 </button>
-                <button class="md-chip" style="padding:4px 8px; font-size:0.75rem; font-weight:800; background:${this.baseRunners.b3 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b3 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b3 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b3')">
-                  3ª Base: ${this.baseRunners.b3 ? '🏃 SI' : '○ NO'}
+                <button class="md-chip" style="padding:4px 8px; font-size:0.72rem; font-weight:800; background:${this.baseRunners.b3 ? '#E6F4EA' : '#FFFFFF'}; color:${this.baseRunners.b3 ? '#188038' : '#5F6368'}; border:1px solid ${this.baseRunners.b3 ? '#188038' : '#DADCE0'};" onclick="LiveScorer.toggleRunner('b3')">
+                  3ª: ${this.baseRunners.b3 ? '🏃 #' + this.baseRunners.b3.jersey + ' ' + (this.baseRunners.b3.name || '').split(' ')[0] : '○ vacía'}
                 </button>
               </div>
             </div>
@@ -281,7 +310,7 @@ const LiveScorer = {
         <div class="md-card" style="background:#FFFFFF; border:1px solid #DADCE0;">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F3F4; padding-bottom:8px;">
             <div>
-              <div style="font-size:0.72rem; font-weight:700; color:#1A73E8; text-transform:uppercase;">⚡ Bateador Actual (Turno ${(isTop ? this.awayLineupIndex : this.homeLineupIndex) + 1}/9)</div>
+              <div style="font-size:0.72rem; font-weight:700; color:#1A73E8; text-transform:uppercase;">⚡ Bateador Actual (Turno ${(isTop ? this.awayLineupIndex : this.homeLineupIndex) + 1}/${battingList.length})</div>
               <div style="font-size:1rem; font-weight:800; color:#202124;" class="text-truncate">${batterName}</div>
             </div>
             <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.72rem;" onclick="LiveScorer.showSubstitutionModal('batter')">🔄 Cambiar</button>
@@ -309,9 +338,8 @@ const LiveScorer = {
             <button class="md-btn" style="background:#0F9D58; color:#FFFFFF; font-weight:900;" onclick="LiveScorer.confirmPlay('HR', '💥 JONRÓN (HR)', 0)">💥 JONRÓN (HR)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base por Bolas)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('HBP', 'Golpeado / Pelotazo (HBP)', 0)">💥 HBP (Pelotazo)</button>
-            <button class="md-btn" style="grid-column: span 2; background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SB', 'Robo de Base (SB)', 0)">🏃 SB (Robo de Base)</button>
-            
-            <button class="md-btn" style="grid-column: span 2; background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.showRunScoredModal()">⚽ +1 Carrera Anotada / Impulsada</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) ? 'opacity:0.5;' : ''}" onclick="LiveScorer.showStolenBaseModal()">🏃 SB (Robo de Base)</button>
+            <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.showRunScoredModal()">⚽ +1 Carrera Manual</button>
           </div>
 
           <!-- OUTS & DEFENSIVE PLAYS (RED #EA4335) -->
@@ -324,12 +352,14 @@ const LiveScorer = {
             <button class="md-btn" style="background:#EA4335; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('GO', 'Ground Out (Rodado)', 1)">Ground Out (G)</button>
             <button class="md-btn" style="background:#D93025; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SF', 'Fly de Sacrificio (SF)', 1)">SF (Fly Sacrificio)</button>
             <button class="md-btn" style="background:#D93025; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('SAC', 'Toque Sacrificio (SAC)', 1)">SAC (Toque Sacrificio)</button>
+            <button class="md-btn" style="background:#D93025; color:#FFFFFF; font-weight:800; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) ? 'opacity:0.5;' : ''}" onclick="LiveScorer.showFieldersChoiceModal()">FC (Bola Ocupada)</button>
+            <button class="md-btn" style="background:#C5221F; color:#FFFFFF; font-weight:800; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) ? 'opacity:0.5;' : ''}" onclick="LiveScorer.showCaughtStealingModal()">CS (Cogido Robando)</button>
             <button class="md-btn" style="background:${(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) && this.outsCount < 2 ? '#C5221F' : '#94A3B8'}; color:#FFFFFF; font-weight:900; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) || this.outsCount >= 2 ? 'opacity:0.6;' : ''}" onclick="LiveScorer.confirmPlay('DP', 'Double Play (2 Outs)', 2)">Double Play (DP)</button>
           </div>
         </div>
 
         <!-- Change Inning Button -->
-        <div style="display:flex; gap:10px; margin-top:10px;">
+        <div style="display:flex; gap:10px; margin-top:10px; padding-bottom:20px;">
           <button class="md-btn md-btn-outlined" style="flex:1;" onclick="LiveScorer.toggleHalfInning()">🔁 Cambiar de Entrada / Inning</button>
           <button class="md-btn md-btn-primary" style="flex:1;" onclick="LiveScorer.finishGame()">🏁 Finalizar Partido</button>
         </div>
@@ -387,36 +417,91 @@ const LiveScorer = {
   async recordPlay(code, label, outsAdded = 0) {
     let runs = 0;
     let rbiCount = 0;
+    const scoringRunners = [];
 
     if (!this.currentInningRunners) this.currentInningRunners = [];
     const activePid = parseInt(this.activeBatterId || 0);
-    if (activePid > 0 && ['1B', '2B', '3B', 'HR', 'BB', 'HBP'].includes(code)) {
+    const batterRunner = this._makeRunner(activePid);
+
+    // Track runners who reach base this inning
+    if (activePid > 0 && ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'FC'].includes(code)) {
       if (!this.currentInningRunners.includes(activePid)) {
         this.currentInningRunners.push(activePid);
       }
     }
 
+    const { b1, b2, b3 } = this.baseRunners;
+
     if (code === 'HR') {
-      const runnersOnBase = (this.baseRunners.b1 ? 1 : 0) + (this.baseRunners.b2 ? 1 : 0) + (this.baseRunners.b3 ? 1 : 0);
-      runs = 1 + runnersOnBase;
+      // All runners + batter score
+      if (b3) scoringRunners.push(b3);
+      if (b2) scoringRunners.push(b2);
+      if (b1) scoringRunners.push(b1);
+      scoringRunners.push(batterRunner);
+      runs = scoringRunners.length;
       rbiCount = runs;
       label = `Jonrón (HR) - ${runs} Carrera(s)`;
-      this.baseRunners = { b1: false, b2: false, b3: false };
+      this.baseRunners = { b1: null, b2: null, b3: null };
+
     } else if (code === '1B') {
-      this.baseRunners = { b1: true, b2: this.baseRunners.b1, b3: this.baseRunners.b2 };
+      // Single: runner on 3B scores, others advance 1
+      if (b3) { scoringRunners.push(b3); runs++; rbiCount++; }
+      this.baseRunners = { b1: batterRunner, b2: b1 || null, b3: b2 || null };
+
     } else if (code === '2B') {
-      this.baseRunners = { b1: false, b2: true, b3: this.baseRunners.b1 };
+      // Double: runners on 2B and 3B score, 1B goes to 3B
+      if (b3) { scoringRunners.push(b3); runs++; rbiCount++; }
+      if (b2) { scoringRunners.push(b2); runs++; rbiCount++; }
+      this.baseRunners = { b1: null, b2: batterRunner, b3: b1 || null };
+
     } else if (code === '3B') {
-      this.baseRunners = { b1: false, b2: false, b3: true };
+      // Triple: all runners score
+      if (b3) { scoringRunners.push(b3); runs++; rbiCount++; }
+      if (b2) { scoringRunners.push(b2); runs++; rbiCount++; }
+      if (b1) { scoringRunners.push(b1); runs++; rbiCount++; }
+      this.baseRunners = { b1: null, b2: null, b3: batterRunner };
+
     } else if (code === 'BB' || code === 'HBP') {
-      if (this.baseRunners.b1) {
-        if (this.baseRunners.b2) this.baseRunners.b3 = true;
-        this.baseRunners.b2 = true;
+      // Walk / Hit by pitch: forced advancement
+      if (b1 && b2 && b3) {
+        // Bases loaded: runner on 3B forced home
+        scoringRunners.push(b3);
+        runs = 1; rbiCount = 1;
+        this.baseRunners = { b1: batterRunner, b2: b1, b3: b2 };
+      } else if (b1 && b2) {
+        this.baseRunners = { b1: batterRunner, b2: b1, b3: b2 };
+      } else if (b1) {
+        this.baseRunners = { b1: batterRunner, b2: b1, b3: b3 };
+      } else {
+        this.baseRunners = { b1: batterRunner, b2: b2, b3: b3 };
       }
-      this.baseRunners.b1 = true;
+
+    } else if (code === 'SF') {
+      // Sacrifice fly: runner on 3B scores if present, +1 out
+      if (b3) {
+        scoringRunners.push(b3);
+        runs = 1; rbiCount = 1;
+      }
+      this.baseRunners = { b1: b1, b2: b2, b3: null };
+
+    } else if (code === 'SAC') {
+      // Sacrifice bunt: runners advance 1 base, batter is out
+      if (b3) { scoringRunners.push(b3); runs++; rbiCount++; }
+      this.baseRunners = { b1: null, b2: b1 || null, b3: b2 || null };
+
+    } else if (code === 'FC') {
+      // Fielder's choice: batter reaches 1B, one runner out (handled by outsAdded)
+      // The specific runner removed is handled by the FC modal before calling recordPlay
+      this.baseRunners.b1 = batterRunner;
+
     } else if (code === 'SB') {
-      if (this.baseRunners.b2) this.baseRunners.b3 = true;
-      if (this.baseRunners.b1) this.baseRunners.b2 = true;
+      // Stolen base is handled separately via showStolenBaseModal
+      // This fallback just keeps bases as-is
+    }
+    // For SO, FO, GO, OUT, K, DP: no base changes (runners stay)
+
+    if (runs > 0 && code !== 'HR') {
+      label += ` - ${runs} Carrera(s) Anotada(s)`;
     }
 
     const payload = {
@@ -432,6 +517,7 @@ const LiveScorer = {
       description: label,
       runs_scored: runs,
       rbi_count: rbiCount,
+      scoring_runners: scoringRunners.map(r => r.id),
       b1: this.baseRunners.b1 ? 1 : 0,
       b2: this.baseRunners.b2 ? 1 : 0,
       b3: this.baseRunners.b3 ? 1 : 0
@@ -451,14 +537,14 @@ const LiveScorer = {
       if (this.outsCount >= 3) {
         App.showSnackbar("¡3 Outs completados! Cambio automático de media entrada.");
         this.outsCount = 0;
-        this.baseRunners = { b1: false, b2: false, b3: false };
+        this.baseRunners = { b1: null, b2: null, b3: null };
         await this.toggleHalfInning();
         return;
       }
     }
 
     App.showSnackbar(`✓ Jugada guardada en servidor: ${label}`);
-    if (code !== 'SB') {
+    if (!['SB', 'CS'].includes(code)) {
       this.advanceBatterLineup();
     }
     this.renderScorerInterface();
@@ -482,6 +568,16 @@ const LiveScorer = {
     const body = document.getElementById('live-run-body');
     if (!body) return;
 
+    // Identify active runners on base (priority: 3B -> 2B -> 1B)
+    const onBaseList = [];
+    if (this.baseRunners.b3) onBaseList.push({ ...this.baseRunners.b3, baseLabel: '3ª Base' });
+    if (this.baseRunners.b2) onBaseList.push({ ...this.baseRunners.b2, baseLabel: '2ª Base' });
+    if (this.baseRunners.b1) onBaseList.push({ ...this.baseRunners.b1, baseLabel: '1ª Base' });
+
+    // Closest runner to home plate is preselected
+    const leadRunner = onBaseList.length > 0 ? onBaseList[0] : null;
+    const defaultScorerId = leadRunner ? leadRunner.id : (this.activeBatterId || 0);
+
     const embasados = [];
     const rest = [];
 
@@ -501,21 +597,30 @@ const LiveScorer = {
 
       <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
         <label style="font-size:0.82rem; font-weight:800; color:#202124;">
-          🏃 Jugador que Anota la Carrera (R):
+          🏃 Corredor que Anota la Carrera (R):
         </label>
         <select id="run-scorer-select" class="form-control" style="font-weight:700; font-size:0.88rem;">
+          ${onBaseList.length ? `
+            <optgroup label="⚡ Corredores en Base (Recomendado)">
+              ${onBaseList.map(r => `
+                <option value="${r.id}" ${r.id == defaultScorerId ? 'selected' : ''}>
+                  🏃 #${r.jersey || 0} ${r.name} (en ${r.baseLabel})
+                </option>
+              `).join('')}
+            </optgroup>
+          ` : ''}
           ${embasados.length ? `
-            <optgroup label="🔥 Jugadores Embasados esta Entrada (${embasados.length})">
+            <optgroup label="🔥 Embasados en esta Entrada (${embasados.length})">
               ${embasados.map(p => {
                 const pid = p.player_id || p.id;
-                return `<option value="${pid}" ${pid == this.activeBatterId ? 'selected' : ''}>#${p.jersey_number || 0} ${p.first_name} ${p.last_name} (${p.position || 'Jugador'})</option>`;
+                return `<option value="${pid}" ${pid == defaultScorerId && !onBaseList.length ? 'selected' : ''}>#${p.jersey_number || 0} ${p.first_name} ${p.last_name} (${p.position || 'Jugador'})</option>`;
               }).join('')}
             </optgroup>
           ` : ''}
-          <optgroup label="📋 Todos los Jugadores del Plantel (${rest.length})">
+          <optgroup label="📋 Todos los Jugadores del Plantel">
             ${rest.map(p => {
               const pid = p.player_id || p.id;
-              return `<option value="${pid}" ${pid == this.activeBatterId ? 'selected' : ''}>#${p.jersey_number || 0} ${p.first_name} ${p.last_name} (${p.position || 'Jugador'})</option>`;
+              return `<option value="${pid}" ${pid == defaultScorerId && !onBaseList.length && !embasados.length ? 'selected' : ''}>#${p.jersey_number || 0} ${p.first_name} ${p.last_name} (${p.position || 'Jugador'})</option>`;
             }).join('')}
           </optgroup>
         </select>
@@ -526,10 +631,10 @@ const LiveScorer = {
           ⚾ Carrera Impulsada por (CI / RBI):
         </label>
         <select id="run-rbi-select" class="form-control" style="font-weight:700; font-size:0.88rem;">
-          <option value="${currentBatter ? (currentBatter.player_id || currentBatter.id) : 0}">
+          <option value="${currentBatter ? (currentBatter.player_id || currentBatter.id) : 0}" selected>
             ⚡ ${currentBatter ? '#' + currentBatter.jersey_number + ' ' + currentBatter.first_name + ' ' + currentBatter.last_name : 'Bateador Actual'} (Bateador en Turno)
           </option>
-          <option value="0">❌ Sin Impulsada (Error / Wild Pitch / Passed Ball / etc.)</option>
+          <option value="0">❌ Sin Impulsada (Error / Wild Pitch / Passed Ball / Robo)</option>
           <optgroup label="👥 Otro Jugador del Plantel">
             ${battingList.filter(p => (p.player_id || p.id) != this.activeBatterId).map(p => {
               const pid = p.player_id || p.id;
@@ -587,12 +692,19 @@ const LiveScorer = {
       this.game.home_score++;
     }
 
-    if (this.baseRunners.b3) {
-      this.baseRunners.b3 = false;
+    // Remove the runner from base (specific base or by closest proximity to home)
+    if (this.baseRunners.b3 && this.baseRunners.b3.id === runnerId) {
+      this.baseRunners.b3 = null;
+    } else if (this.baseRunners.b2 && this.baseRunners.b2.id === runnerId) {
+      this.baseRunners.b2 = null;
+    } else if (this.baseRunners.b1 && this.baseRunners.b1.id === runnerId) {
+      this.baseRunners.b1 = null;
+    } else if (this.baseRunners.b3) {
+      this.baseRunners.b3 = null;
     } else if (this.baseRunners.b2) {
-      this.baseRunners.b2 = false;
+      this.baseRunners.b2 = null;
     } else if (this.baseRunners.b1) {
-      this.baseRunners.b1 = false;
+      this.baseRunners.b1 = null;
     }
 
     const battingList = isTop ? this.awayBatters : this.homeBatters;
@@ -629,7 +741,7 @@ const LiveScorer = {
     this.game.current_inning = nextInning;
     this.game.half_inning = nextHalf;
     this.outsCount = 0;
-    this.baseRunners = { b1: false, b2: false, b3: false };
+    this.baseRunners = { b1: null, b2: null, b3: null };
 
     this.autoSelectActivePlayers();
     this.renderScorerInterface();
@@ -873,6 +985,236 @@ const LiveScorer = {
         App.showAlert("Partido Finalizado", `El resultado final (${this.game.away_score} - ${this.game.home_score}) ha sido registrado exitosamente.`, "check_circle", "#10B981");
         App.showView('game_detail', this.game.id);
       }
+    }
+  },
+
+  // --- INTERACTIVE PLAY MODAL (SB, CS, FC) ---
+  _getOrCreatePlayModal() {
+    let modal = document.getElementById('live-interactive-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'live-interactive-modal';
+      modal.className = 'md-modal-backdrop';
+      modal.innerHTML = `
+        <div class="md-bottom-sheet" style="max-width:480px; max-height:90vh; overflow-y:auto; padding-bottom:calc(60px + env(safe-area-inset-bottom, 0px));">
+          <div class="sheet-handle" onclick="LiveScorer.closeInteractivePlayModal()"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="live-interactive-title" style="font-size:1.05rem; font-weight:800; color:#202124; display:flex; align-items:center; gap:6px;">
+              Acción
+            </h3>
+            <button class="md-btn md-btn-outlined" style="padding:4px 8px; font-size:0.75rem;" onclick="LiveScorer.closeInteractivePlayModal()">✕</button>
+          </div>
+          <div id="live-interactive-body" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+    return modal;
+  },
+
+  closeInteractivePlayModal() {
+    const modal = document.getElementById('live-interactive-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  showStolenBaseModal() {
+    const runners = [];
+    if (this.baseRunners.b1) runners.push({ base: 'b1', baseName: '1ª Base', runner: this.baseRunners.b1 });
+    if (this.baseRunners.b2) runners.push({ base: 'b2', baseName: '2ª Base', runner: this.baseRunners.b2 });
+    if (this.baseRunners.b3) runners.push({ base: 'b3', baseName: '3ª Base', runner: this.baseRunners.b3 });
+
+    if (!runners.length) {
+      App.showAlert("Robo de Base", "No hay corredores en base en este momento para realizar un robo.", "warning", "#F59E0B");
+      return;
+    }
+
+    const modal = this._getOrCreatePlayModal();
+    const title = document.getElementById('live-interactive-title');
+    const body = document.getElementById('live-interactive-body');
+    if (title) title.innerHTML = `<span class="material-icons-round" style="color:#188038;">directions_run</span> Robo de Base (SB)`;
+
+    let html = `
+      <div style="font-size:0.85rem; font-weight:700; color:#5F6368;">
+        Selecciona qué corredor realiza el robo:
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${runners.map(r => {
+          let targets = [];
+          if (r.base === 'b1') targets = [{ to: 'b2', label: '2ª Base' }, { to: 'b3', label: '3ª Base' }];
+          if (r.base === 'b2') targets = [{ to: 'b3', label: '3ª Base' }, { to: 'home', label: '🏠 Home Plate (Anota)' }];
+          if (r.base === 'b3') targets = [{ to: 'home', label: '🏠 Home Plate (Anota)' }];
+
+          return `
+            <div style="background:#F8F9FA; border:1px solid #DADCE0; border-radius:10px; padding:10px;">
+              <div style="font-weight:800; font-size:0.9rem; color:#202124;">
+                ${r.baseName}: <span style="color:#188038;">#${r.runner.jersey || ''} ${r.runner.name}</span>
+              </div>
+              <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+                ${targets.map(t => `
+                  <button class="md-btn md-btn-primary" style="padding:6px 12px; font-size:0.8rem; background:#188038; border-color:#188038; font-weight:800;" onclick="LiveScorer.applyStolenBase('${r.base}', '${t.to}')">
+                    🏃 Robar ${t.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    body.innerHTML = html;
+    modal.classList.add('open');
+  },
+
+  async applyStolenBase(fromBase, toBase) {
+    const runner = this.baseRunners[fromBase];
+    if (!runner) return;
+
+    this.closeInteractivePlayModal();
+    this.baseRunners[fromBase] = null;
+
+    let runs = 0;
+    let desc = `Robo de Base: #${runner.jersey || ''} ${runner.name} roba `;
+    const scoringRunners = [];
+
+    if (toBase === 'home') {
+      runs = 1;
+      scoringRunners.push(runner);
+      desc += 'Home Plate (+1 Carrera)';
+    } else {
+      this.baseRunners[toBase] = runner;
+      desc += (toBase === 'b2' ? '2ª Base' : '3ª Base');
+    }
+
+    const payload = {
+      action: 'record_play',
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning,
+      batter_id: this.activeBatterId,
+      pitcher_id: this.activePitcherId,
+      runner_id: runner.id,
+      outs_before: this.outsCount,
+      outs_added: 0,
+      result_code: 'SB',
+      description: desc,
+      runs_scored: runs,
+      rbi_count: 0,
+      scoring_runners: scoringRunners.map(r => r.id),
+      b1: this.baseRunners.b1 ? 1 : 0,
+      b2: this.baseRunners.b2 ? 1 : 0,
+      b3: this.baseRunners.b3 ? 1 : 0
+    };
+
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
+    if (runs > 0) {
+      const isTop = this.game.half_inning === 'top';
+      if (isTop) this.game.away_score += runs;
+      else this.game.home_score += runs;
+    }
+
+    App.showSnackbar(`✓ ${desc}`);
+    this.renderScorerInterface();
+  },
+
+  showCaughtStealingModal() {
+    const runners = [];
+    if (this.baseRunners.b1) runners.push({ base: 'b1', baseName: '1ª Base', runner: this.baseRunners.b1 });
+    if (this.baseRunners.b2) runners.push({ base: 'b2', baseName: '2ª Base', runner: this.baseRunners.b2 });
+    if (this.baseRunners.b3) runners.push({ base: 'b3', baseName: '3ª Base', runner: this.baseRunners.b3 });
+
+    if (!runners.length) {
+      App.showAlert("Cogido Robando", "No hay corredores en base.", "warning", "#F59E0B");
+      return;
+    }
+
+    const modal = this._getOrCreatePlayModal();
+    const title = document.getElementById('live-interactive-title');
+    const body = document.getElementById('live-interactive-body');
+    if (title) title.innerHTML = `<span class="material-icons-round" style="color:#EA4335;">highlight_off</span> Cogido Robando (CS)`;
+
+    let html = `
+      <div style="font-size:0.85rem; font-weight:700; color:#5F6368;">
+        Selecciona qué corredor fue puesto out en intento de robo (+1 Out):
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${runners.map(r => `
+          <button class="md-btn md-btn-outlined" style="padding:10px; font-size:0.88rem; font-weight:800; border-color:#EA4335; color:#EA4335; text-align:left; justify-content:flex-start;" onclick="LiveScorer.applyCaughtStealing('${r.base}')">
+            ❌ En ${r.baseName}: #${r.runner.jersey || ''} ${r.runner.name}
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    body.innerHTML = html;
+    modal.classList.add('open');
+  },
+
+  async applyCaughtStealing(baseKey) {
+    const runner = this.baseRunners[baseKey];
+    this.closeInteractivePlayModal();
+    if (!runner) return;
+
+    this.baseRunners[baseKey] = null;
+    const label = `Cogido Robando (CS): #${runner.jersey || ''} ${runner.name} en ${baseKey === 'b1' ? '1ª' : (baseKey === 'b2' ? '2ª' : '3ª')} Base`;
+    await this.recordPlay('CS', label, 1);
+  },
+
+  showFieldersChoiceModal() {
+    const runners = [];
+    if (this.baseRunners.b1) runners.push({ base: 'b1', baseName: '1ª Base', runner: this.baseRunners.b1 });
+    if (this.baseRunners.b2) runners.push({ base: 'b2', baseName: '2ª Base', runner: this.baseRunners.b2 });
+    if (this.baseRunners.b3) runners.push({ base: 'b3', baseName: '3ª Base', runner: this.baseRunners.b3 });
+
+    if (!runners.length) {
+      App.showAlert("Bola Ocupada", "No hay corredores en base para una jugada de bola ocupada.", "warning", "#F59E0B");
+      return;
+    }
+
+    const modal = this._getOrCreatePlayModal();
+    const title = document.getElementById('live-interactive-title');
+    const body = document.getElementById('live-interactive-body');
+    if (title) title.innerHTML = `<span class="material-icons-round" style="color:#D93025;">transfer_within_a_station</span> Bola Ocupada (FC)`;
+
+    let html = `
+      <div style="font-size:0.85rem; font-weight:700; color:#5F6368;">
+        ¿A qué corredor pusieron out en la jugada? (+1 Out, el bateador avanza a 1ª Base):
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${runners.map(r => `
+          <button class="md-btn md-btn-outlined" style="padding:10px; font-size:0.88rem; font-weight:800; border-color:#D93025; color:#D93025; text-align:left; justify-content:flex-start;" onclick="LiveScorer.applyFieldersChoice('${r.base}')">
+            ❌ Out a ${r.baseName}: #${r.runner.jersey || ''} ${r.runner.name}
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    body.innerHTML = html;
+    modal.classList.add('open');
+  },
+
+  async applyFieldersChoice(outBaseKey) {
+    const outRunner = this.baseRunners[outBaseKey];
+    this.closeInteractivePlayModal();
+
+    // Remove the runner who was put out
+    this.baseRunners[outBaseKey] = null;
+
+    const label = `Bola Ocupada (FC): Out a #${outRunner ? (outRunner.jersey + ' ' + outRunner.name) : 'corredor'} en base; Bateador a 1ª Base`;
+    await this.recordPlay('FC', label, 1);
+  },
+
+  processOfflineQueue() {
+    // Background sync heartbeat
+  },
+
+  updateQueueBadgeUI() {
+    const badge = document.getElementById('live-queue-badge');
+    if (badge) {
+      badge.innerHTML = `🔴 ANOTADOR EN VIVO`;
     }
   }
 };

@@ -76,8 +76,10 @@ if ($action === 'record_play') {
     $description = trim($input['description'] ?? '');
     $runsScored = intval($input['runs_scored'] ?? 0);
     $rbiCount = intval($input['rbi_count'] ?? 0);
-    $outsAdded = intval($input['outs_added'] ?? (($resultCode === 'DP') ? 2 : (in_array($resultCode, ['SO', 'FO', 'GO', 'OUT', 'K']) || !empty($input['is_out']) ? 1 : 0)));
+    $outsAdded = intval($input['outs_added'] ?? (($resultCode === 'DP') ? 2 : (in_array($resultCode, ['SO', 'FO', 'GO', 'OUT', 'K', 'CS', 'FC', 'SF', 'SAC']) || !empty($input['is_out']) ? 1 : 0)));
     $outsBefore = intval($input['outs_before'] ?? 0);
+    $scoringRunners = is_array($input['scoring_runners'] ?? null) ? $input['scoring_runners'] : [];
+    $runnerId = intval($input['runner_id'] ?? 0);
 
     if (!$batterId || !$pitcherId) {
         echo json_encode(['success' => false, 'message' => 'Bateador y lanzador requeridos.']);
@@ -97,12 +99,41 @@ if ($action === 'record_play') {
     $stmtPbp = $pdo->prepare("INSERT INTO game_play_by_play (game_id, inning, half_inning, batter_id, pitcher_id, outs_before, result_code, description, runs_scored) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmtPbp->execute([$gameId, $game['current_inning'], $game['half_inning'], $batterId, $pitcherId, $outsBefore, $resultCode, $description, $runsScored]);
 
-    // Upsert Batting Stats
+    // Update runs scored (r) for all baserunners who crossed the plate
+    foreach ($scoringRunners as $sRunnerId) {
+        $sRunnerId = intval($sRunnerId);
+        if ($sRunnerId > 0 && $sRunnerId !== $batterId) {
+            $stmtSR = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+            $stmtSR->execute([$gameId, $sRunnerId]);
+            $srRow = $stmtSR->fetch();
+            if ($srRow) {
+                $pdo->prepare("UPDATE game_batting_stats SET r = r + 1 WHERE id = ?")->execute([$srRow['id']]);
+            } else {
+                $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, r) VALUES (?, ?, ?, 1)")
+                    ->execute([$gameId, $battingTeamId, $sRunnerId]);
+            }
+        }
+    }
+
+    // If stolen base with specific runner_id, credit SB to that runner
+    if ($resultCode === 'SB' && $runnerId > 0 && $runnerId !== $batterId) {
+        $stmtSB = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
+        $stmtSB->execute([$gameId, $runnerId]);
+        $sbRow = $stmtSB->fetch();
+        if ($sbRow) {
+            $pdo->prepare("UPDATE game_batting_stats SET sb = sb + 1 WHERE id = ?")->execute([$sbRow['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, sb) VALUES (?, ?, ?, 1)")
+                ->execute([$gameId, $battingTeamId, $runnerId]);
+        }
+    }
+
+    // Upsert Batting Stats for Current Batter
     $stmtBCheck = $pdo->prepare("SELECT * FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
     $stmtBCheck->execute([$gameId, $batterId]);
     $bStat = $stmtBCheck->fetch();
 
-    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF', 'SB']);
+    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF', 'SB', 'SAC', 'CS']);
     $isH = in_array($resultCode, ['1B', '2B', '3B', 'HR']);
     $is1B = ($resultCode === '1B') ? 1 : 0;
     $is2B = ($resultCode === '2B') ? 1 : 0;
@@ -110,19 +141,21 @@ if ($action === 'record_play') {
     $isHR = ($resultCode === 'HR') ? 1 : 0;
     $isBB = ($resultCode === 'BB') ? 1 : 0;
     $isSO = in_array($resultCode, ['SO', 'K']) ? 1 : 0;
-    $isSB = ($resultCode === 'SB') ? 1 : 0;
+    $isSB = ($resultCode === 'SB' && ($runnerId === 0 || $runnerId === $batterId)) ? 1 : 0;
     $isHBP = ($resultCode === 'HBP') ? 1 : 0;
     $isSF = ($resultCode === 'SF') ? 1 : 0;
+    // Batter scores a run if HR or if in scoring_runners
+    $batterRun = ($isHR || in_array($batterId, $scoringRunners)) ? 1 : 0;
 
     if ($bStat) {
         $pdo->prepare("UPDATE game_batting_stats SET 
             ab = ab + ?, r = r + ?, h = h + ?, singles = singles + ?, doubles = doubles + ?, 
             triples = triples + ?, hr = hr + ?, rbi = rbi + ?, bb = bb + ?, so = so + ?, 
             sb = sb + ?, hbp = hbp + ?, sf = sf + ? WHERE id = ?")
-        ->execute([$isAB?1:0, $runsScored, $isH?1:0, $is1B, $is2B, $is3B, $isHR, $rbiCount, $isBB, $isSO, $isSB, $isHBP, $isSF, $bStat['id']]);
+        ->execute([$isAB?1:0, $batterRun, $isH?1:0, $is1B, $is2B, $is3B, $isHR, $rbiCount, $isBB, $isSO, $isSB, $isHBP, $isSF, $bStat['id']]);
     } else {
         $pdo->prepare("INSERT INTO game_batting_stats (game_id, team_id, player_id, ab, r, h, singles, doubles, triples, hr, rbi, bb, so, sb, hbp, sf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        ->execute([$gameId, $battingTeamId, $batterId, $isAB?1:0, $runsScored, $isH?1:0, $is1B, $is2B, $is3B, $isHR, $rbiCount, $isBB, $isSO, $isSB, $isHBP, $isSF]);
+        ->execute([$gameId, $battingTeamId, $batterId, $isAB?1:0, $batterRun, $isH?1:0, $is1B, $is2B, $is3B, $isHR, $rbiCount, $isBB, $isSO, $isSB, $isHBP, $isSF]);
     }
 
     // Upsert Pitching Stats

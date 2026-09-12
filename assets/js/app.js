@@ -4604,11 +4604,14 @@ const App = {
     }
 
     body.innerHTML = `
-      <div style="font-size:0.85rem; font-weight:800; color:#1A73E8;" class="text-truncate">
-        Selecciona los jugadores activos para ${teamName} (${activePlayers.length} en plantel)
+      <div style="font-size:0.85rem; font-weight:800; color:#1A73E8; display:flex; justify-content:space-between; align-items:center;" class="text-truncate">
+        <span>Alineación de ${teamName} (${activePlayers.length} en plantel)</span>
+      </div>
+      <div style="font-size:0.75rem; color:#5F6368; background:#F1F3F4; padding:6px 10px; border-radius:8px; margin-top:4px;">
+        💡 <strong>Regla DH:</strong> Si asignas un <strong>DH</strong> (Bateador Designado), el lanzador (P) no bateará. Si no hay DH, el lanzador sí bateará en su turno.
       </div>
 
-      <div class="md-table-wrapper" style="border:none; max-height:50vh; overflow-y:auto;">
+      <div class="md-table-wrapper" style="border:none; max-height:48vh; overflow-y:auto; margin-top:6px;">
         <table class="md-table">
           <thead>
             <tr>
@@ -4661,9 +4664,11 @@ const App = {
         </table>
       </div>
 
-      <button class="md-btn md-btn-gold" style="width:100%; margin-top:8px;" onclick="App.handleSaveGameLineup()">
-        ✅ Aplicar Lineup de ${teamName}
-      </button>
+      <div style="padding-top:10px; padding-bottom:32px;">
+        <button class="md-btn md-btn-gold" style="width:100%; padding:12px 16px; font-size:0.95rem; font-weight:900;" onclick="App.handleSaveGameLineup()">
+          ✅ Aplicar Lineup de ${teamName}
+        </button>
+      </div>
     `;
   },
 
@@ -4694,7 +4699,7 @@ const App = {
     if (!LiveScorer.game) return;
 
     const isAway = (this.currentLineupTeamKey === 'away');
-    const selectedBatters = [];
+    const selectedPlayers = [];
 
     document.querySelectorAll('.gl-player-id').forEach(el => {
       const row = el.closest('tr');
@@ -4708,7 +4713,7 @@ const App = {
         const jersey = row.querySelector('.gl-player-jersey')?.value || '0';
         const bats = row.querySelector('.gl-player-bats')?.value || 'R';
 
-        selectedBatters.push({
+        selectedPlayers.push({
           player_id: playerId,
           first_name: firstName,
           last_name: lastName,
@@ -4720,9 +4725,7 @@ const App = {
       }
     });
 
-    selectedBatters.sort((a, b) => a.batting_order - b.batting_order);
-
-    if (!selectedBatters.length) {
+    if (!selectedPlayers.length) {
       this.showAlert("Atención", "Debes seleccionar al menos un jugador activo para la nómina.", "warning", "#F59E0B");
       return;
     }
@@ -4732,7 +4735,7 @@ const App = {
     const posCounts = {};
     const duplicates = [];
 
-    selectedBatters.forEach(b => {
+    selectedPlayers.forEach(b => {
       if (DEFENSIVE_POSITIONS.includes(b.position)) {
         if (!posCounts[b.position]) posCounts[b.position] = [];
         posCounts[b.position].push(`#${b.jersey_number} ${b.first_name} ${b.last_name}`);
@@ -4755,18 +4758,38 @@ const App = {
       return;
     }
 
+    // Check Designated Hitter (DH) rule:
+    // If a DH is selected, the Pitcher (P) does NOT bat.
+    // If no DH is selected, the Pitcher (P) DOES bat.
+    const hasDH = selectedPlayers.some(p => p.position === 'DH');
+    const pitchersList = selectedPlayers.filter(p => p.position === 'P');
+    
+    // Determine the batting order list:
+    let battingList = [...selectedPlayers];
+    if (hasDH) {
+      // Exclude pitcher(s) from batting order
+      battingList = battingList.filter(p => p.position !== 'P');
+    }
+    battingList.sort((a, b) => a.batting_order - b.batting_order);
+
+    // Determine pitching list: prioritize players with 'P', fallback to all active players
+    let finalPitchers = pitchersList.length > 0 ? pitchersList : [...selectedPlayers];
+
     if (isAway) {
-      LiveScorer.awayBatters = selectedBatters;
-      LiveScorer.awayPitchers = selectedBatters;
+      LiveScorer.awayBatters = battingList;
+      LiveScorer.awayPitchers = finalPitchers;
+      LiveScorer.hasDHAway = hasDH;
     } else {
-      LiveScorer.homeBatters = selectedBatters;
-      LiveScorer.homePitchers = selectedBatters;
+      LiveScorer.homeBatters = battingList;
+      LiveScorer.homePitchers = finalPitchers;
+      LiveScorer.hasDHHome = hasDH;
     }
 
     LiveScorer.autoSelectActivePlayers();
     LiveScorer.renderScorerInterface();
     this.closeGameLineupModal();
-    this.showSnackbar("✅ Lineup actualizado con éxito.");
+    const modeMsg = hasDH ? " (Regla DH activa: Pitcher no batea)" : " (Sin DH: Pitcher batea)";
+    this.showSnackbar(`✅ Lineup actualizado con éxito${modeMsg}.`);
   },
 
   async showCreateStageModal() {

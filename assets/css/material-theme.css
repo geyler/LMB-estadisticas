@@ -84,7 +84,7 @@ body {
   flex-direction: column;
   position: relative;
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.06), 0 0 0 1px #DADCE0;
-  padding-bottom: 76px;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Top App Header (Google White Header) */
@@ -891,7 +891,7 @@ body {
   overflow-y: auto;
   background: #FFFFFF;
   border-radius: 20px 20px 0 0;
-  padding: 20px 20px 40px 20px;
+  padding: 20px 20px calc(60px + env(safe-area-inset-bottom, 0px)) 20px;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
   border-top: 1px solid #E2E8F0;
   transform: translateY(100%);
