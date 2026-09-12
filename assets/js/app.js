@@ -2893,8 +2893,9 @@ const App = {
 
       const catSelect = document.getElementById('ct-team-category');
       if (catSelect) {
-        catSelect.innerHTML = `<option value="0">Sin Asignación (Libre / Inactivo)</option>` + 
-          categories.map(c => `<option value="${c.id}">${c.name} (${c.code || ''})</option>`).join('');
+        const activeCat = parseInt(this.currentCategory || 0);
+        catSelect.innerHTML = `<option value="0" ${activeCat === 0 ? 'selected' : ''}>Sin Asignación (Libre / Inactivo)</option>` + 
+          categories.map(c => `<option value="${c.id}" ${parseInt(c.id) === activeCat ? 'selected' : ''}>${c.name} (${c.code || ''})</option>`).join('');
       }
 
       const stadSelect = document.getElementById('ct-team-stadium');
@@ -4633,13 +4634,16 @@ const App = {
               return `
                 <tr>
                   <td style="text-align:center;">
-                    <input type="checkbox" class="gl-player-active" value="${p.player_id}" ${inLineup ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;" onchange="App.reindexGameLineupOrders()">
+                    <input type="checkbox" class="gl-player-active" value="${p.player_id}" ${inLineup ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;" onchange="App.onGameLineupPosChange()">
                   </td>
                   <td style="text-align:center;">
-                    <div style="display:inline-flex; align-items:center; gap:2px;">
+                    <div class="gl-order-container" style="display:inline-flex; align-items:center; gap:2px;">
                       <button type="button" class="md-btn md-btn-outlined" style="padding:2px 4px; font-size:0.65rem; font-weight:800;" onclick="App.moveGameLineupRow(this, -1)" title="Subir orden">⬆️</button>
                       <input type="number" min="1" max="20" class="form-control gl-player-order" value="${orderDisplay}" style="padding:2px; width:34px; text-align:center; font-weight:800;" onchange="App.reindexGameLineupOrders()">
                       <button type="button" class="md-btn md-btn-outlined" style="padding:2px 4px; font-size:0.65rem; font-weight:800;" onclick="App.moveGameLineupRow(this, 1)" title="Bajar orden">⬇️</button>
+                    </div>
+                    <div class="gl-no-bat-badge" style="display:none; font-size:0.65rem; font-weight:800; color:#DC2626; background:#FEE2E2; padding:3px 6px; border-radius:6px; white-space:nowrap;">
+                      🚫 No batea
                     </div>
                   </td>
                   <td style="font-weight:700;" class="text-truncate">
@@ -4651,7 +4655,7 @@ const App = {
                     <input type="hidden" class="gl-player-bats" value="${p.bats || 'R'}">
                   </td>
                   <td>
-                    <select class="form-control gl-player-pos" style="padding:2px 4px; font-size:0.75rem; font-weight:800; width:68px;">
+                    <select class="form-control gl-player-pos" style="padding:2px 4px; font-size:0.75rem; font-weight:800; width:68px;" onchange="App.onGameLineupPosChange()">
                       ${positionsList.map(pos => `
                         <option value="${pos}" ${pos === activePos ? 'selected' : ''}>${pos}</option>
                       `).join('')}
@@ -4670,6 +4674,36 @@ const App = {
         </button>
       </div>
     `;
+
+    setTimeout(() => this.onGameLineupPosChange(), 10);
+  },
+
+  onGameLineupPosChange() {
+    const rows = document.querySelectorAll('#game-lineup-body tbody tr');
+    let hasDH = false;
+    rows.forEach(tr => {
+      const pos = tr.querySelector('.gl-player-pos')?.value;
+      const active = tr.querySelector('.gl-player-active')?.checked;
+      if (active && pos === 'DH') hasDH = true;
+    });
+
+    rows.forEach(tr => {
+      const pos = tr.querySelector('.gl-player-pos')?.value;
+      const orderContainer = tr.querySelector('.gl-order-container');
+      const noBatBadge = tr.querySelector('.gl-no-bat-badge');
+      const orderInput = tr.querySelector('.gl-player-order');
+
+      if (pos === 'P' && hasDH) {
+        if (orderContainer) orderContainer.style.display = 'none';
+        if (noBatBadge) noBatBadge.style.display = 'inline-block';
+        if (orderInput) orderInput.value = '99';
+      } else {
+        if (orderContainer) orderContainer.style.display = 'inline-flex';
+        if (noBatBadge) noBatBadge.style.display = 'none';
+      }
+    });
+
+    this.reindexGameLineupOrders();
   },
 
   moveGameLineupRow(btn, direction) {
@@ -4686,11 +4720,25 @@ const App = {
 
   reindexGameLineupOrders() {
     let orderCounter = 1;
-    document.querySelectorAll('#game-lineup-body tbody tr').forEach(tr => {
+    const rows = document.querySelectorAll('#game-lineup-body tbody tr');
+    let hasDH = false;
+    rows.forEach(tr => {
+      const pos = tr.querySelector('.gl-player-pos')?.value;
+      const active = tr.querySelector('.gl-player-active')?.checked;
+      if (active && pos === 'DH') hasDH = true;
+    });
+
+    rows.forEach(tr => {
+      const activeChk = tr.querySelector('.gl-player-active');
+      const pos = tr.querySelector('.gl-player-pos')?.value;
       const orderInput = tr.querySelector('.gl-player-order');
-      if (orderInput) {
-        orderInput.value = orderCounter;
-        orderCounter++;
+      if (activeChk && activeChk.checked && orderInput) {
+        if (pos === 'P' && hasDH) {
+          orderInput.value = '99';
+        } else {
+          orderInput.value = orderCounter;
+          orderCounter++;
+        }
       }
     });
   },

@@ -182,6 +182,7 @@ if ($action === 'detail') {
                 p.first_name,
                 p.last_name,
                 p.jersey_number,
+                COALESCE(p.position_primary, 'P') as position,
                 COALESCE(ps.ip_outs, 0) as ip_outs,
                 COALESCE(ps.h, 0) as h,
                 COALESCE(ps.r, 0) as r,
@@ -196,7 +197,7 @@ if ($action === 'detail') {
             FROM players p
             LEFT JOIN game_pitching_stats ps ON p.id = ps.player_id AND ps.game_id = ?
             WHERE p.team_id = ? AND p.is_active = 1
-            ORDER BY has_pitched DESC, ps.is_starter DESC, p.jersey_number ASC
+            ORDER BY has_pitched DESC, ps.is_starter DESC, CASE WHEN p.position_primary = 'P' THEN 0 ELSE 1 END, p.jersey_number ASC
         ");
         $stmt->execute([$id, $teamId]);
         return $stmt->fetchAll();

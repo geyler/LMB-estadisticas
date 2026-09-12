@@ -156,36 +156,7 @@ if ($action === 'list') {
     $categoryId = intval($_GET['category_id'] ?? 0);
     $seasonId = intval($_GET['season_id'] ?? 0);
 
-    if ($seasonId > 0) {
-        $stmtST = $pdo->prepare("SELECT COUNT(*) FROM season_teams WHERE season_id = ?");
-        $stmtST->execute([$seasonId]);
-        $stCount = intval($stmtST->fetchColumn());
-
-        if ($stCount > 0) {
-            $stmt = $pdo->prepare("
-                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
-                FROM teams t
-                JOIN season_teams st ON t.id = st.team_id
-                LEFT JOIN categories c ON t.category_id = c.id
-                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
-                WHERE st.season_id = ?
-                ORDER BY c.level ASC, t.name ASC
-            ");
-            $stmt->execute([$seasonId]);
-            $teams = $stmt->fetchAll();
-        } else {
-            $stmt = $pdo->prepare("
-                SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
-                FROM teams t
-                LEFT JOIN categories c ON t.category_id = c.id
-                LEFT JOIN stadiums s ON t.home_stadium_id = s.id
-                WHERE c.season_id = ?
-                ORDER BY c.level ASC, t.name ASC
-            ");
-            $stmt->execute([$seasonId]);
-            $teams = $stmt->fetchAll();
-        }
-    } elseif ($categoryId > 0) {
+    if ($categoryId > 0) {
         $stmt = $pdo->prepare("
             SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
             FROM teams t
@@ -195,6 +166,21 @@ if ($action === 'list') {
             ORDER BY c.level ASC, t.name ASC
         ");
         $stmt->execute([$categoryId]);
+        $teams = $stmt->fetchAll();
+    } elseif ($seasonId > 0) {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
+            FROM teams t
+            LEFT JOIN season_teams st ON t.id = st.team_id AND st.season_id = ?
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN stadiums s ON t.home_stadium_id = s.id
+            WHERE st.team_id IS NOT NULL 
+               OR c.season_id = ?
+               OR t.id IN (SELECT home_team_id FROM games WHERE season_id = ?)
+               OR t.id IN (SELECT away_team_id FROM games WHERE season_id = ?)
+            ORDER BY c.level ASC, t.name ASC
+        ");
+        $stmt->execute([$seasonId, $seasonId, $seasonId, $seasonId]);
         $teams = $stmt->fetchAll();
     } else {
         $sql = "SELECT t.*, COALESCE(c.name, 'Sin Asignación') as category_name, COALESCE(c.code, 'S/A') as category_code, s.name as home_stadium_name
@@ -321,6 +307,22 @@ if ($action === 'create' && $method === 'POST') {
     $stmt = $pdo->prepare("INSERT INTO teams (category_id, name, short_name, home_stadium_id, color_primary) VALUES (?, ?, ?, ?, ?)");
     $stmt->execute([$categoryId, $name, $shortName, $homeStadiumId, $colorPrimary]);
     $teamId = $pdo->lastInsertId();
+
+    // Automatically link to season_teams
+    $targetSeasonId = 0;
+    if ($categoryId > 0) {
+        $stmtCat = $pdo->prepare("SELECT season_id FROM categories WHERE id = ?");
+        $stmtCat->execute([$categoryId]);
+        $targetSeasonId = intval($stmtCat->fetchColumn());
+    }
+    if ($targetSeasonId === 0) {
+        $activeS = $pdo->query("SELECT id FROM seasons WHERE is_active = 1 LIMIT 1")->fetch();
+        if ($activeS) $targetSeasonId = intval($activeS['id']);
+    }
+    if ($targetSeasonId > 0 && $teamId > 0) {
+        $pdo->prepare("INSERT IGNORE INTO season_teams (season_id, team_id) VALUES (?, ?)")
+            ->execute([$targetSeasonId, $teamId]);
+    }
 
     echo json_encode(['success' => true, 'team_id' => $teamId, 'message' => 'Equipo registrado exitosamente.']);
     exit;

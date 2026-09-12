@@ -116,7 +116,7 @@ if ($action === 'record_play') {
     }
 
     // If stolen base with specific runner_id, credit SB to that runner
-    if ($resultCode === 'SB' && $runnerId > 0 && $runnerId !== $batterId) {
+    if ($resultCode === 'SB' && $runnerId > 0) {
         $stmtSB = $pdo->prepare("SELECT id FROM game_batting_stats WHERE game_id = ? AND player_id = ?");
         $stmtSB->execute([$gameId, $runnerId]);
         $sbRow = $stmtSB->fetch();
@@ -133,7 +133,7 @@ if ($action === 'record_play') {
     $stmtBCheck->execute([$gameId, $batterId]);
     $bStat = $stmtBCheck->fetch();
 
-    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF', 'SB', 'SAC', 'CS']);
+    $isAB = !in_array($resultCode, ['BB', 'HBP', 'SF', 'SB', 'SAC', 'CS', 'ADV_ERR']);
     $isH = in_array($resultCode, ['1B', '2B', '3B', 'HR']);
     $is1B = ($resultCode === '1B') ? 1 : 0;
     $is2B = ($resultCode === '2B') ? 1 : 0;
@@ -141,7 +141,7 @@ if ($action === 'record_play') {
     $isHR = ($resultCode === 'HR') ? 1 : 0;
     $isBB = ($resultCode === 'BB') ? 1 : 0;
     $isSO = in_array($resultCode, ['SO', 'K']) ? 1 : 0;
-    $isSB = ($resultCode === 'SB' && ($runnerId === 0 || $runnerId === $batterId)) ? 1 : 0;
+    $isSB = 0; // Stolen base belongs solely to the runner on base, never to the batter in the box
     $isHBP = ($resultCode === 'HBP') ? 1 : 0;
     $isSF = ($resultCode === 'SF') ? 1 : 0;
     // Batter scores a run if HR or if in scoring_runners

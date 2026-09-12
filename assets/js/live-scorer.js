@@ -16,6 +16,8 @@ const LiveScorer = {
 
   activeBatterId: null,
   activePitcherId: null,
+  currentHomePitcherId: null,
+  currentAwayPitcherId: null,
   outsCount: 0,
 
   baseRunners: { b1: null, b2: null, b3: null },  // null or { id, name, jersey }
@@ -40,13 +42,15 @@ const LiveScorer = {
         first_name: p.first_name,
         last_name: p.last_name,
         jersey_number: p.jersey_number,
+        position: p.position || p.position_primary || 'OF',
         bats: p.bats,
         batting_order: idx + 1
       }));
     } else {
       this.homeBatters = gameDetailData.home_batters.map(p => ({
         ...p,
-        player_id: p.player_id || p.id
+        player_id: p.player_id || p.id,
+        position: p.position || p.position_primary || 'OF'
       }));
     }
 
@@ -56,43 +60,63 @@ const LiveScorer = {
         first_name: p.first_name,
         last_name: p.last_name,
         jersey_number: p.jersey_number,
+        position: p.position || p.position_primary || 'OF',
         bats: p.bats,
         batting_order: idx + 1
       }));
     } else {
       this.awayBatters = gameDetailData.away_batters.map(p => ({
         ...p,
-        player_id: p.player_id || p.id
+        player_id: p.player_id || p.id,
+        position: p.position || p.position_primary || 'OF'
       }));
     }
 
     if (!gameDetailData.home_pitchers || gameDetailData.home_pitchers.length === 0) {
       this.homePitchers = homeActive.map(p => ({
         player_id: p.player_id || p.id,
+        id: p.player_id || p.id,
         first_name: p.first_name,
         last_name: p.last_name,
-        jersey_number: p.jersey_number
+        jersey_number: p.jersey_number,
+        position: p.position || p.position_primary || 'P'
       }));
     } else {
       this.homePitchers = gameDetailData.home_pitchers.map(p => ({
         ...p,
-        player_id: p.player_id || p.id
+        player_id: p.player_id || p.id,
+        id: p.player_id || p.id,
+        position: p.position || 'P'
       }));
     }
+    // Sort so position 'P' is first
+    this.homePitchers.sort((a, b) => (a.position === 'P' ? -1 : (b.position === 'P' ? 1 : 0)));
 
     if (!gameDetailData.away_pitchers || gameDetailData.away_pitchers.length === 0) {
       this.awayPitchers = awayActive.map(p => ({
         player_id: p.player_id || p.id,
+        id: p.player_id || p.id,
         first_name: p.first_name,
         last_name: p.last_name,
-        jersey_number: p.jersey_number
+        jersey_number: p.jersey_number,
+        position: p.position || p.position_primary || 'P'
       }));
     } else {
       this.awayPitchers = gameDetailData.away_pitchers.map(p => ({
         ...p,
-        player_id: p.player_id || p.id
+        player_id: p.player_id || p.id,
+        id: p.player_id || p.id,
+        position: p.position || 'P'
       }));
     }
+    // Sort so position 'P' is first
+    this.awayPitchers.sort((a, b) => (a.position === 'P' ? -1 : (b.position === 'P' ? 1 : 0)));
+
+    // Initialize current pitcher IDs
+    const homeP = this.homePitchers.find(p => p.position === 'P') || this.homePitchers[0];
+    const awayP = this.awayPitchers.find(p => p.position === 'P') || this.awayPitchers[0];
+    this.currentHomePitcherId = homeP ? (homeP.player_id || homeP.id) : null;
+    this.currentAwayPitcherId = awayP ? (awayP.player_id || awayP.id) : null;
 
     if (this.homeBatters.length === 0 || this.awayBatters.length === 0) {
       const container = document.getElementById('view-container');
@@ -194,7 +218,6 @@ const LiveScorer = {
   autoSelectActivePlayers() {
     const isTop = this.game.half_inning === 'top';
     const battingList = isTop ? this.awayBatters : this.homeBatters;
-    const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
     const activeIndex = isTop ? this.awayLineupIndex : this.homeLineupIndex;
 
     if (battingList.length > 0) {
@@ -203,12 +226,21 @@ const LiveScorer = {
       this.activeBatterId = null;
     }
 
-    if (pitchingList.length > 0) {
-      // Prioritize explicit pitcher ('P')
-      const explicitPitcher = pitchingList.find(p => p.position === 'P');
-      this.activePitcherId = explicitPitcher ? (explicitPitcher.player_id || explicitPitcher.id) : (pitchingList[0].player_id || pitchingList[0].id);
+    // Fielding team: top -> home pitches, bottom -> away pitches
+    if (isTop) {
+      this.activePitcherId = this.currentHomePitcherId;
+      if (!this.activePitcherId && this.homePitchers.length > 0) {
+        const explicitPitcher = this.homePitchers.find(p => p.position === 'P') || this.homePitchers[0];
+        this.activePitcherId = explicitPitcher ? (explicitPitcher.player_id || explicitPitcher.id) : null;
+        this.currentHomePitcherId = this.activePitcherId;
+      }
     } else {
-      this.activePitcherId = null;
+      this.activePitcherId = this.currentAwayPitcherId;
+      if (!this.activePitcherId && this.awayPitchers.length > 0) {
+        const explicitPitcher = this.awayPitchers.find(p => p.position === 'P') || this.awayPitchers[0];
+        this.activePitcherId = explicitPitcher ? (explicitPitcher.player_id || explicitPitcher.id) : null;
+        this.currentAwayPitcherId = this.activePitcherId;
+      }
     }
   },
 
@@ -339,6 +371,8 @@ const LiveScorer = {
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('BB', 'Base por Bolas (BB)', 0)">BB (Base por Bolas)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('HBP', 'Golpeado / Pelotazo (HBP)', 0)">💥 HBP (Pelotazo)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:800; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) ? 'opacity:0.5;' : ''}" onclick="LiveScorer.showStolenBaseModal()">🏃 SB (Robo de Base)</button>
+            <button class="md-btn" style="background:#F59E0B; color:#FFFFFF; font-weight:800; ${!(this.baseRunners.b1 || this.baseRunners.b2 || this.baseRunners.b3) ? 'opacity:0.5;' : ''}" onclick="LiveScorer.showAdvanceOnErrorModal()">🏃 Avanzar por Error / WP</button>
+            <button class="md-btn" style="background:#D97706; color:#FFFFFF; font-weight:800;" onclick="LiveScorer.confirmPlay('E', 'Embasado por Error (E)', 0)">⚠️ E (Error / ROE)</button>
             <button class="md-btn" style="background:#188038; color:#FFFFFF; font-weight:900; font-size:0.9rem;" onclick="LiveScorer.showRunScoredModal()">⚽ +1 Carrera Manual</button>
           </div>
 
@@ -394,7 +428,7 @@ const LiveScorer = {
     const currentBatter = battingList.find(b => b.player_id == this.activeBatterId);
     const batterName = currentBatter ? `#${currentBatter.jersey_number} ${currentBatter.first_name} ${currentBatter.last_name}` : 'Bateador Actual';
 
-    const isPositive = ['1B', '2B', '3B', 'HR', 'BB', 'RUN', 'SB'].includes(code);
+    const isPositive = ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'RUN', 'SB', 'E', 'ADV_ERR'].includes(code);
     const icon = isPositive ? 'check_circle' : 'do_not_disturb_on';
     const color = isPositive ? '#188038' : '#EA4335';
 
@@ -494,6 +528,11 @@ const LiveScorer = {
       // The specific runner removed is handled by the FC modal before calling recordPlay
       this.baseRunners.b1 = batterRunner;
 
+    } else if (code === 'E') {
+      // Reached on error: batter takes 1B, runners advance 1 base, 3B scores unearned (0 RBI)
+      if (b3) { scoringRunners.push(b3); runs++; }
+      this.baseRunners = { b1: batterRunner, b2: b1 || null, b3: b2 || null };
+
     } else if (code === 'SB') {
       // Stolen base is handled separately via showStolenBaseModal
       // This fallback just keeps bases as-is
@@ -544,7 +583,7 @@ const LiveScorer = {
     }
 
     App.showSnackbar(`✓ Jugada guardada en servidor: ${label}`);
-    if (!['SB', 'CS'].includes(code)) {
+    if (!['SB', 'CS', 'ADV_ERR'].includes(code)) {
       this.advanceBatterLineup();
     }
     this.renderScorerInterface();
@@ -912,53 +951,64 @@ const LiveScorer = {
       this.activeBatterId = foundPlayer.id;
       const battingList = isTop ? this.awayBatters : this.homeBatters;
       const activeIdx = isTop ? this.awayLineupIndex : this.homeLineupIndex;
-      const existingInListIdx = battingList.findIndex(b => (b.player_id == foundPlayer.id || b.id == foundPlayer.id));
+      const targetIdx = activeIdx % Math.max(1, battingList.length);
 
-      if (existingInListIdx >= 0) {
-        // Swap or bring to current lineup index
-        battingList[existingInListIdx].position = 'PH';
-      } else {
-        const targetIdx = activeIdx % Math.max(1, battingList.length);
-        battingList[targetIdx] = {
-          player_id: foundPlayer.id,
-          id: foundPlayer.id,
-          first_name: foundPlayer.first_name,
-          last_name: foundPlayer.last_name,
-          jersey_number: foundPlayer.jersey_number,
-          position: 'PH',
-          bats: foundPlayer.bats || 'R'
-        };
-      }
+      battingList[targetIdx] = {
+        player_id: foundPlayer.id,
+        id: foundPlayer.id,
+        first_name: foundPlayer.first_name,
+        last_name: foundPlayer.last_name,
+        jersey_number: foundPlayer.jersey_number,
+        position: 'PH',
+        bats: foundPlayer.bats || 'R',
+        batting_order: targetIdx + 1
+      };
       App.showSnackbar(`✓ Cambio de Bateador guardado: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name}`);
     } else {
-      const pitchingList = isTop ? this.homePitchers : this.awayPitchers;
-      const defenseList = isTop ? this.homeBatters : this.awayBatters;
+      const isHomePitching = isTop;
+      const pitchingList = isHomePitching ? this.homePitchers : this.awayPitchers;
+      const defenseList = isHomePitching ? this.homeBatters : this.awayBatters;
       
       const oldPitcherId = this.activePitcherId;
-
       this.activePitcherId = foundPlayer.id;
-
-      const newPitcherInField = defenseList.find(d => (d.player_id == foundPlayer.id || d.id == foundPlayer.id));
-      const oldPitcherInField = defenseList.find(d => (d.player_id == oldPitcherId || d.id == oldPitcherId));
-
-      if (newPitcherInField) {
-        newPitcherInField.position = 'P';
-      }
-      if (oldPitcherInField && formerPos !== 'OUT') {
-        oldPitcherInField.position = formerPos;
+      if (isHomePitching) {
+        this.currentHomePitcherId = foundPlayer.id;
+      } else {
+        this.currentAwayPitcherId = foundPlayer.id;
       }
 
-      const existingPitcher = pitchingList.find(p => (p.player_id == foundPlayer.id || p.id == foundPlayer.id));
+      // Update positions in pitchingList so only the new active pitcher has position = 'P'
+      pitchingList.forEach(p => {
+        if (p.player_id == foundPlayer.id || p.id == foundPlayer.id) {
+          p.position = 'P';
+        } else if (p.player_id == oldPitcherId || p.id == oldPitcherId) {
+          p.position = (formerPos !== 'OUT') ? formerPos : 'BENCH';
+        }
+      });
+
+      let existingPitcher = pitchingList.find(p => (p.player_id == foundPlayer.id || p.id == foundPlayer.id));
       if (!existingPitcher) {
-        pitchingList.unshift({
+        existingPitcher = {
           player_id: foundPlayer.id,
           id: foundPlayer.id,
           first_name: foundPlayer.first_name,
           last_name: foundPlayer.last_name,
           jersey_number: foundPlayer.jersey_number,
           position: 'P'
-        });
+        };
+        pitchingList.unshift(existingPitcher);
+      } else {
+        const idx = pitchingList.indexOf(existingPitcher);
+        if (idx > 0) {
+          pitchingList.splice(idx, 1);
+          pitchingList.unshift(existingPitcher);
+        }
       }
+
+      const newPitcherInField = defenseList.find(d => (d.player_id == foundPlayer.id || d.id == foundPlayer.id));
+      const oldPitcherInField = defenseList.find(d => (d.player_id == oldPitcherId || d.id == oldPitcherId));
+      if (newPitcherInField) newPitcherInField.position = 'P';
+      if (oldPitcherInField && formerPos !== 'OUT') oldPitcherInField.position = formerPos;
 
       App.showSnackbar(`✓ Cambio de Lanzador guardado: #${foundPlayer.jersey_number} ${foundPlayer.first_name} ${foundPlayer.last_name}`);
     }
@@ -1205,6 +1255,163 @@ const LiveScorer = {
 
     const label = `Bola Ocupada (FC): Out a #${outRunner ? (outRunner.jersey + ' ' + outRunner.name) : 'corredor'} en base; Bateador a 1ª Base`;
     await this.recordPlay('FC', label, 1);
+  },
+
+  showAdvanceOnErrorModal() {
+    const runners = [];
+    if (this.baseRunners.b1) runners.push({ base: 'b1', baseName: '1ª Base', runner: this.baseRunners.b1 });
+    if (this.baseRunners.b2) runners.push({ base: 'b2', baseName: '2ª Base', runner: this.baseRunners.b2 });
+    if (this.baseRunners.b3) runners.push({ base: 'b3', baseName: '3ª Base', runner: this.baseRunners.b3 });
+
+    if (!runners.length) {
+      App.showAlert("Avanzar por Error", "No hay corredores en base en este momento.", "warning", "#F59E0B");
+      return;
+    }
+
+    const modal = this._getOrCreatePlayModal();
+    const title = document.getElementById('live-interactive-title');
+    const body = document.getElementById('live-interactive-body');
+    if (title) title.innerHTML = `<span class="material-icons-round" style="color:#F59E0B;">running_with_errors</span> Avanzar por Error / WP`;
+
+    let html = `
+      <div style="font-size:0.85rem; font-weight:700; color:#5F6368;">
+        Selecciona cómo avanzan los corredores (el bateador permanece en turno):
+      </div>
+
+      <button class="md-btn md-btn-primary" style="width:100%; padding:10px; font-size:0.9rem; font-weight:800; background:#F59E0B; border-color:#D97706; margin-top:8px;" onclick="LiveScorer.applyAdvanceAllOnError()">
+        ⚡ Avanzar a TODOS los corredores 1 Base (Error / WP / PB)
+      </button>
+
+      <div style="font-size:0.8rem; font-weight:800; color:#202124; margin-top:12px;">O avanzar un corredor específico:</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        ${runners.map(r => {
+          let targets = [];
+          if (r.base === 'b1') targets = [{ to: 'b2', label: '2ª Base' }, { to: 'b3', label: '3ª Base' }];
+          if (r.base === 'b2') targets = [{ to: 'b3', label: '3ª Base' }, { to: 'home', label: '🏠 Home (Anota carrera)' }];
+          if (r.base === 'b3') targets = [{ to: 'home', label: '🏠 Home (Anota carrera)' }];
+
+          return `
+            <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:10px;">
+              <div style="font-weight:800; font-size:0.9rem; color:#92400E;">
+                ${r.baseName}: <span>#${r.runner.jersey || ''} ${r.runner.name}</span>
+              </div>
+              <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+                ${targets.map(t => `
+                  <button class="md-btn md-btn-outlined" style="padding:6px 12px; font-size:0.8rem; font-weight:800; border-color:#D97706; color:#B45309;" onclick="LiveScorer.applyAdvanceSingleOnError('${r.base}', '${t.to}')">
+                    Avanzar a ${t.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    body.innerHTML = html;
+    modal.classList.add('open');
+  },
+
+  async applyAdvanceAllOnError() {
+    this.closeInteractivePlayModal();
+    const { b1, b2, b3 } = this.baseRunners;
+    let runs = 0;
+    const scoringRunners = [];
+
+    if (b3) {
+      scoringRunners.push(b3);
+      runs++;
+    }
+
+    this.baseRunners = {
+      b1: null,
+      b2: b1 || null,
+      b3: b2 || null
+    };
+
+    const desc = `Avance de corredores por Error / WP / PB${runs > 0 ? ` (+${runs} Carrera)` : ''}`;
+    const payload = {
+      action: 'record_play',
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning,
+      batter_id: this.activeBatterId,
+      pitcher_id: this.activePitcherId,
+      outs_before: this.outsCount,
+      outs_added: 0,
+      result_code: 'ADV_ERR',
+      description: desc,
+      runs_scored: runs,
+      rbi_count: 0,
+      scoring_runners: scoringRunners.map(r => r.id),
+      b1: this.baseRunners.b1 ? 1 : 0,
+      b2: this.baseRunners.b2 ? 1 : 0,
+      b3: this.baseRunners.b3 ? 1 : 0
+    };
+
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
+    if (runs > 0) {
+      const isTop = this.game.half_inning === 'top';
+      if (isTop) this.game.away_score += runs;
+      else this.game.home_score += runs;
+    }
+
+    App.showSnackbar(`✓ ${desc}`);
+    this.renderScorerInterface();
+  },
+
+  async applyAdvanceSingleOnError(fromBase, toBase) {
+    const runner = this.baseRunners[fromBase];
+    if (!runner) return;
+
+    this.closeInteractivePlayModal();
+    this.baseRunners[fromBase] = null;
+
+    let runs = 0;
+    let desc = `Avance por Error/WP: #${runner.jersey || ''} ${runner.name} avanza a `;
+    const scoringRunners = [];
+
+    if (toBase === 'home') {
+      runs = 1;
+      scoringRunners.push(runner);
+      desc += 'Home Plate (+1 Carrera sin RBI)';
+    } else {
+      this.baseRunners[toBase] = runner;
+      desc += (toBase === 'b2' ? '2ª Base' : '3ª Base');
+    }
+
+    const payload = {
+      action: 'record_play',
+      game_id: this.game.id,
+      inning: this.game.current_inning,
+      half_inning: this.game.half_inning,
+      batter_id: this.activeBatterId,
+      pitcher_id: this.activePitcherId,
+      outs_before: this.outsCount,
+      outs_added: 0,
+      result_code: 'ADV_ERR',
+      description: desc,
+      runs_scored: runs,
+      rbi_count: 0,
+      scoring_runners: scoringRunners.map(r => r.id),
+      b1: this.baseRunners.b1 ? 1 : 0,
+      b2: this.baseRunners.b2 ? 1 : 0,
+      b3: this.baseRunners.b3 ? 1 : 0
+    };
+
+    const ok = await this.sendDirectPlay(payload);
+    if (!ok) return;
+
+    if (runs > 0) {
+      const isTop = this.game.half_inning === 'top';
+      if (isTop) this.game.away_score += runs;
+      else this.game.home_score += runs;
+    }
+
+    App.showSnackbar(`✓ ${desc}`);
+    this.renderScorerInterface();
   },
 
   processOfflineQueue() {
